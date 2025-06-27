@@ -1,0 +1,371 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Newsletter subscriptions
+  newsletters Newsletter[]
+}
+
+model Analyst {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  company     String?
+  title       String?
+  phone       String?
+  linkedIn    String?
+  twitter     String?
+  website     String?
+  bio         String?
+  profileImageUrl String?
+  
+  // Enhanced fields for advanced features
+  influenceScore    Int       @default(50) // 0-100 scale
+  lastContactDate   DateTime?
+  nextContactDate   DateTime?
+  communicationCadence Int?    // Days between contacts
+  relationshipHealth RelationshipHealth @default(GOOD)
+  
+  // AI/Social intelligence
+  recentSocialSummary String?
+  socialSummaryUpdatedAt DateTime?
+  keyThemes       String? // JSON array of themes
+  
+  // Research tracking
+  upcomingPublications String? // JSON array
+  recentPublications   String? // JSON array
+  speakingEngagements  String? // JSON array
+  awards              String? // JSON array
+  
+  expertise   AnalystExpertise[]
+  influence   Influence @default(MEDIUM)
+  status      Status    @default(ACTIVE)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  interactions Interaction[]
+  newsletters  NewsletterSubscription[]
+  loginAccess  AnalystAccess?
+  publications Publication[]
+  socialPosts  SocialPost[]
+  briefings    Briefing[]
+  alerts       Alert[]
+  conversationSummaries ConversationSummary[]
+  portalSessions AnalystPortalSession[]
+}
+
+model Newsletter {
+  id          String   @id @default(cuid())
+  title       String
+  subject     String
+  content     String
+  htmlContent String?
+  status      NewsletterStatus @default(DRAFT)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  
+  // Relations
+  creator     User     @relation(fields: [createdBy], references: [id])
+  subscriptions NewsletterSubscription[]
+}
+
+model NewsletterSubscription {
+  id           String    @id @default(cuid())
+  analystId    String
+  newsletterId String
+  sentAt       DateTime?
+  opened       Boolean   @default(false)
+  clicked      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  
+  // Relations
+  analyst      Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  newsletter   Newsletter @relation(fields: [newsletterId], references: [id], onDelete: Cascade)
+  
+  @@unique([analystId, newsletterId])
+}
+
+model Interaction {
+  id          String      @id @default(cuid())
+  analystId   String
+  type        InteractionType
+  subject     String
+  description String?
+  date        DateTime
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  analyst     Analyst     @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model AnalystExpertise {
+  id        String   @id @default(cuid())
+  analystId String
+  area      String
+
+  // Relations
+  analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model AnalystAccess {
+  id        String   @id @default(cuid())
+  analystId String   @unique
+  password  String
+  lastLogin DateTime?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model Content {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  type        ContentType
+  url         String?
+  filePath    String?
+  isExclusive Boolean     @default(false)
+  isPublished Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+enum Influence {
+  LOW
+  MEDIUM
+  HIGH
+  VERY_HIGH
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum NewsletterStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  CANCELLED
+}
+
+enum InteractionType {
+  EMAIL
+  CALL
+  MEETING
+  DEMO
+  EVENT
+  OTHER
+}
+
+enum ContentType {
+  ARTICLE
+  WHITEPAPER
+  DEMO
+  VIDEO
+  WEBINAR
+  REPORT
+  OTHER
+}
+
+enum RelationshipHealth {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  CRITICAL
+}
+
+enum PublicationType {
+  RESEARCH_REPORT
+  BLOG_POST
+  WHITEPAPER
+  WEBINAR
+  PODCAST
+  ARTICLE
+  OTHER
+}
+
+enum AlertType {
+  COMMUNICATION_OVERDUE
+  BRIEFING_DUE
+  RELATIONSHIP_HEALTH
+  SOCIAL_MENTION
+  PUBLICATION_ALERT
+  ENGAGEMENT_OPPORTUNITY
+}
+
+enum BriefingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum SocialPlatform {
+  TWITTER
+  LINKEDIN
+  MEDIUM
+  BLOG
+  OTHER
+}
+
+// New models for enhanced features
+model Publication {
+  id          String          @id @default(cuid())
+  analystId   String
+  title       String
+  url         String?
+  summary     String?
+  type        PublicationType
+  publishedAt DateTime
+  isTracked   Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  // Relations
+  analyst     Analyst         @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model SocialPost {
+  id          String        @id @default(cuid())
+  analystId   String
+  platform    SocialPlatform
+  content     String
+  url         String?
+  engagements Int           @default(0)
+  postedAt    DateTime
+  isRelevant  Boolean       @default(true)
+  sentiment   String?       // POSITIVE, NEGATIVE, NEUTRAL
+  themes      String?       // JSON array of extracted themes
+  createdAt   DateTime      @default(now())
+  
+  // Relations
+  analyst     Analyst       @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model Briefing {
+  id          String        @id @default(cuid())
+  analystId   String
+  title       String
+  description String?
+  scheduledAt DateTime
+  completedAt DateTime?
+  status      BriefingStatus @default(SCHEDULED)
+  agenda      String?       // JSON array of agenda items
+  notes       String?
+  outcomes    String?       // JSON array of outcomes
+  followUpActions String?    // JSON array of follow-up actions
+  recordingUrl String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relations
+  analyst     Analyst       @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  analystId   String
+  type        AlertType
+  title       String
+  message     String
+  isRead      Boolean   @default(false)
+  actionTaken Boolean   @default(false)
+  priority    String    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model ConversationSummary {
+  id          String    @id @default(cuid())
+  analystId   String
+  title       String
+  summary     String
+  keyPoints   String?   // JSON array
+  actionItems String?   // JSON array
+  recordingUrl String?
+  transcriptUrl String?
+  date        DateTime
+  duration    Int?      // in minutes
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model AnalystPortalSession {
+  id          String    @id @default(cuid())
+  analystId   String
+  sessionId   String    @unique
+  loginAt     DateTime  @default(now())
+  logoutAt    DateTime?
+  ipAddress   String?
+  userAgent   String?
+  
+  // Relations
+  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model CompanyVision {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  type        String    // MISSION, VALUES, STRATEGY, ROADMAP
+  isPublished Boolean   @default(false)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model ExclusiveContent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  content     String
+  type        ContentType
+  targetAudience String? // JSON array of analyst IDs or expertise areas
+  accessLevel String    @default("ALL") // ALL, TIER1, TIER2, SPECIFIC
+  downloadUrl String?
+  viewCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
