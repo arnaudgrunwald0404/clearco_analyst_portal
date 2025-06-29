@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 
-type UserRole = 'ADMIN' | 'EDITOR' | 'ANALYST'
+type UserRole = 'ADMIN' | 'EDITOR'
 
 interface UserProfile {
   id: string

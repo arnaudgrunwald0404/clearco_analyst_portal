@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
 
-type UserRole = 'ADMIN' | 'EDITOR' | 'ANALYST'
+type UserRole = 'ADMIN' | 'EDITOR'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -40,12 +40,8 @@ export default function ProtectedRoute({
         if (redirectTo) {
           router.push(redirectTo)
         } else {
-          // Redirect based on role
-          if (profile.role === 'ANALYST') {
-            router.push('/portal')
-          } else {
-            router.push('/')
-          }
+          // Redirect to home for unauthorized users
+          router.push('/')
         }
         return
       }

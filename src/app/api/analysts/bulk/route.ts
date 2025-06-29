@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
             twitter: analystData.twitter || null,
             website: analystData.website || null,
             bio: analystData.bio || null,
-            type: analystData.type || 'ANALYST',
+            type: analystData.type || 'Analyst',
             eligibleNewsletters: analystData.eligibleNewsletters ? 
               JSON.stringify(analystData.eligibleNewsletters) : null,
             influence: analystData.influence || 'MEDIUM',

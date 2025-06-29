@@ -12,7 +12,7 @@ interface LayoutWrapperProps {
 interface User {
   email: string
   name: string
-  role: 'ADMIN' | 'ANALYST'
+  role: 'ADMIN' | 'EDITOR'
 }
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
@@ -72,7 +72,7 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
   }
 
   // Protected admin pages - show sidebar
-  if (user && user.role === 'ADMIN') {
+  if (user && (user.role === 'ADMIN' || user.role === 'EDITOR')) {
     return (
       <div className="flex h-screen bg-gray-100">
         <Sidebar />
@@ -81,12 +81,6 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
         </main>
       </div>
     )
-  }
-
-  // If user is not admin and trying to access admin pages, redirect to appropriate page
-  if (user && user.role === 'ANALYST') {
-    router.push('/portal')
-    return null
   }
 
   // Default fallback

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         twitter: twitter || null,
         website: website || null,
         bio: bio || null,
-        type: type || 'ANALYST',
+        type: type || 'Analyst',
         eligibleNewsletters: eligibleNewsletters || null,
         influence: influence || 'MEDIUM',
         status: status || 'ACTIVE',

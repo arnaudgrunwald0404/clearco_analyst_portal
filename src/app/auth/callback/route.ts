@@ -61,8 +61,8 @@ export async function GET(request: NextRequest) {
 
       // Redirect based on role
       const userRole = profile?.role || 'EDITOR'
-      if (userRole === 'ANALYST') {
-        return NextResponse.redirect(`${origin}/portal`)
+      if (userRole === 'ADMIN' || userRole === 'EDITOR') {
+        return NextResponse.redirect(`${origin}${next}`)
       } else {
         return NextResponse.redirect(`${origin}${next}`)
       }
