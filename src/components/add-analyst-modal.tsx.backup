@@ -1,0 +1,1011 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import { X, Plus, Upload, FileText, CheckCircle, AlertCircle, Loader, Sparkles, RefreshCw, Lightbulb } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import * as XLSX from 'xlsx'
+import Papa from 'papaparse'
+
+interface AddAnalystModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAnalystAdded: () => void
+}
+
+interface AnalystFormData {
+  firstName: string
+  lastName: string
+  email: string
+  company?: string
+  title?: string
+  phone?: string
+  linkedIn?: string
+  twitter?: string
+  website?: string
+  bio?: string
+  type: 'ANALYST' | 'PRACTITIONER_INFLUENCER' | 'PRESS'
+  eligibleNewsletters: string[]
+  coveredTopics: string[]
+  influence: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
+}
+
+interface BulkUploadData {
+  analysts: AnalystFormData[]
+  mapping: Record<string, string>
+  unmappedColumns: string[]
+}
+
+function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalProps) {
+  const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [uploadStep, setUploadStep] = useState<'upload' | 'mapping' | 'preview' | 'processing'>('upload')
+  const [bulkData, setBulkData] = useState<BulkUploadData | null>(null)
+  const [rawData, setRawData] = useState<any[]>([])
+  const [fileName, setFileName] = useState('')
+  
+  // Form state
+  const [formData, setFormData] = useState<AnalystFormData>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    title: '',
+    phone: '',
+    linkedIn: '',
+    twitter: '',
+    website: '',
+    bio: '',
+    type: 'ANALYST',
+    eligibleNewsletters: [],
+    coveredTopics: [],
+    influence: 'MEDIUM',
+    status: 'ACTIVE'
+  })
+  
+  const [newTopic, setNewTopic] = useState('')
+  const [isScrapingBio, setIsScrapingBio] = useState(false)
+  const [isSuggestingTopics, setIsSuggestingTopics] = useState(false)
+  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([])
+
+  // Expected field mappings for intelligent matching
+  const fieldMappings = {
+    firstName: ['first name', 'firstname', 'fname', 'given name', 'first_name', 'first'],
+    lastName: ['last name', 'lastname', 'lname', 'surname', 'family name', 'last_name', 'last'],
+    email: ['email', 'email address', 'e-mail', 'mail', 'contact email'],
+    company: ['company', 'organization', 'firm', 'employer', 'corp', 'org'],
+    title: ['title', 'position', 'job title', 'role', 'designation'],
+    phone: ['phone', 'telephone', 'mobile', 'cell', 'contact number', 'phone number'],
+    linkedIn: ['linkedin', 'linkedin url', 'linkedin profile', 'linkedin_url', 'linkedin link'],
+    twitter: ['twitter', 'twitter handle', 'twitter url', 'twitter_handle', '@'],
+    website: ['website', 'web', 'url', 'homepage', 'site'],
+    bio: ['bio', 'biography', 'description', 'about', 'summary'],
+    coveredTopics: ['covered topics', 'topics', 'expertise', 'skills', 'specialization', 'focus areas', 'domains', 'coverage'],
+    type: ['type', 'analyst type', 'category', 'classification'],
+    eligibleNewsletters: ['newsletters', 'eligible newsletters', 'subscriptions'],
+    influence: ['influence', 'influence level', 'tier', 'ranking'],
+    status: ['status', 'state', 'active']
+  }
+
+  const resetModal = () => {
+    setActiveTab('form')
+    setUploadStep('upload')
+    setBulkData(null)
+    setRawData([])
+    setFileName('')
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      company: '',
+      title: '',
+      phone: '',
+      linkedIn: '',
+      twitter: '',
+      website: '',
+      bio: '',
+      type: 'ANALYST',
+      eligibleNewsletters: [],
+      coveredTopics: [],
+      influence: 'MEDIUM',
+      status: 'ACTIVE'
+    })
+    setNewTopic('')
+  }
+
+  const handleClose = () => {
+    resetModal()
+    onClose()
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setFileName(file.name)
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+
+    if (fileExtension === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        complete: (results) => {
+          setRawData(results.data)
+          processFileData(results.data)
+        },
+        error: (error) => {
+          console.error('CSV parsing error:', error)
+        }
+      })
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet)
+        setRawData(jsonData)
+        processFileData(jsonData)
+      }
+      reader.readAsArrayBuffer(file)
+    }
+  }
+
+  const processFileData = async (data: any[]) => {
+    if (!data.length) return
+
+    const columns = Object.keys(data[0])
+    const mapping: Record<string, string> = {}
+    const unmappedColumns: string[] = []
+
+    // Use LLM for intelligent column mapping
+    try {
+      const response = await fetch('/api/analysts/map-columns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columns, fieldMappings })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        Object.assign(mapping, result.mapping)
+        unmappedColumns.push(...result.unmappedColumns)
+      } else {
+        // Fallback to simple string matching
+        columns.forEach(column => {
+          const normalizedColumn = column.toLowerCase().trim()
+          let mapped = false
+          
+          for (const [field, variants] of Object.entries(fieldMappings)) {
+            if (variants.some(variant => normalizedColumn.includes(variant))) {
+              mapping[column] = field
+              mapped = true
+              break
+            }
+          }
+          
+          if (!mapped) {
+            unmappedColumns.push(column)
+          }
+        })
+      }
+    } catch (error) {
+      console.error('Column mapping error:', error)
+      // Fallback mapping logic here
+    }
+
+    setBulkData({ analysts: [], mapping, unmappedColumns })
+    setUploadStep('mapping')
+  }
+
+  const handleMappingChange = (column: string, field: string) => {
+    if (!bulkData) return
+    
+    const newMapping = { ...bulkData.mapping }
+    const newUnmapped = [...bulkData.unmappedColumns]
+    
+    if (field === '') {
+      delete newMapping[column]
+      if (!newUnmapped.includes(column)) {
+        newUnmapped.push(column)
+      }
+    } else {
+      newMapping[column] = field
+      const index = newUnmapped.indexOf(column)
+      if (index > -1) {
+        newUnmapped.splice(index, 1)
+      }
+    }
+    
+    setBulkData({ ...bulkData, mapping: newMapping, unmappedColumns: newUnmapped })
+  }
+
+  const generatePreview = () => {
+    if (!bulkData || !rawData.length) return
+
+    const analysts: AnalystFormData[] = rawData.map(row => {
+      const analyst: Partial<AnalystFormData> = {
+        coveredTopics: [],
+        influence: 'MEDIUM',
+        status: 'ACTIVE',
+        type: 'ANALYST',
+        eligibleNewsletters: []
+      }
+
+      Object.entries(bulkData.mapping).forEach(([column, field]) => {
+        const value = row[column]
+        if (value && field) {
+          if (field === 'coveredTopics') {
+            analyst[field] = typeof value === 'string' ? value.split(',').map(s => s.trim()) : []
+          } else if (field === 'influence') {
+            const normalizedValue = value.toString().toUpperCase()
+            if (['LOW', 'MEDIUM', 'HIGH', 'VERY_HIGH'].includes(normalizedValue)) {
+              analyst[field] = normalizedValue as any
+            }
+          } else if (field === 'status') {
+            const normalizedValue = value.toString().toUpperCase()
+            if (['ACTIVE', 'INACTIVE', 'ARCHIVED'].includes(normalizedValue)) {
+              analyst[field] = normalizedValue as any
+            }
+          } else if (field === 'type') {
+            const normalizedValue = value.toString().toUpperCase()
+            // Map various type values to enum values
+            if (normalizedValue.includes('PRESS') || normalizedValue.includes('MEDIA')) {
+              analyst[field] = 'PRESS'
+            } else if (normalizedValue.includes('INFLUENCER') || normalizedValue.includes('PRACTITIONER')) {
+              analyst[field] = 'PRACTITIONER_INFLUENCER'
+            } else {
+              analyst[field] = 'ANALYST' // default
+            }
+          } else {
+            (analyst as any)[field] = value.toString()
+          }
+        }
+      })
+
+      return analyst as AnalystFormData
+    }).filter(analyst => analyst.firstName && analyst.lastName && analyst.email)
+
+    setBulkData({ ...bulkData, analysts })
+    setUploadStep('preview')
+  }
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.linkedIn) return
+
+    setIsSubmitting(true)
+    try {
+      // Convert eligibleNewsletters array to string for API
+      const apiData = {
+        ...formData,
+        eligibleNewsletters: formData.eligibleNewsletters.length > 0 ? formData.eligibleNewsletters.join(',') : null
+      }
+      
+      const response = await fetch('/api/analysts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiData)
+      })
+
+      if (response.ok) {
+        onAnalystAdded()
+        handleClose()
+      } else {
+        console.error('Failed to create analyst')
+      }
+    } catch (error) {
+      console.error('Error creating analyst:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleBulkSubmit = async () => {
+    if (!bulkData?.analysts.length) return
+
+    setUploadStep('processing')
+    try {
+      const response = await fetch('/api/analysts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analysts: bulkData.analysts })
+      })
+
+      if (response.ok) {
+        onAnalystAdded()
+        handleClose()
+      } else {
+        console.error('Failed to create analysts')
+      }
+    } catch (error) {
+      console.error('Error creating analysts:', error)
+    }
+  }
+
+  const addTopic = () => {
+    if (newTopic.trim() && !formData.coveredTopics.includes(newTopic.trim())) {
+      setFormData({
+        ...formData,
+        coveredTopics: [...formData.coveredTopics, newTopic.trim()]
+      })
+      setNewTopic('')
+    }
+  }
+
+  const removeTopic = (index: number) => {
+    setFormData({
+      ...formData,
+      coveredTopics: formData.coveredTopics.filter((_, i) => i !== index)
+    })
+  }
+
+  const scrapeBio = async () => {
+    if (!formData.linkedIn) {
+      alert('Please enter a LinkedIn profile URL first')
+      return
+    }
+
+    setIsScrapingBio(true)
+    try {
+      const response = await fetch('/api/analysts/scrape-bio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          linkedInUrl: formData.linkedIn,
+          name: `${formData.firstName} ${formData.lastName}`,
+          company: formData.company,
+          title: formData.title
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setFormData({ ...formData, bio: result.bio })
+        } else {
+          alert('Failed to scrape bio: ' + result.error)
+        }
+      } else {
+        alert('Failed to scrape bio from LinkedIn')
+      }
+    } catch (error) {
+      console.error('Error scraping bio:', error)
+      alert('Error scraping bio. Please try again.')
+    } finally {
+      setIsScrapingBio(false)
+    }
+  }
+
+  const suggestTopics = async () => {
+    if (!formData.firstName || !formData.lastName) {
+      alert('Please enter the analyst\'s name first')
+      return
+    }
+
+    setIsSuggestingTopics(true)
+    try {
+      const response = await fetch('/api/analysts/suggest-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: `${formData.firstName} ${formData.lastName}`,
+          company: formData.company,
+          title: formData.title,
+          linkedInUrl: formData.linkedIn,
+          bio: formData.bio
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          setSuggestedTopics(result.topics)
+        } else {
+          alert('Failed to suggest topics: ' + result.error)
+        }
+      } else {
+        alert('Failed to get topic suggestions')
+      }
+    } catch (error) {
+      console.error('Error suggesting expertise:', error)
+      alert('Error getting topic suggestions. Please try again.')
+    } finally {
+      setIsSuggestingTopics(false)
+    }
+  }
+
+  const addSuggestedTopic = (topic: string) => {
+    if (!formData.coveredTopics.includes(topic)) {
+      setFormData({
+        ...formData,
+        coveredTopics: [...formData.coveredTopics, topic]
+      })
+    }
+    // Remove from suggestions
+    setSuggestedTopics(suggestedTopics.filter(item => item !== topic))
+  }
+
+  // Auto-suggest expertise when LinkedIn is provided
+  useEffect(() => {
+    if (formData.linkedIn && formData.firstName && formData.lastName) {
+      const timer = setTimeout(() => {
+        suggestTopics()
+      }, 1000) // Debounce for 1 second
+      
+      return () => clearTimeout(timer)
+    }
+  }, [formData.linkedIn, formData.firstName, formData.lastName])
+
+  if (!isOpen) return null
+
+  return (
+    <div className="modal-wrapper">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={handleClose} />
+
+      {/* Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-2xl font-semibold text-gray-900">Add Analysts</h2>
+            <button onClick={handleClose} className="p-2 hover:bg-gray-100 rounded-full">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('form')}
+              className={cn(
+                'px-6 py-3 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'form'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              Single Analyst
+            </button>
+            <button
+              onClick={() => setActiveTab('bulk')}
+              className={cn(
+                'px-6 py-3 text-sm font-medium border-b-2 transition-colors',
+                activeTab === 'bulk'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              )}
+            >
+              Bulk Upload
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+            {activeTab === 'form' && (
+              <form onSubmit={handleFormSubmit} className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.company}
+                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      LinkedIn *
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      value={formData.linkedIn}
+                      onChange={(e) => setFormData({ ...formData, linkedIn: e.target.value })}
+                      placeholder="https://linkedin.com/in/username"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Twitter
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.twitter}
+                      onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Bio
+                    </label>
+                    <button
+                      type="button"
+                      onClick={scrapeBio}
+                      disabled={isScrapingBio || !formData.linkedIn}
+                      className="inline-flex items-center gap-2 px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isScrapingBio ? (
+                        <Loader className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      AI Scrape Bio
+                    </button>
+                  </div>
+                  <textarea
+                    rows={3}
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    placeholder="AI can automatically scrape this from LinkedIn profile..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Covered Topics
+                    </label>
+                    <button
+                      type="button"
+                      onClick={suggestTopics}
+                      disabled={isSuggestingTopics || !formData.firstName || !formData.lastName}
+                      className="inline-flex items-center gap-2 px-3 py-1 text-xs bg-green-100 text-green-700 rounded-lg hover:bg-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSuggestingTopics ? (
+                        <Loader className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Lightbulb className="w-3 h-3" />
+                      )}
+                      AI Suggest
+                    </button>
+                  </div>
+                  
+                  {/* AI Suggestions */}
+                  {suggestedTopics.length > 0 && (
+                    <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <h4 className="text-sm font-medium text-green-800 mb-2 flex items-center gap-1">
+                        <Lightbulb className="w-4 h-4" />
+                        AI Suggested Topics:
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestedTopics.map((topic, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => addSuggestedTopic(topic)}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 hover:bg-green-200 transition-colors"
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            {topic}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={newTopic}
+                      onChange={(e) => setNewTopic(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTopic())}
+                      placeholder="Add topic manually"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={addTopic}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.coveredTopics.map((topic, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                      >
+                        {topic}
+                        <button
+                          type="button"
+                          onClick={() => removeTopic(index)}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Type
+                    </label>
+                    <select
+                      value={formData.type}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="ANALYST">Analyst</option>
+                      <option value="PRACTITIONER_INFLUENCER">Practitioner/Influencer</option>
+                      <option value="PRESS">Press</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Influence Level
+                    </label>
+                    <select
+                      value={formData.influence}
+                      onChange={(e) => setFormData({ ...formData, influence: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="VERY_HIGH">Very High</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="ACTIVE">Active</option>
+                      <option value="INACTIVE">Inactive</option>
+                      <option value="ARCHIVED">Archived</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Eligible Newsletters
+                  </label>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Select which newsletters this analyst should be eligible to receive
+                  </p>
+                  <div className="space-y-2">
+                    {['Weekly HR Tech Insights', 'Monthly Market Report', 'Product Updates'].map((newsletter) => {
+                      const selectedNewsletters = (formData.eligibleNewsletters as string[]) || []
+                      const isSelected = selectedNewsletters.includes(newsletter)
+                      
+                      return (
+                        <label key={newsletter} className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            className="mr-2" 
+                            checked={isSelected}
+                            onChange={(e) => {
+                              const currentNewsletters = (formData.eligibleNewsletters as string[]) || []
+                              if (e.target.checked) {
+                                setFormData({
+                                  ...formData,
+                                  eligibleNewsletters: [...currentNewsletters, newsletter]
+                                })
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  eligibleNewsletters: currentNewsletters.filter(n => n !== newsletter)
+                                })
+                              }
+                            }}
+                          />
+                          <span className="text-sm">{newsletter}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-6">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
+                    Create Analyst
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {activeTab === 'bulk' && (
+              <div className="space-y-6">
+                {uploadStep === 'upload' && (
+                  <div className="text-center">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8">
+                      <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Upload CSV or Excel File
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Upload a file containing analyst information. We'll help you map the columns.
+                      </p>
+                      <input
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label
+                        htmlFor="file-upload"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Choose File
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {uploadStep === 'mapping' && bulkData && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Map Columns ({fileName})
+                    </h3>
+                    <p className="text-gray-600 mb-6">
+                      We've automatically mapped some columns. Please review and adjust as needed.
+                    </p>
+                    
+                    <div className="space-y-4 max-h-96 overflow-y-auto">
+                      {Object.keys(rawData[0] || {}).map(column => (
+                        <div key={column} className="flex items-center gap-4 p-3 border border-gray-200 rounded-lg">
+                          <div className="flex-1">
+                            <span className="font-medium text-gray-900">{column}</span>
+                            {(() => {
+                              // Find a good example from first 10 rows with non-empty data
+                              const examples = rawData.slice(0, 10)
+                                .map(row => row[column])
+                                .filter(val => val && val.toString().trim())
+                                .slice(0, 3) // Show up to 3 examples
+                              
+                              if (examples.length > 0) {
+                                return (
+                                  <div className="text-sm text-gray-500 mt-1">
+                                    Examples: {examples.map(ex => ex.toString().substring(0, 30)).join(', ')}
+                                    {examples[0].toString().length > 30 && '...'}
+                                  </div>
+                                )
+                              }
+                              return null
+                            })()
+                          </div>
+                          <div className="w-48">
+                            <select
+                              value={bulkData.mapping[column] || ''}
+                              onChange={(e) => handleMappingChange(column, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                            >
+                              <option value="">Not mapped</option>
+                              <option value="firstName">First Name</option>
+                              <option value="lastName">Last Name</option>
+                              <option value="email">Email</option>
+                              <option value="company">Company</option>
+                              <option value="title">Title</option>
+                              <option value="phone">Phone</option>
+                              <option value="linkedIn">LinkedIn</option>
+                              <option value="twitter">Twitter</option>
+                              <option value="website">Website</option>
+                              <option value="bio">Bio</option>
+                              <option value="type">Type</option>
+                              <option value="coveredTopics">Covered Topics</option>
+                              <option value="influence">Influence</option>
+                              <option value="status">Status</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={() => setUploadStep('upload')}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={generatePreview}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {uploadStep === 'preview' && bulkData && (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Preview ({bulkData.analysts.length} analysts)
+                    </h3>
+                    
+                    <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Name
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Email
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Company
+                            </th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Title
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {bulkData.analysts.slice(0, 10).map((analyst, index) => (
+                            <tr key={index}>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {analyst.firstName} {analyst.lastName}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {analyst.email}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {analyst.company}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {analyst.title}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {bulkData.analysts.length > 10 && (
+                        <div className="px-6 py-3 bg-gray-50 text-sm text-gray-500">
+                          And {bulkData.analysts.length - 10} more...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={() => setUploadStep('mapping')}
+                        className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      >
+                        Back
+                      </button>
+                      <button
+                        onClick={handleBulkSubmit}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Import {bulkData.analysts.length} Analysts
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {uploadStep === 'processing' && (
+                  <div className="text-center py-12">
+                    <Loader className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      Processing Upload...
+                    </h3>
+                    <p className="text-gray-600">
+                      Creating analysts in the database. This may take a moment.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default AddAnalystModal

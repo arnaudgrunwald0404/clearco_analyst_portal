@@ -45,7 +45,7 @@ const mockAnalyst = {
   nextContactDate: '2024-11-15T10:00:00Z',
   communicationCadence: 30,
   relationshipHealth: 'GOOD',
-  expertise: ['HR Technology', 'Talent Management', 'Employee Experience'],
+  coveredTopics: ['HR Technology', 'Talent Management', 'Employee Experience'],
   recentSocialSummary: 'Recently discussing AI impact on HR, future of work trends, and employee engagement strategies. Active in conversations about hybrid work policies.',
   socialSummaryUpdatedAt: '2024-10-20T00:00:00Z',
   keyThemes: ['AI in HR', 'Future of Work', 'Employee Engagement', 'Hybrid Work'],
@@ -310,16 +310,16 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                 <p className="text-gray-700">{mockAnalyst.bio}</p>
               </div>
 
-              {/* Expertise */}
+              {/* Covered Topics */}
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Expertise Areas</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Covered Topics</h3>
                 <div className="flex flex-wrap gap-2">
-                  {mockAnalyst.expertise.map((area, index) => (
+                  {mockAnalyst.coveredTopics.map((topic, index) => (
                     <span
                       key={index}
                       className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
                     >
-                      {area}
+                      {topic}
                     </span>
                   ))}
                 </div>

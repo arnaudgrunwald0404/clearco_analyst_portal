@@ -1,583 +1,223 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
 import {
-  Lock,
-  Eye,
-  EyeOff,
-  User,
-  Book,
+  FileText,
+  MessageSquare,
+  Newspaper,
+  Calendar,
   Video,
   Download,
-  FileText,
-  Calendar,
-  MessageSquare,
-  Users,
-  TrendingUp,
+  ArrowRight,
   Star,
   Clock,
-  Award,
-  Target,
-  Lightbulb,
-  Shield,
-  Globe,
-  Zap,
-  ArrowRight,
+  Users,
   Play,
   ExternalLink,
-  Bell,
-  Search
+  TrendingUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// Mock data for the analyst portal
-const mockAnalystUser = {
-  id: '1',
-  firstName: 'Sarah',
-  lastName: 'Chen',
-  email: 'sarah.chen@gartner.com',
-  company: 'Gartner',
-  title: 'Vice President Analyst',
-  expertiseAreas: ['HR Technology', 'Talent Management', 'Employee Experience'],
-  lastLogin: '2024-10-20T10:00:00Z',
-  accessLevel: 'TIER1'
-}
-
-const mockCompanyVision = [
+// Priority destinations for analysts
+const priorityActions = [
   {
-    type: 'MISSION',
-    title: 'Our Mission',
-    content: 'To revolutionize the workplace by creating intelligent, human-centric technology solutions that empower organizations to build thriving, engaged workforces.',
-    icon: Target
+    title: 'Latest Product Roadmap',
+    description: 'Exclusive Q4 2024 deep dive into upcoming AI capabilities',
+    href: '/portal/content',
+    icon: Video,
+    badge: 'New',
+    badgeColor: 'bg-green-100 text-green-800',
+    bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-100',
+    iconColor: 'text-blue-600'
   },
   {
-    type: 'VALUES',
-    title: 'Core Values',
-    content: 'Innovation through empathy, transparent communication, continuous learning, and sustainable growth that benefits both people and organizations.',
-    icon: Star
+    title: 'Schedule Next Briefing',
+    description: 'Book your next one-on-one strategy session',
+    href: '/portal/briefings',
+    icon: Calendar,
+    badge: 'Priority',
+    badgeColor: 'bg-orange-100 text-orange-800',
+    bgColor: 'bg-gradient-to-br from-orange-50 to-red-100',
+    iconColor: 'text-orange-600'
   },
   {
-    type: 'STRATEGY',
-    title: 'Strategic Vision',
-    content: 'Leading the future of work through AI-powered insights, predictive analytics, and seamless integration platforms that scale with organizational needs.',
-    icon: TrendingUp
+    title: 'Market Research Report',
+    description: 'Download our proprietary 2025 HR Tech trends analysis',
+    href: '/portal/content',
+    icon: Download,
+    badge: 'Exclusive',
+    badgeColor: 'bg-purple-100 text-purple-800',
+    bgColor: 'bg-gradient-to-br from-purple-50 to-pink-100',
+    iconColor: 'text-purple-600'
+  },
+  {
+    title: 'Beta Platform Access',
+    description: 'Early access to our next-generation analytics suite',
+    href: '/portal/content',
+    icon: ExternalLink,
+    badge: 'Beta',
+    badgeColor: 'bg-yellow-100 text-yellow-800',
+    bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-100',
+    iconColor: 'text-yellow-600'
+  },
+  {
+    title: 'Industry Testimonials',
+    description: 'See what your peer analysts are saying about our platform',
+    href: '/portal/testimonials',
+    icon: MessageSquare,
+    badge: 'Updated',
+    badgeColor: 'bg-emerald-100 text-emerald-800',
+    bgColor: 'bg-gradient-to-br from-emerald-50 to-teal-100',
+    iconColor: 'text-emerald-600'
   }
 ]
 
-const mockExclusiveContent = [
-  {
-    id: '1',
-    title: 'Q4 2024 Product Roadmap Deep Dive',
-    description: 'Exclusive preview of upcoming features, AI capabilities, and platform enhancements',
-    type: 'VIDEO',
-    duration: '45 min',
-    publishedAt: '2024-10-15',
-    accessLevel: 'TIER1',
-    viewCount: 23,
-    isNew: true
-  },
-  {
-    id: '2',
-    title: 'Market Research: Future of HR Tech 2025',
-    description: 'Proprietary research findings and market intelligence report',
-    type: 'REPORT',
-    pages: '89 pages',
-    publishedAt: '2024-10-10',
-    accessLevel: 'ALL',
-    downloadCount: 156,
-    isNew: false
-  },
-  {
-    id: '3',
-    title: 'Beta Access: AI-Powered Analytics Suite',
-    description: 'Early access to our next-generation analytics platform',
-    type: 'DEMO',
-    duration: 'Interactive',
-    publishedAt: '2024-10-05',
-    accessLevel: 'TIER1',
-    viewCount: 12,
-    isNew: true
-  },
-  {
-    id: '4',
-    title: 'Executive Interview Series: Future Workplace Trends',
-    description: 'Candid conversations with our leadership team about industry evolution',
-    type: 'VIDEO',
-    duration: '30 min',
-    publishedAt: '2024-09-28',
-    accessLevel: 'ALL',
-    viewCount: 67,
-    isNew: false
-  }
+// Quick stats
+const quickStats = [
+  { label: 'Exclusive Content Items', value: '24', icon: FileText, color: 'text-blue-600' },
+  { label: 'Completed Briefings', value: '8', icon: Calendar, color: 'text-green-600' },
+  { label: 'Research Reports', value: '12', icon: Download, color: 'text-purple-600' },
+  { label: 'Video Resources', value: '16', icon: Play, color: 'text-orange-600' }
 ]
 
-const mockPersonalizedContent = [
-  {
-    title: 'HR Technology Trends You Should Know',
-    reason: 'Based on your expertise in HR Technology',
-    type: 'Article',
-    readTime: '8 min'
-  },
-  {
-    title: 'Talent Management Platform Comparison',
-    reason: 'Matches your recent publication themes',
-    type: 'Research',
-    readTime: '15 min'
-  },
-  {
-    title: 'Employee Experience Metrics Workshop',
-    reason: 'Relevant to your speaking engagement topics',
-    type: 'Video',
-    readTime: '25 min'
-  }
-]
-
-const mockUpcomingEvents = [
-  {
-    title: 'Q4 Strategy Briefing',
-    date: '2024-11-15',
-    time: '2:00 PM EST',
-    type: 'Virtual Meeting',
-    attendees: 8
-  },
-  {
-    title: 'Product Demo: Analytics Suite',
-    date: '2024-11-20',
-    time: '10:00 AM EST',
-    type: 'Product Demo',
-    attendees: 12
-  },
-  {
-    title: 'Industry Roundtable Discussion',
-    date: '2024-11-25',
-    time: '1:00 PM EST',
-    type: 'Panel Discussion',
-    attendees: 25
-  }
-]
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-}
-
-function getContentIcon(type: string) {
-  switch (type) {
-    case 'VIDEO':
-      return Video
-    case 'REPORT':
-      return FileText
-    case 'DEMO':
-      return Play
-    case 'WEBINAR':
-      return Calendar
-    default:
-      return Book
-  }
-}
-
-export default function AnalystPortalPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [loginForm, setLoginForm] = useState({ email: '', password: '' })
-  const [showPassword, setShowPassword] = useState(false)
-  const [activeSection, setActiveSection] = useState('overview')
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Mock login - in real app, this would authenticate with backend
-    if (loginForm.email && loginForm.password) {
-      setIsLoggedIn(true)
-    }
-  }
-
-  if (!isLoggedIn) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <div>
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-600">
-              <Lock className="h-6 w-6 text-white" />
-            </div>
-            <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-              Analyst Portal Access
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Exclusive access for industry analysts
-            </p>
-          </div>
-          <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <label htmlFor="email" className="sr-only">
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Email address"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                />
-              </div>
-              <div className="relative">
-                <label htmlFor="password" className="sr-only">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  className="relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Password"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <Lock className="h-4 w-4 text-blue-500 group-hover:text-blue-400" />
-                </span>
-                Access Portal
-              </button>
-            </div>
-
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                Don't have access? Contact your relationship manager
-              </p>
-            </div>
-          </form>
-        </div>
-      </div>
-    )
-  }
-
+export default function AnalystPortalDashboard() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-blue-600 rounded flex items-center justify-center">
-                  <Shield className="h-5 w-5 text-white" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <h1 className="text-2xl font-bold text-gray-900">Analyst Portal</h1>
-                <p className="text-sm text-gray-500">Exclusive content and insights</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <Bell className="h-5 w-5" />
-              </button>
-              <div className="flex items-center space-x-3">
-                <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">
-                    {mockAnalystUser.firstName.charAt(0)}{mockAnalystUser.lastName.charAt(0)}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <p className="font-medium text-gray-900">{mockAnalystUser.firstName} {mockAnalystUser.lastName}</p>
-                  <p className="text-gray-500">{mockAnalystUser.company}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="-mb-px flex space-x-8">
-            {[
-              { id: 'overview', name: 'Overview', icon: Globe },
-              { id: 'vision', name: 'Company Vision', icon: Target },
-              { id: 'content', name: 'Exclusive Content', icon: Book },
-              { id: 'roadmap', name: 'Roadmap', icon: TrendingUp },
-              { id: 'resources', name: 'Resources', icon: FileText }
-            ].map((item) => {
-              const isActive = activeSection === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveSection(item.id)}
-                  className={cn(
-                    'flex items-center py-4 px-1 border-b-2 font-medium text-sm',
-                    isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  )}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  {item.name}
-                </button>
-              )
-            })}
-          </nav>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {activeSection === 'overview' && (
-          <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-xl overflow-hidden">
-              <div className="px-8 py-12 text-white">
-                <h2 className="text-3xl font-bold mb-4">
-                  Welcome back, {mockAnalystUser.firstName}!
-                </h2>
-                <p className="text-blue-100 text-lg mb-6">
-                  Your personalized hub for exclusive insights, early access content, and strategic intelligence.
-                </p>
-                <div className="flex items-center space-x-6 text-sm">
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Last login: {formatDate(mockAnalystUser.lastLogin)}
-                  </div>
-                  <div className="flex items-center">
-                    <Star className="w-4 h-4 mr-2" />
-                    Access Level: {mockAnalystUser.accessLevel}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-blue-100">
-                    <FileText className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">New Content</p>
-                    <p className="text-2xl font-semibold text-gray-900">4</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-green-100">
-                    <Calendar className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Upcoming Events</p>
-                    <p className="text-2xl font-semibold text-gray-900">3</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center">
-                  <div className="p-3 rounded-full bg-purple-100">
-                    <Users className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-500">Connections</p>
-                    <p className="text-2xl font-semibold text-gray-900">12</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Personalized Recommendations */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Recommended for You</h3>
-                <p className="text-sm text-gray-500">Based on your expertise and recent activity</p>
-              </div>
-              <div className="p-6 space-y-4">
-                {mockPersonalizedContent.map((content, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{content.title}</h4>
-                      <p className="text-sm text-gray-500">{content.reason}</p>
-                      <div className="flex items-center mt-2 text-xs text-gray-400">
-                        <span>{content.type}</span>
-                        <span className="mx-2">•</span>
-                        <span>{content.readTime}</span>
-                      </div>
-                    </div>
-                    <button className="flex items-center text-blue-600 hover:text-blue-800">
-                      <span className="text-sm">View</span>
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Upcoming Events */}
-            <div className="bg-white rounded-lg shadow">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-medium text-gray-900">Upcoming Events</h3>
-              </div>
-              <div className="p-6 space-y-4">
-                {mockUpcomingEvents.map((event, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{event.title}</h4>
-                      <p className="text-sm text-gray-500">{event.type}</p>
-                      <div className="flex items-center mt-2 text-sm text-gray-400">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        <span>{formatDate(event.date)} at {event.time}</span>
-                        <span className="ml-4 flex items-center">
-                          <Users className="w-4 h-4 mr-1" />
-                          {event.attendees} attendees
-                        </span>
-                      </div>
-                    </div>
-                    <button className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-                      Join
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'vision' && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Our Vision</h2>
-              <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                Discover our mission, values, and strategic direction as we shape the future of work together.
+    <div className="space-y-8">
+      {/* Welcome Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-8 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black opacity-10"></div>
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between">
+            <div className="flex-1 mb-6 lg:mb-0">
+              <h1 className="text-3xl lg:text-4xl font-bold mb-4">
+                It's good to have you here! 👋
+              </h1>
+              <p className="text-xl text-blue-100 mb-4">
+                Welcome to your exclusive analyst portal
               </p>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {mockCompanyVision.map((item, index) => (
-                <div key={index} className="bg-white rounded-lg shadow-lg overflow-hidden">
-                  <div className="p-8">
-                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-lg mb-6">
-                      <item.icon className="w-6 h-6 text-blue-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">{item.title}</h3>
-                    <p className="text-gray-600 leading-relaxed">{item.content}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeSection === 'content' && (
-          <div className="space-y-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900">Exclusive Content</h2>
-                <p className="text-gray-600 mt-2">Early access to research, insights, and product updates</p>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search content..."
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <blockquote className="border-l-4 border-blue-300 pl-4 italic text-blue-100">
+                "We're excited to share our journey and insights with the industry's most influential voices. Your perspective helps shape the future of HR technology."
+              </blockquote>
+              <div className="mt-4 flex items-center text-blue-200">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mr-3 overflow-hidden">
+                  <img 
+                    src="https://media.licdn.com/dms/image/v2/C4E03AQExN7FOgOVffA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516217373346?e=1756339200&v=beta&t=duPb2jgDUrrZr1s_ArOPtpfHNDETSM7H31dasVnwNP0"
+                    alt="Arnaud Grunwald"
+                    className="w-full h-full object-cover"
                   />
                 </div>
+                <div>
+                  <div className="font-semibold text-white">Arnaud Grunwald</div>
+                  <div className="text-sm text-blue-200">Chief Product Officer, ClearCompany</div>
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {mockExclusiveContent.map((content) => {
-                const IconComponent = getContentIcon(content.type)
-                return (
-                  <div key={content.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="p-2 bg-blue-100 rounded">
-                            <IconComponent className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900">{content.title}</h3>
-                            {content.isNew && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                New
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <p className="text-gray-600 mb-4">{content.description}</p>
-                      
-                      <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                        <div className="flex items-center space-x-4">
-                          <span>Published {formatDate(content.publishedAt)}</span>
-                          <span>{content.duration || content.pages}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Eye className="w-4 h-4" />
-                          <span>{content.viewCount || content.downloadCount}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <span className={cn(
-                          'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-                          content.accessLevel === 'TIER1' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        )}>
-                          {content.accessLevel === 'TIER1' ? 'Tier 1 Access' : 'All Access'}
-                        </span>
-                        <button className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-                          {content.type === 'REPORT' ? (
-                            <>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-2" />
-                              View
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+            
+            {/* CPO Photo */}
+            <div className="flex-shrink-0 hidden lg:block">
+              <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden">
+                <img 
+                  src="https://media.licdn.com/dms/image/v2/C4E03AQExN7FOgOVffA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516217373346?e=1756339200&v=beta&t=duPb2jgDUrrZr1s_ArOPtpfHNDETSM7H31dasVnwNP0"
+                  alt="Arnaud Grunwald, Chief Product Officer"
+                  className="w-28 h-28 rounded-full object-cover border-4 border-white border-opacity-30"
+                />
+              </div>
             </div>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Other sections would be implemented similarly */}
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {quickStats.map((stat, index) => (
+          <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                <div className="text-sm text-gray-600">{stat.label}</div>
+              </div>
+              <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center bg-gray-50', stat.color)}>
+                <stat.icon className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Priority Actions */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          Here's what we'd love you to explore first
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {priorityActions.map((action, index) => (
+            <Link
+              key={index}
+              href={action.href}
+              className="group block"
+            >
+              <div className={cn(
+                'relative p-6 rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-200 hover:-translate-y-1',
+                action.bgColor
+              )}>
+                <div className="flex items-start justify-between mb-4">
+                  <div className={cn(
+                    'w-12 h-12 rounded-lg flex items-center justify-center',
+                    action.iconColor,
+                    'bg-white shadow-sm'
+                  )}>
+                    <action.icon className="w-6 h-6" />
+                  </div>
+                  <span className={cn(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                    action.badgeColor
+                  )}>
+                    {action.badge}
+                  </span>
+                </div>
+                
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+                  {action.title}
+                </h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  {action.description}
+                </p>
+                
+                <div className="flex items-center text-sm font-medium text-blue-600 group-hover:text-blue-700">
+                  <span>Explore</span>
+                  <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Recent Activity
+        </h3>
+        <div className="space-y-3">
+          <div className="flex items-center text-sm">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+            <span className="text-gray-600">New content added:</span>
+            <span className="font-medium text-gray-900 ml-1">Q4 Product Roadmap</span>
+            <span className="text-gray-400 ml-auto">2 hours ago</span>
+          </div>
+          <div className="flex items-center text-sm">
+            <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+            <span className="text-gray-600">Upcoming briefing:</span>
+            <span className="font-medium text-gray-900 ml-1">Strategy Session</span>
+            <span className="text-gray-400 ml-auto">Tomorrow 2:00 PM</span>
+          </div>
+          <div className="flex items-center text-sm">
+            <div className="w-2 h-2 bg-purple-500 rounded-full mr-3"></div>
+            <span className="text-gray-600">New testimonial from:</span>
+            <span className="font-medium text-gray-900 ml-1">Forrester Research</span>
+            <span className="text-gray-400 ml-auto">1 day ago</span>
+          </div>
+        </div>
       </div>
     </div>
   )
