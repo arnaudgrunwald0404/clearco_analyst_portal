@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ interface SyncProgress {
   completed?: boolean
 }
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams()
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
   const [loading, setLoading] = useState(true)
@@ -565,5 +565,30 @@ export default function SettingsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+// Loading component for Suspense fallback
+function LoadingSettings() {
+  return (
+    <div className="container mx-auto px-6 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600">Loading settings...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Export component with Suspense
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<LoadingSettings />}>
+      <SettingsPageContent />
+    </Suspense>
   )
 }

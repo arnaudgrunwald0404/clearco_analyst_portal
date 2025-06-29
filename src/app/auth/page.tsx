@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 
-export default function AuthPage() {
+function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -492,5 +492,26 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Loading component for Suspense fallback
+function LoadingAuth() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <span className="ml-2 text-white">Loading...</span>
+      </div>
+    </div>
+  )
+}
+
+// Main component with Suspense boundary
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<LoadingAuth />}>
+      <AuthPageContent />
+    </Suspense>
   )
 }

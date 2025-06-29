@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, Award, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck } from 'lucide-react'
+import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, Award, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import SocialMediaActivity from '@/components/social-media-activity'
 
@@ -89,7 +89,7 @@ function getHealthColor(health: string) {
   }
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
@@ -526,6 +526,27 @@ export default function Dashboard() {
         />
       </div>
     </div>
+  )
+}
+
+// Loading component for Suspense fallback
+function LoadingDashboard() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
+      <div className="flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <span className="ml-2 text-white">Loading...</span>
+      </div>
+    </div>
+  )
+}
+
+// Main component with Suspense boundary
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<LoadingDashboard />}>
+      <DashboardContent />
+    </Suspense>
   )
 }
 
