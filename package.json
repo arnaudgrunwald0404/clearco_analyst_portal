@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "postinstall": "prisma generate",
+    "build": "npx prisma generate && next build",
+    "postinstall": "npx prisma generate || echo 'Prisma generation failed, continuing...'",
     "start": "next start",
     "lint": "next lint",
     "social:hourly": "npx tsx src/scripts/hourly-social-monitor.ts",

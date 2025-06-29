@@ -3,7 +3,7 @@
   publish = ".next"
 
 [build.environment]
-  PRISMA_CLI_BINARY_TARGETS = "rhel-openssl-1.0.x,rhel-openssl-3.0.x,native"
+  PRISMA_CLI_BINARY_TARGETS = "debian-openssl-1.1.x,debian-openssl-3.0.x,rhel-openssl-1.0.x,rhel-openssl-3.0.x"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
