@@ -96,8 +96,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Store calendar connection if calendar scope was granted
-    const scopes = searchParams.get('scope') || ''
-    if (scopes.includes('calendar.readonly')) {
+    // Store calendar connection if calendar scope was granted
+    const scopesValue = scopes || ''
+    if (scopesValue.includes('calendar.readonly')) {
       // Create or update calendar connection
       await prisma.calendarConnection.upsert({
         where: {
