@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { AnalystImpersonationModal } from '../analyst-impersonation-modal'
 import {
   Users,
   Mail,
@@ -20,7 +21,8 @@ import {
   Calendar
 } from 'lucide-react'
 
-const navigation = [
+// Main navigation items (excluding Analyst Portal)
+const mainNavigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
   { name: 'Briefings/Calls', href: '/briefings', icon: Calendar },
@@ -28,14 +30,17 @@ const navigation = [
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
   { name: 'Content', href: '/content', icon: FileText },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Analyst Portal', href: '/portal', icon: User },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
+
+// Analyst Portal as separate item (moved to bottom)
+const analystPortalItem = { name: 'Analyst Portal', href: '/portal', icon: User }
 
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isImpersonationModalOpen, setIsImpersonationModalOpen] = useState(false)
   const { user, profile, signOut } = useAuth()
 
   const handleLogout = async () => {
@@ -82,92 +87,137 @@ export function Sidebar() {
     return user?.email || profile?.email || 'admin@company.com'
   }
 
+  const handleAnalystPortalClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsImpersonationModalOpen(true)
+  }
+
+  const handleImpersonate = (analyst: { id: string; firstName: string; lastName: string; email: string }) => {
+    // Store the selected analyst in sessionStorage for the portal to access
+    sessionStorage.setItem('impersonatedAnalyst', JSON.stringify(analyst))
+    // Navigate to the portal
+    router.push('/portal')
+  }
+
   return (
-    <div className="flex flex-col w-64 bg-white shadow-lg">
-      <div className="flex items-center justify-center h-16 px-6 bg-blue-600">
-        <h1 className="text-xl font-bold text-white">
-          HR Tech Analysts
-        </h1>
-      </div>
-      
-      <nav className="flex-1 px-4 pb-4 mt-6">
-        <ul className="space-y-2">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-                    isActive
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                  )}
-                >
-                  <item.icon className="w-5 h-5 mr-3" />
-                  {item.name}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </nav>
+    <>
+      <div className="flex flex-col w-64 bg-white shadow-lg">
+        <div className="flex items-center justify-center h-16 px-6 bg-blue-600">
+          <h1 className="text-xl font-bold text-white">
+            HR Tech Analysts
+          </h1>
+        </div>
+        
+        <nav className="flex-1 px-4 pb-4 mt-6">
+          {/* Main Navigation */}
+          <ul className="space-y-2">
+            {mainNavigation.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                      isActive
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    )}
+                  >
+                    <item.icon className="w-5 h-5 mr-3" />
+                    {item.name}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
 
-      <div className="p-4 border-t border-gray-200">
-        <div className="relative">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center w-full p-2 text-left rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-          >
-            <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-xs font-medium text-white">{getUserInitials()}</span>
-              </div>
-            </div>
-            <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-700 truncate">{getDisplayName()}</p>
-              <p className="text-xs text-gray-500 truncate">{getEmail()}</p>
-            </div>
-            <ChevronDown className={cn(
-              "w-4 h-4 text-gray-400 transition-transform",
-              isDropdownOpen && "transform rotate-180"
-            )} />
-          </button>
+          {/* Separator */}
+          <div className="my-4">
+            <hr className="border-gray-200" />
+          </div>
 
-          {isDropdownOpen && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-              <Link
-                href="/profile"
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <User className="w-4 h-4 mr-3" />
-                View Profile
-              </Link>
-              <Link
-                href="/settings"
-                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                onClick={() => setIsDropdownOpen(false)}
-              >
-                <Settings className="w-4 h-4 mr-3" />
-                Settings
-              </Link>
-              <hr className="my-1 border-gray-200" />
+          {/* Analyst Portal (with impersonation) */}
+          <ul className="space-y-2">
+            <li>
               <button
-                onClick={() => {
-                  setIsDropdownOpen(false)
-                  handleLogout()
-                }}
-                className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                onClick={handleAnalystPortalClick}
+                className={cn(
+                  'flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors text-left',
+                  pathname.startsWith('/portal')
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                )}
               >
-                <LogOut className="w-4 h-4 mr-3" />
-                Sign Out
+                <analystPortalItem.icon className="w-5 h-5 mr-3" />
+                {analystPortalItem.name}
               </button>
-            </div>
-          )}
+            </li>
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-gray-200">
+          <div className="relative">
+            <button
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              className="flex items-center w-full p-2 text-left rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+            >
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-medium text-white">{getUserInitials()}</span>
+                </div>
+              </div>
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-700 truncate">{getDisplayName()}</p>
+                <p className="text-xs text-gray-500 truncate">{getEmail()}</p>
+              </div>
+              <ChevronDown className={cn(
+                "w-4 h-4 text-gray-400 transition-transform",
+                isDropdownOpen && "transform rotate-180"
+              )} />
+            </button>
+
+            {isDropdownOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <Link
+                  href="/profile"
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <User className="w-4 h-4 mr-3" />
+                  View Profile
+                </Link>
+                <Link
+                  href="/settings"
+                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <Settings className="w-4 h-4 mr-3" />
+                  Settings
+                </Link>
+                <hr className="my-1 border-gray-200" />
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false)
+                    handleLogout()
+                  }}
+                  className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 mr-3" />
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Analyst Impersonation Modal */}
+      <AnalystImpersonationModal
+        isOpen={isImpersonationModalOpen}
+        onClose={() => setIsImpersonationModalOpen(false)}
+        onImpersonate={handleImpersonate}
+      />
+    </>
   )
 }

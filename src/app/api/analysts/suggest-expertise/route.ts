@@ -71,7 +71,7 @@ async function simulateWebSearch(name: string, company?: string, title?: string)
   ]
   
   // Filter based on company and title context
-  let contextualResults = [...mockSearchResults]
+  const contextualResults = [...mockSearchResults]
   
   if (company?.toLowerCase().includes('gartner')) {
     contextualResults.push(

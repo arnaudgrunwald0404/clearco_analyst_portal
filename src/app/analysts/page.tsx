@@ -134,7 +134,7 @@ export default function AnalystsPage() {
 
   // Enhanced filtering and sorting
   const filteredAndSortedAnalysts = useMemo(() => {
-    let filtered = analysts.filter(analyst => {
+    const filtered = analysts.filter(analyst => {
       // Filter out archived analysts by default (unless specifically viewing archived)
       const isArchived = analyst.status === 'ARCHIVED'
       if (filterStatus !== 'ARCHIVED' && isArchived) {

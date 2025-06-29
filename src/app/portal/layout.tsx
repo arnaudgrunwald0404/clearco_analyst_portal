@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -14,7 +14,8 @@ import {
   Home,
   Calendar,
   ExternalLink,
-  Settings
+  Settings,
+  UserCheck
 } from 'lucide-react'
 
 const navigation = [
@@ -32,18 +33,32 @@ export default function PortalLayout({
 }) {
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(true) // For now, assume logged in
+  const [impersonatedAnalyst, setImpersonatedAnalyst] = useState<any>(null)
 
-  // Mock analyst user data - temporarily using clearcompany.com email to demo admin link
-  const analystUser = {
+  // Load impersonated analyst from sessionStorage
+  useEffect(() => {
+    const stored = sessionStorage.getItem('impersonatedAnalyst')
+    if (stored) {
+      try {
+        setImpersonatedAnalyst(JSON.parse(stored))
+      } catch (error) {
+        console.error('Error parsing impersonated analyst:', error)
+      }
+    }
+  }, [])
+
+  // Use impersonated analyst data or fallback to default
+  const analystUser = impersonatedAnalyst || {
     firstName: 'Sarah',
     lastName: 'Chen',
-    email: 'sarah.chen@clearcompany.com', // Change this back to @gartner.com for external analysts
+    email: 'sarah.chen@clearcompany.com',
     company: 'ClearCompany',
     title: 'Vice President Analyst'
   }
 
-  // Check if user is a ClearCompany employee
-  const isClearCompanyUser = analystUser.email.endsWith('@clearcompany.com')
+  // Check if user is a ClearCompany employee (admin viewing portal)
+  const isClearCompanyUser = analystUser.email?.endsWith('@clearcompany.com')
+  const isImpersonating = !!impersonatedAnalyst
 
   if (!isLoggedIn) {
     // Login form would go here
@@ -135,6 +150,38 @@ export default function PortalLayout({
           </div>
         </div>
       </nav>
+
+      {/* Impersonation Banner */}
+      {isImpersonating && (
+        <div className="bg-amber-50 border-b border-amber-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center py-3">
+              <UserCheck className="w-5 h-5 text-amber-600 mr-3" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800">
+                  <span className="mr-2">🎭</span>
+                  You are viewing the analyst portal as <strong>{analystUser.firstName} {analystUser.lastName}</strong>
+                  {analystUser.company && (
+                    <span className="text-amber-700"> from {analystUser.company}</span>
+                  )}
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  This view reflects the permissions, content, and experience that {analystUser.firstName} would see.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('impersonatedAnalyst')
+                  window.location.href = '/'
+                }}
+                className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors"
+              >
+                Exit Impersonation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

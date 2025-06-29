@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import Image from 'next/image'
 
 function AuthPageContent() {
   const [isLoading, setIsLoading] = useState(false)
@@ -214,9 +215,13 @@ function AuthPageContent() {
         <div className="text-center max-w-lg">
           {/* ClearCompany Logo */}
           <div className="mb-12">
-            <div className="text-4xl font-bold text-white">
-              ClearCo.
-            </div>
+            <Image 
+              src="/clearco-logo.png" 
+              alt="ClearCo Logo" 
+              width={200} 
+              height={80} 
+              className="mx-auto"
+            />
           </div>
           
           {/* Main Heading with Animated Text */}
