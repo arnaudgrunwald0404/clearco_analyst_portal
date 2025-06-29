@@ -35,7 +35,7 @@ function AuthPageContent() {
   // Animated text effect
   const [titleNumber, setTitleNumber] = useState(0)
   const animatedPhrases = useMemo(
-    () => ['packed with value', 'inspiring', 'exciting', "you've never seen before"],
+    () => ['exciting', 'inspiring', 'mind-boggling', 'packed with value', "you've never seen before"],
     []
   )
   
@@ -121,7 +121,7 @@ function AuthPageContent() {
       const { error } = await supabase.auth.signInWithOtp({
         email: formData.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`
         }
       })
 
@@ -271,7 +271,7 @@ function AuthPageContent() {
                 ClearCompany
               </h2>
               <h3 className="text-xl font-semibold text-purple-800 mb-4">
-                Vision & Roadmap
+                Analyst Portal
               </h3>
               <h4 className="text-lg font-medium text-gray-800 mb-2">
                 {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -301,7 +301,7 @@ function AuthPageContent() {
               </p>
             </div>
 
-            {/* Error/Success Message */}
+            {/* Error Message */}
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                 <div className="flex items-center">
@@ -311,7 +311,8 @@ function AuthPageContent() {
               </div>
             )}
 
-            {success && (
+            {/* Success Message for non-magic link actions */}
+            {success && !success.includes('Magic link') && (
               <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
                 <div className="flex items-center">
                   <Mail className="h-4 w-4 text-green-400 mr-2" />
@@ -435,6 +436,16 @@ function AuthPageContent() {
                   >
                     Enter my password
                   </button>
+                </div>
+              )}
+
+              {/* Magic Link Success Message */}
+              {authMode === 'signin' && success && success.includes('Magic link') && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center">
+                    <Mail className="h-4 w-4 text-green-400 mr-2" />
+                    <span className="text-sm text-green-700">{success}</span>
+                  </div>
                 </div>
               )}
 

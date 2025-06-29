@@ -45,7 +45,7 @@ function OldLoginPage() {
   // Animated text effect
   const [titleNumber, setTitleNumber] = useState(0)
   const animatedPhrases = useMemo(
-    () => ['packed with value', 'inspiring', 'exciting', "you've never seen before"],
+    () => ['exciting', 'inspiring', 'mind-boggling', 'packed with value', "you've never seen before"],
     []
   )
   
