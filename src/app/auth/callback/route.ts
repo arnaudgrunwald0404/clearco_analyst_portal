@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
     if (!error && data.user) {
       // Check if user has a profile, and determine role-based redirect
       const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('role, first_name, last_name, company')
+        .from('User')
+        .select('role, name')
         .eq('id', data.user.id)
         .single()
 
@@ -45,13 +45,13 @@ export async function GET(request: NextRequest) {
       if (!profile && !profileError) {
         console.log('Creating new user profile for:', data.user.id)
         const { error: createError } = await supabase
-          .from('user_profiles')
+          .from('User')
           .insert({
             id: data.user.id,
-            role: 'EDITOR',
-            first_name: data.user.user_metadata?.first_name || data.user.email?.split('@')[0] || '',
-            last_name: data.user.user_metadata?.last_name || '',
-            company: data.user.user_metadata?.company || data.user.email?.split('@')[1]?.split('.')[0] || ''
+            email: data.user.email || '',
+            name: `${data.user.user_metadata?.first_name || data.user.email?.split('@')[0] || ''} ${data.user.user_metadata?.last_name || ''}`.trim(),
+            password: 'oauth_user',
+            role: 'ADMIN'
           })
         
         if (createError) {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Redirect based on role
-      const userRole = profile?.role || 'EDITOR'
+      const userRole = profile?.role || 'ADMIN'
       if (userRole === 'ADMIN' || userRole === 'EDITOR') {
         return NextResponse.redirect(`${origin}${next}`)
       } else {

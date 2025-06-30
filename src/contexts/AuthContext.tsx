@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('Fetching profile for user:', userId)
       const { data, error } = await supabase
-        .from('user_profiles')
-        .select('id, role, first_name, last_name, company')
+        .from('User')
+        .select('id, role, name')
         .eq('id', userId)
         .single()
 
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Profile not found, creating new profile for user:', userId)
         const newProfile = {
           id: userId,
-          role: 'EDITOR' as UserRole,
+          role: 'ADMIN' as UserRole,
           first_name: user?.user_metadata?.first_name || user?.email?.split('@')[0] || '',
           last_name: user?.user_metadata?.last_name || '',
           company: user?.user_metadata?.company || user?.email?.split('@')[1]?.split('.')[0] || '',
@@ -66,13 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const { error: createError } = await supabase
-          .from('user_profiles')
+          .from('User')
           .insert({
             id: userId,
-            role: newProfile.role,
-            first_name: newProfile.first_name,
-            last_name: newProfile.last_name,
-            company: newProfile.company
+            email: user?.email || '',
+            name: `${newProfile.first_name} ${newProfile.last_name}`.trim(),
+            password: 'oauth_user', // placeholder for OAuth users
+            role: newProfile.role
           })
 
         if (createError) {
@@ -98,7 +98,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Profile fetched successfully:', data)
       return {
-        ...data,
+        id: data.id,
+        role: data.role,
+        first_name: data.name?.split(' ')[0] || null,
+        last_name: data.name?.split(' ').slice(1).join(' ') || null,
+        company: null,
         email: user?.email || ''
       } as UserProfile
     } catch (error) {
@@ -106,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Return a default profile to prevent infinite loading
       return {
         id: userId,
-        role: 'EDITOR' as UserRole,
+        role: 'ADMIN' as UserRole,
         first_name: null,
         last_name: null,
         company: null,

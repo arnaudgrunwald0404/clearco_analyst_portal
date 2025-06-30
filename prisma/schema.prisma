@@ -1,8 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
@@ -12,145 +9,122 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      Role     @default(ADMIN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Newsletter subscriptions
-  newsletters Newsletter[]
-  // Calendar connections
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String?
+  password            String
+  role                Role                 @default(ADMIN)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   calendarConnections CalendarConnection[]
+  newsletters         Newsletter[]
 }
 
 model Analyst {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String   @unique
-  company     String?
-  title       String?
-  phone       String?
-  linkedIn    String?
-  twitter     String?
-  website     String?
-  bio         String?
-  profileImageUrl String?
-  
-  // New fields
-  type        AnalystType @default(Analyst)
-  eligibleNewsletters String?     // JSON array of newsletter IDs this analyst is eligible to receive
-  
-  // Enhanced fields for advanced features
-  influenceScore    Int       @default(50) // 0-100 scale
-  lastContactDate   DateTime?
-  nextContactDate   DateTime?
-  communicationCadence Int?    // Days between contacts
-  relationshipHealth RelationshipHealth @default(GOOD)
-  
-  // AI/Social intelligence
-  recentSocialSummary String?
+  id                     String                   @id @default(cuid())
+  firstName              String
+  lastName               String
+  email                  String                   @unique
+  company                String?
+  title                  String?
+  phone                  String?
+  linkedIn               String?
+  twitter                String?
+  website                String?
+  bio                    String?
+  profileImageUrl        String?
+  type                   AnalystType              @default(Analyst)
+  eligibleNewsletters    String?
+  influenceScore         Int                      @default(50)
+  lastContactDate        DateTime?
+  nextContactDate        DateTime?
+  communicationCadence   Int?
+  relationshipHealth     RelationshipHealth       @default(GOOD)
+  recentSocialSummary    String?
   socialSummaryUpdatedAt DateTime?
-  keyThemes       String? // JSON array of themes
-  
-  // Research tracking
-  upcomingPublications String? // JSON array
-  recentPublications   String? // JSON array
-  speakingEngagements  String? // JSON array
-  awards              String? // JSON array
-  
-  coveredTopics AnalystCoveredTopic[]
-  influence   Influence @default(MEDIUM)
-  status      Status    @default(ACTIVE)
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  interactions Interaction[]
-  newsletters  NewsletterSubscription[]
-  loginAccess  AnalystAccess?
-  publications Publication[]
-  socialPosts  SocialPost[]
-  briefingAnalysts BriefingAnalyst[]
-  alerts       Alert[]
-  conversationSummaries ConversationSummary[]
-  portalSessions AnalystPortalSession[]
-  testimonials Testimonial[]
-  calendarMeetings CalendarMeeting[]
+  keyThemes              String?
+  upcomingPublications   String?
+  recentPublications     String?
+  speakingEngagements    String?
+  awards                 String?
+  influence              Influence                @default(MEDIUM)
+  status                 Status                   @default(ACTIVE)
+  notes                  String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  alerts                 Alert[]
+  loginAccess            AnalystAccess?
+  coveredTopics          AnalystCoveredTopic[]
+  portalSessions         AnalystPortalSession[]
+  briefingAnalysts       BriefingAnalyst[]
+  calendarMeetings       CalendarMeeting[]
+  conversationSummaries  ConversationSummary[]
+  interactions           Interaction[]
+  newsletters            NewsletterSubscription[]
+  publications           Publication[]
+  socialHandles          SocialHandle[]
+  socialPosts            SocialPost[]
+  testimonials           Testimonial[]
 }
 
 model Newsletter {
-  id          String   @id @default(cuid())
-  title       String
-  subject     String
-  content     String
-  htmlContent String?
-  status      NewsletterStatus @default(DRAFT)
-  scheduledAt DateTime?
-  sentAt      DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  createdBy   String
-  
-  // Relations
-  creator     User     @relation(fields: [createdBy], references: [id])
+  id            String                   @id @default(cuid())
+  title         String
+  subject       String
+  content       String
+  htmlContent   String?
+  status        NewsletterStatus         @default(DRAFT)
+  scheduledAt   DateTime?
+  sentAt        DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+  createdBy     String
+  creator       User                     @relation(fields: [createdBy], references: [id])
   subscriptions NewsletterSubscription[]
 }
 
 model NewsletterSubscription {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   analystId    String
   newsletterId String
   sentAt       DateTime?
-  opened       Boolean   @default(false)
-  clicked      Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  
-  // Relations
-  analyst      Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  opened       Boolean    @default(false)
+  clicked      Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  analyst      Analyst    @relation(fields: [analystId], references: [id], onDelete: Cascade)
   newsletter   Newsletter @relation(fields: [newsletterId], references: [id], onDelete: Cascade)
-  
+
   @@unique([analystId, newsletterId])
 }
 
 model Interaction {
-  id          String      @id @default(cuid())
+  id          String          @id @default(cuid())
   analystId   String
   type        InteractionType
   subject     String
   description String?
   date        DateTime
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
-  // Relations
-  analyst     Analyst     @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  analyst     Analyst         @relation(fields: [analystId], references: [id], onDelete: Cascade)
 }
 
 model AnalystCoveredTopic {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   analystId String
   topic     String
-
-  // Relations
-  analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  analyst   Analyst @relation(fields: [analystId], references: [id], onDelete: Cascade)
 }
 
 model AnalystAccess {
-  id        String   @id @default(cuid())
-  analystId String   @unique
+  id        String    @id @default(cuid())
+  analystId String    @unique
   password  String
   lastLogin DateTime?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  analyst   Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  analyst   Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
 }
 
 model Content {
@@ -164,6 +138,237 @@ model Content {
   isPublished Boolean     @default(false)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+}
+
+model Publication {
+  id          String          @id @default(cuid())
+  analystId   String
+  title       String
+  url         String?
+  summary     String?
+  type        PublicationType
+  publishedAt DateTime
+  isTracked   Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  analyst     Analyst         @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model SocialHandle {
+  id            String         @id @default(cuid())
+  analystId     String
+  platform      SocialPlatform
+  handle        String
+  displayName   String?
+  isActive      Boolean        @default(true)
+  lastCrawledAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  analyst       Analyst        @relation(fields: [analystId], references: [id], onDelete: Cascade)
+
+  @@unique([analystId, platform, handle])
+}
+
+model SocialPost {
+  id          String         @id @default(cuid())
+  analystId   String
+  platform    SocialPlatform
+  content     String
+  url         String?
+  engagements Int            @default(0)
+  postedAt    DateTime
+  isRelevant  Boolean        @default(true)
+  sentiment   String?
+  themes      String?
+  createdAt   DateTime       @default(now())
+  analyst     Analyst        @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model Briefing {
+  id                String            @id @default(cuid())
+  title             String
+  description       String?
+  scheduledAt       DateTime
+  completedAt       DateTime?
+  status            BriefingStatus    @default(SCHEDULED)
+  agenda            String?
+  notes             String?
+  outcomes          String?
+  followUpActions   String?
+  recordingUrl      String?
+  transcript        String?
+  transcriptFile    String?
+  aiSummary         String?
+  followUpSummary   String?
+  gongMeetingId     String?
+  calendarMeetingId String?
+  attendeeEmails    String?
+  duration          Int?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  actionItems       ActionItem[]
+  calendarMeeting   CalendarMeeting?  @relation(fields: [calendarMeetingId], references: [id])
+  analysts          BriefingAnalyst[]
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  analystId   String
+  type        AlertType
+  title       String
+  message     String
+  isRead      Boolean   @default(false)
+  actionTaken Boolean   @default(false)
+  priority    String    @default("MEDIUM")
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model ConversationSummary {
+  id            String   @id @default(cuid())
+  analystId     String
+  title         String
+  summary       String
+  keyPoints     String?
+  actionItems   String?
+  recordingUrl  String?
+  transcriptUrl String?
+  date          DateTime
+  duration      Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  analyst       Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model AnalystPortalSession {
+  id        String    @id @default(cuid())
+  analystId String
+  sessionId String    @unique
+  loginAt   DateTime  @default(now())
+  logoutAt  DateTime?
+  ipAddress String?
+  userAgent String?
+  analyst   Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model CompanyVision {
+  id          String   @id @default(cuid())
+  title       String
+  content     String
+  type        String
+  isPublished Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ExclusiveContent {
+  id             String      @id @default(cuid())
+  title          String
+  description    String?
+  content        String
+  type           ContentType
+  targetAudience String?
+  accessLevel    String      @default("ALL")
+  downloadUrl    String?
+  viewCount      Int         @default(0)
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model Testimonial {
+  id           String   @id @default(cuid())
+  analystId    String
+  quote        String
+  context      String?
+  isPublished  Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  analyst      Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+}
+
+model CalendarConnection {
+  id              String            @id @default(cuid())
+  userId          String
+  title           String
+  email           String
+  googleAccountId String
+  accessToken     String
+  refreshToken    String?
+  tokenExpiry     DateTime?
+  isActive        Boolean           @default(true)
+  lastSyncAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  meetings        CalendarMeeting[]
+
+  @@unique([userId, googleAccountId])
+}
+
+model CalendarMeeting {
+  id                   String             @id @default(cuid())
+  calendarConnectionId String
+  googleEventId        String
+  title                String
+  description          String?
+  startTime            DateTime
+  endTime              DateTime
+  attendees            String?
+  analystId            String?
+  isAnalystMeeting     Boolean            @default(false)
+  confidence           Float?
+  tags                 String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  briefings            Briefing[]
+  analyst              Analyst?           @relation(fields: [analystId], references: [id])
+  calendarConnection   CalendarConnection @relation(fields: [calendarConnectionId], references: [id], onDelete: Cascade)
+
+  @@unique([calendarConnectionId, googleEventId])
+}
+
+model BriefingAnalyst {
+  id         String   @id @default(cuid())
+  briefingId String
+  analystId  String
+  role       String?
+  createdAt  DateTime @default(now())
+  analyst    Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
+  briefing   Briefing @relation(fields: [briefingId], references: [id], onDelete: Cascade)
+
+  @@unique([briefingId, analystId])
+}
+
+model GongConfig {
+  id         String    @id @default(cuid())
+  apiKey     String
+  subdomain  String
+  isActive   Boolean   @default(false)
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model ActionItem {
+  id          String    @id @default(cuid())
+  briefingId  String
+  description String
+  assignedTo  String?
+  assignedBy  String?
+  dueDate     DateTime?
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  completedBy String?
+  priority    String    @default("MEDIUM")
+  category    String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  briefing    Briefing  @relation(fields: [briefingId], references: [id], onDelete: Cascade)
 }
 
 enum Role {
@@ -258,246 +463,4 @@ enum SocialPlatform {
   MEDIUM
   BLOG
   OTHER
-}
-
-// New models for enhanced features
-model Publication {
-  id          String          @id @default(cuid())
-  analystId   String
-  title       String
-  url         String?
-  summary     String?
-  type        PublicationType
-  publishedAt DateTime
-  isTracked   Boolean         @default(true)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  
-  // Relations
-  analyst     Analyst         @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model SocialPost {
-  id          String        @id @default(cuid())
-  analystId   String
-  platform    SocialPlatform
-  content     String
-  url         String?
-  engagements Int           @default(0)
-  postedAt    DateTime
-  isRelevant  Boolean       @default(true)
-  sentiment   String?       // POSITIVE, NEGATIVE, NEUTRAL
-  themes      String?       // JSON array of extracted themes
-  createdAt   DateTime      @default(now())
-  
-  // Relations
-  analyst     Analyst       @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model Briefing {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  scheduledAt DateTime
-  completedAt DateTime?
-  status      BriefingStatus @default(SCHEDULED)
-  agenda      String?       // JSON array of agenda items
-  notes       String?
-  outcomes    String?       // JSON array of outcomes
-  followUpActions String?    // JSON array of follow-up actions
-  recordingUrl String?
-  transcript  String?       // Full transcript text
-  transcriptFile String?    // Path to transcript file if uploaded
-  aiSummary   String?       // AI-generated summary
-  followUpSummary String?   // AI-generated follow-up actions
-  gongMeetingId String?     // Gong meeting ID for API integration
-  calendarMeetingId String? // Link to calendar meeting
-  attendeeEmails String?    // JSON array of attendee emails
-  duration    Int?          // Meeting duration in minutes
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  
-  // Relations
-  analysts    BriefingAnalyst[]
-  actionItems ActionItem[]
-  calendarMeeting CalendarMeeting? @relation(fields: [calendarMeetingId], references: [id])
-}
-
-model Alert {
-  id          String    @id @default(cuid())
-  analystId   String
-  type        AlertType
-  title       String
-  message     String
-  isRead      Boolean   @default(false)
-  actionTaken Boolean   @default(false)
-  priority    String    @default("MEDIUM") // HIGH, MEDIUM, LOW
-  dueDate     DateTime?
-  createdAt   DateTime  @default(now())
-  
-  // Relations
-  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model ConversationSummary {
-  id          String    @id @default(cuid())
-  analystId   String
-  title       String
-  summary     String
-  keyPoints   String?   // JSON array
-  actionItems String?   // JSON array
-  recordingUrl String?
-  transcriptUrl String?
-  date        DateTime
-  duration    Int?      // in minutes
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model AnalystPortalSession {
-  id          String    @id @default(cuid())
-  analystId   String
-  sessionId   String    @unique
-  loginAt     DateTime  @default(now())
-  logoutAt    DateTime?
-  ipAddress   String?
-  userAgent   String?
-  
-  // Relations
-  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model CompanyVision {
-  id          String    @id @default(cuid())
-  title       String
-  content     String
-  type        String    // MISSION, VALUES, STRATEGY, ROADMAP
-  isPublished Boolean   @default(false)
-  order       Int       @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model ExclusiveContent {
-  id          String    @id @default(cuid())
-  title       String
-  description String?
-  content     String
-  type        ContentType
-  targetAudience String? // JSON array of analyst IDs or expertise areas
-  accessLevel String    @default("ALL") // ALL, TIER1, TIER2, SPECIFIC
-  downloadUrl String?
-  viewCount   Int       @default(0)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Testimonial {
-  id          String    @id @default(cuid())
-  analystId   String
-  quote       String
-  context     String?   // Context about when/where the quote was made
-  isPublished Boolean   @default(false)
-  displayOrder Int      @default(0)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  analyst     Analyst   @relation(fields: [analystId], references: [id], onDelete: Cascade)
-}
-
-model CalendarConnection {
-  id              String    @id @default(cuid())
-  userId          String
-  title           String    // Display name like "Chief Product Officer"
-  email           String    // Connected Google account email
-  googleAccountId String    // Google account ID
-  accessToken     String    // Encrypted access token
-  refreshToken    String?   // Encrypted refresh token
-  tokenExpiry     DateTime? // When the access token expires
-  isActive        Boolean   @default(true)
-  lastSyncAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
-  // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  meetings        CalendarMeeting[]
-  
-  @@unique([userId, googleAccountId])
-}
-
-model CalendarMeeting {
-  id                  String             @id @default(cuid())
-  calendarConnectionId String
-  googleEventId       String
-  title               String
-  description         String?
-  startTime           DateTime
-  endTime             DateTime
-  attendees           String?            // JSON array of attendee emails
-  analystId           String?            // If identified as analyst meeting
-  isAnalystMeeting    Boolean            @default(false)
-  confidence          Float?             // AI confidence score for analyst identification
-  tags                String?            // JSON array of tags
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
-  
-  // Relations
-  calendarConnection  CalendarConnection @relation(fields: [calendarConnectionId], references: [id], onDelete: Cascade)
-  analyst             Analyst?           @relation(fields: [analystId], references: [id])
-  briefings           Briefing[]
-  
-  @@unique([calendarConnectionId, googleEventId])
-}
-
-// Junction table for many-to-many relationship between briefings and analysts
-model BriefingAnalyst {
-  id         String   @id @default(cuid())
-  briefingId String
-  analystId  String
-  role       String?  // PRIMARY, SECONDARY, OBSERVER
-  createdAt  DateTime @default(now())
-  
-  // Relations
-  briefing   Briefing @relation(fields: [briefingId], references: [id], onDelete: Cascade)
-  analyst    Analyst  @relation(fields: [analystId], references: [id], onDelete: Cascade)
-  
-  @@unique([briefingId, analystId])
-}
-
-// Gong integration configuration
-model GongConfig {
-  id          String    @id @default(cuid())
-  apiKey      String    // Encrypted Gong API key
-  subdomain   String    // Gong subdomain
-  isActive    Boolean   @default(false)
-  lastSyncAt  DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-// Action items from briefings
-model ActionItem {
-  id          String    @id @default(cuid())
-  briefingId  String
-  description String
-  assignedTo  String?   // Who is responsible (internal team member)
-  assignedBy  String?   // Who assigned it (usually internal)
-  dueDate     DateTime?
-  isCompleted Boolean   @default(false)
-  completedAt DateTime?
-  completedBy String?   // Name of person who marked it complete
-  priority    String    @default("MEDIUM") // HIGH, MEDIUM, LOW
-  category    String?   // Type of action: FOLLOW_UP, SEND_DOCUMENT, SCHEDULE_MEETING, etc.
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  
-  // Relations
-  briefing    Briefing  @relation(fields: [briefingId], references: [id], onDelete: Cascade)
 }

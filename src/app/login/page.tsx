@@ -59,7 +59,7 @@ function OldLoginPage() {
       if (user) {
         // Get user profile to determine role
         const { data: profile } = await supabase
-          .from('user_profiles')
+          .from('User')
           .select('role')
           .eq('id', user.id)
           .single()

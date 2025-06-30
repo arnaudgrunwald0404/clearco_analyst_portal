@@ -25,7 +25,7 @@ import {
 const mainNavigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
-  { name: 'Briefings/Calls', href: '/briefings', icon: Calendar },
+  { name: 'Briefings', href: '/briefings', icon: Calendar },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
   { name: 'Content', href: '/content', icon: FileText },

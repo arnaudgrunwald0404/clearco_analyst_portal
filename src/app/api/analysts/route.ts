@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@supabase/supabase-js'
 
-const prisma = new PrismaClient()
+// Check for required environment variables
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+}
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,9 +44,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if analyst with email already exists
-    const existingAnalyst = await prisma.analyst.findUnique({
-      where: { email }
-    })
+    const { data: existingAnalyst } = await supabase
+      .from('Analyst')
+      .select('id')
+      .eq('email', email)
+      .single()
 
     if (existingAnalyst) {
       return NextResponse.json(
@@ -44,9 +57,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create the analyst with covered topics
-    const analyst = await prisma.analyst.create({
-      data: {
+    // Create the analyst
+    const { data: analyst, error: analystError } = await supabase
+      .from('Analyst')
+      .insert({
         firstName,
         lastName,
         email,
@@ -60,17 +74,30 @@ export async function POST(request: NextRequest) {
         type: type || 'Analyst',
         eligibleNewsletters: eligibleNewsletters || null,
         influence: influence || 'MEDIUM',
-        status: status || 'ACTIVE',
-        coveredTopics: {
-          create: coveredTopics?.map((topic: string) => ({
-            topic
-          })) || []
-        }
-      },
-      include: {
-        coveredTopics: true
+        status: status || 'ACTIVE'
+      })
+      .select()
+      .single()
+
+    if (analystError) {
+      throw analystError
+    }
+
+    // Create covered topics if provided
+    if (coveredTopics && coveredTopics.length > 0) {
+      const topicInserts = coveredTopics.map((topic: string) => ({
+        analystId: analyst.id,
+        topic
+      }))
+
+      const { error: topicsError } = await supabase
+        .from('AnalystCoveredTopic')
+        .insert(topicInserts)
+
+      if (topicsError) {
+        console.error('Error creating covered topics:', topicsError)
       }
-    })
+    }
 
     return NextResponse.json({
       success: true,
@@ -91,26 +118,34 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl
     const includeArchived = searchParams.get('includeArchived') === 'true'
     
-    // Build the query with Prisma
-    const whereClause = includeArchived ? {} : {
-      status: {
-        not: 'ARCHIVED'
-      }
+    // Build the query with Supabase
+    let query = supabase
+      .from('Analyst')
+      .select(`
+        *,
+        coveredTopics:AnalystCoveredTopic(topic)
+      `)
+      .order('lastName', { ascending: true })
+    
+    if (!includeArchived) {
+      query = query.neq('status', 'ARCHIVED')
     }
     
-    const analysts = await prisma.analyst.findMany({
-      where: whereClause,
-      include: {
-        coveredTopics: true
-      },
-      orderBy: {
-        lastName: 'asc'
-      }
-    })
+    const { data: analysts, error } = await query
+
+    if (error) {
+      throw error
+    }
+
+    // Transform the data to match the expected format
+    const transformedAnalysts = analysts?.map(analyst => ({
+      ...analyst,
+      coveredTopics: analyst.coveredTopics || []
+    })) || []
 
     return NextResponse.json({
       success: true,
-      data: analysts
+      data: transformedAnalysts
     })
 
   } catch (error) {
@@ -119,7 +154,5 @@ export async function GET(request: NextRequest) {
       { error: 'Failed to fetch analysts from database' },
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

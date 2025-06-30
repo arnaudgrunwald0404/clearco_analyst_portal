@@ -309,33 +309,35 @@ export class SocialMediaCrawler {
   }>> {
     const analysts = await this.prisma.analyst.findMany({
       where: {
-        OR: [
-          { twitter: { not: null } },
-          { linkedIn: { not: null } }
-        ],
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        socialHandles: {
+          some: {
+            isActive: true
+          }
+        }
       },
-      select: {
-        id: true,
-        twitter: true,
-        linkedIn: true
+      include: {
+        socialHandles: {
+          where: {
+            isActive: true
+          },
+          select: {
+            platform: true,
+            handle: true,
+            lastCrawledAt: true
+          }
+        }
       }
     })
 
     return analysts.map(analyst => ({
       id: analyst.id,
-      handles: [
-        ...(analyst.twitter ? [{
-          analystId: analyst.id,
-          platform: 'twitter' as const,
-          handle: analyst.twitter
-        }] : []),
-        ...(analyst.linkedIn ? [{
-          analystId: analyst.id,
-          platform: 'linkedin' as const,
-          handle: analyst.linkedIn
-        }] : [])
-      ]
+      handles: analyst.socialHandles.map(socialHandle => ({
+        analystId: analyst.id,
+        platform: socialHandle.platform.toLowerCase() as 'twitter' | 'linkedin',
+        handle: socialHandle.handle,
+        lastCrawledAt: socialHandle.lastCrawledAt
+      }))
     }))
   }
 
@@ -363,8 +365,20 @@ export class SocialMediaCrawler {
     analystId: string,
     platform: string
   ): Promise<void> {
-    // Note: We'd need to add a separate table for tracking crawl timestamps
-    // or add fields to the analyst table. For now, we'll skip this.
-    console.log(`Updated last crawled time for ${analystId} on ${platform}`)
+    try {
+      await this.prisma.socialHandle.updateMany({
+        where: {
+          analystId,
+          platform: platform.toUpperCase() as any,
+          isActive: true
+        },
+        data: {
+          lastCrawledAt: new Date()
+        }
+      })
+      console.log(`Updated last crawled time for ${analystId} on ${platform}`)
+    } catch (error) {
+      console.error(`Failed to update last crawled time for ${analystId} on ${platform}:`, error)
+    }
   }
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { motion } from 'framer-motion'
+import { AnimatedHero } from '@/components/ui/animated-hero'
 import { 
   AlertCircle,
   Loader2,
@@ -32,8 +33,7 @@ function AuthPageContent() {
     lastName: ''
   })
   
-  // Animated text effect
-  const [titleNumber, setTitleNumber] = useState(0)
+  // Animated text phrases for the hero component
   const animatedPhrases = useMemo(
     () => ['exciting', 'inspiring', 'mind-boggling', 'packed with value', "you've never seen before"],
     []
@@ -58,7 +58,7 @@ function AuthPageContent() {
       if (user) {
         // Get user profile to determine role
         const { data: profile } = await supabase
-          .from('user_profiles')
+          .from('User')
           .select('role')
           .eq('id', user.id)
           .single()
@@ -74,17 +74,7 @@ function AuthPageContent() {
     checkUser()
   }, [router, supabase])
 
-  // Animated text effect
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (titleNumber === animatedPhrases.length - 1) {
-        setTitleNumber(0)
-      } else {
-        setTitleNumber(titleNumber + 1)
-      }
-    }, 3000)
-    return () => clearTimeout(timeoutId)
-  }, [titleNumber, animatedPhrases])
+  // No need for manual animation effect - handled by AnimatedHero component
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
@@ -212,53 +202,12 @@ function AuthPageContent() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center">
-        <div className="text-center max-w-lg">
-          {/* ClearCompany Logo */}
-          <div className="mb-12">
-            <Image 
-              src="/clearco-logo.png" 
-              alt="ClearCo Logo" 
-              width={200} 
-              height={80} 
-              className="mx-auto"
-            />
-          </div>
-          
-          {/* Main Heading with Animated Text */}
-          <div className="flex flex-col gap-2">
-            <h1 className="text-5xl font-bold text-white leading-tight">
-              Let us show you
-            </h1>
-            <h1 className="text-5xl font-bold text-white leading-tight">
-              something
-            </h1>
-            <div className="text-5xl font-bold text-white italic leading-tight h-20 flex items-center justify-center">
-              <span className="relative flex justify-center overflow-hidden min-w-full">
-                {animatedPhrases.map((phrase, index) => (
-                  <motion.span
-                    key={index}
-                    className="absolute font-bold italic whitespace-nowrap"
-                    initial={{ opacity: 0, y: "-100" }}
-                    transition={{ type: "spring", stiffness: 50 }}
-                    animate={
-                      titleNumber === index
-                        ? {
-                            y: 0,
-                            opacity: 1,
-                          }
-                        : {
-                            y: titleNumber > index ? -150 : 150,
-                            opacity: 0,
-                          }
-                    }
-                  >
-                    {phrase}
-                  </motion.span>
-                ))}
-              </span>
-            </div>
-          </div>
-        </div>
+        <AnimatedHero
+          title="Let us show you something"
+          subtitle={animatedPhrases.join(' • ')}
+          ctaText=""
+          onCtaClick={() => {}}
+        />
       </div>
 
       {/* Right Side - Auth Form */}

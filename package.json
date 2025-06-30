@@ -17,7 +17,11 @@
     "db:generate": "npx prisma generate",
     "create-test-user": "tsx scripts/create-test-user.ts",
     "crawl:daily": "tsx src/scripts/daily-crawler.ts",
+    "social:init-history": "tsx src/scripts/init-social-history.ts",
     "add-test-analysts": "tsx scripts/add-test-analysts.ts",
+    "add-sample-analysts": "tsx scripts/add-sample-analysts-with-social.ts",
+    "migrate-twitter-handles": "tsx scripts/migrate-twitter-handles.ts",
+    "add-social-handles": "tsx scripts/add-social-handles.ts",
     "test-twitter": "tsx scripts/test-single-analyst.ts"
   },
   "dependencies": {
