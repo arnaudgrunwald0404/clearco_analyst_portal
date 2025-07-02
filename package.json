@@ -8,6 +8,7 @@
     "postinstall": "npx prisma generate || echo 'Prisma generation failed, continuing...'",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test tests/api-routes.test.ts",
     "social:hourly": "npx tsx src/scripts/hourly-social-monitor.ts",
     "discover:daily": "npx tsx src/scripts/daily-publication-discovery.ts",
     "social:daily": "npx tsx src/scripts/daily-crawler.ts",

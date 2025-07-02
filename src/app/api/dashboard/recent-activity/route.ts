@@ -26,6 +26,12 @@ function formatTimeAgo(date: Date): string {
 }
 
 export async function GET() {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: 'Missing DATABASE_URL environment variable' },
+      { status: 500 }
+    )
+  }
   try {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
