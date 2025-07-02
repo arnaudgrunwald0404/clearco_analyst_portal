@@ -392,7 +392,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
           <div className="flex border-b border-gray-200 bg-white">
             {[
               { id: 'overview', label: 'Overview' },
-              { id: 'publications', label: 'Publications' },
+              { id: 'publications', label: 'Content' },
               { id: 'social', label: 'Social Media' },
               { id: 'briefings', label: 'Briefing History' }
             ].map((tab) => (
@@ -546,11 +546,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
             {activeTab === 'publications' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">Publications (Last 2 Years)</h3>
+                  <h3 className="text-lg font-medium text-gray-900">Content (Last 2 Years)</h3>
                   {loading.publications ? (
                     <Loader className="w-4 h-4 animate-spin text-blue-600" />
                   ) : (
-                    <span className="text-sm text-gray-500">{publications.length} publications</span>
+                    <span className="text-sm text-gray-500">{publications.length} items</span>
                   )}
                 </div>
                 {loading.publications ? (
@@ -559,7 +559,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   </div>
                 ) : publications.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No publications found in the last 2 years.
+                    No content found in the last 2 years.
                   </div>
                 ) : (
                   <div className="space-y-4">

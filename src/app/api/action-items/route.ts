@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { success: false, error: 'Missing DATABASE_URL environment variable' },
+      { status: 500 }
+    )
+  }
   try {
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') // 'pending', 'completed', 'all'
@@ -79,6 +85,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { success: false, error: 'Missing DATABASE_URL environment variable' },
+      { status: 500 }
+    )
+  }
   try {
     const body = await request.json()
     const {

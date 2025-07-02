@@ -20,6 +20,12 @@ function formatLastContact(date: Date | null): string {
 }
 
 export async function GET() {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: 'Missing DATABASE_URL environment variable' },
+      { status: 500 }
+    )
+  }
   try {
     // Get top analysts sorted by influence score
     const analysts = await prisma.analyst.findMany({

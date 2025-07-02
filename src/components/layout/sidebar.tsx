@@ -9,7 +9,6 @@ import { AnalystImpersonationModal } from '../analyst-impersonation-modal'
 import {
   Users,
   Mail,
-  FileText,
   BarChart3,
   Settings,
   Home,
@@ -28,7 +27,6 @@ const mainNavigation = [
   { name: 'Briefings', href: '/briefings', icon: Calendar },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
-  { name: 'Content', href: '/content', icon: FileText },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
