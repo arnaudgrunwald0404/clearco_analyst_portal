@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Decode the state to get the connection title
+    // Decode the state
     let connectionData
     try {
       const decodedState = Buffer.from(state, 'base64').toString('utf-8')
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Set credentials to get user info
+    // Set credentials to get user info and calendar info
     oauth2Client.setCredentials(tokens)
 
     // Get user information
@@ -79,6 +79,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL('/settings?error=no_user_email', request.url)
       )
+    }
+
+    // Get primary calendar name
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
+    let calendarName = userInfo.data.name || userInfo.data.email || 'Google Calendar'
+    
+    try {
+      const calendarInfo = await calendar.calendars.get({ calendarId: 'primary' })
+      if (calendarInfo.data.summary) {
+        calendarName = calendarInfo.data.summary
+      }
+    } catch (error) {
+      console.warn('Could not get calendar name, using default:', error)
     }
 
     // For now, we'll use a hardcoded user ID
@@ -93,14 +106,16 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    let connectionId: string
+    
     if (existingConnection) {
       // Update existing connection with new tokens
-      await prisma.calendarConnection.update({
+      const updatedConnection = await prisma.calendarConnection.update({
         where: {
           id: existingConnection.id,
         },
         data: {
-          title: connectionData.title,
+          title: connectionData.title || calendarName, // Use provided title or calendar name as default
           accessToken: encryptToken(tokens.access_token),
           refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
           tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
@@ -108,12 +123,13 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date(),
         },
       })
+      connectionId = updatedConnection.id
     } else {
-      // Create new calendar connection
-      await prisma.calendarConnection.create({
+      // Create new calendar connection with calendar name as default title
+      const newConnection = await prisma.calendarConnection.create({
         data: {
           userId: userId,
-          title: connectionData.title,
+          title: connectionData.title || calendarName, // Use provided title or calendar name as default
           email: userInfo.data.email,
           googleAccountId: userInfo.data.id!,
           accessToken: encryptToken(tokens.access_token),
@@ -122,12 +138,27 @@ export async function GET(request: NextRequest) {
           isActive: true,
         },
       })
+      connectionId = newConnection.id
     }
 
-    // Redirect back to settings with success message
-    return NextResponse.redirect(
-      new URL('/settings?success=calendar_connected', request.url)
-    )
+    // If this is the new connect-first flow, redirect with connection details for naming
+    if (connectionData.connectFirst) {
+      const params = new URLSearchParams({
+        success: 'calendar_connected',
+        connectionId: connectionId,
+        email: userInfo.data.email,
+        calendarName: encodeURIComponent(calendarName)
+      })
+      
+      return NextResponse.redirect(
+        new URL(`/settings?${params.toString()}`, request.url)
+      )
+    } else {
+      // Legacy flow - redirect with simple success message
+      return NextResponse.redirect(
+        new URL('/settings?success=calendar_connected', request.url)
+      )
+    }
   } catch (error) {
     console.error('Error in Google Calendar OAuth callback:', error)
     return NextResponse.redirect(

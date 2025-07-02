@@ -3,13 +3,14 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// PATCH - Update calendar connection (toggle active status)
+// PATCH - Update calendar connection (active status and/or title)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { isActive } = await request.json()
+    const body = await request.json()
+    const { isActive, title } = body
     const connectionId = params.id
 
     // For now, we'll use a hardcoded user ID
@@ -31,15 +32,25 @@ export async function PATCH(
       )
     }
 
+    // Build update data object
+    const updateData: any = {
+      updatedAt: new Date(),
+    }
+
+    if (typeof isActive === 'boolean') {
+      updateData.isActive = isActive
+    }
+
+    if (typeof title === 'string' && title.trim()) {
+      updateData.title = title.trim()
+    }
+
     // Update the connection
     const updatedConnection = await prisma.calendarConnection.update({
       where: {
         id: connectionId,
       },
-      data: {
-        isActive: isActive,
-        updatedAt: new Date(),
-      },
+      data: updateData,
     })
 
     return NextResponse.json({ success: true })

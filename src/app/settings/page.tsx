@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Calendar, Plus, Trash2, CheckCircle, AlertCircle, Clock, X, RefreshCw } from 'lucide-react'
+import { Calendar, Plus, Trash2, CheckCircle, AlertCircle, Clock, X, RefreshCw, Settings, User, Building, Globe, Image, Tags, Edit, Save, ChevronUp, ChevronDown } from 'lucide-react'
+import GeneralSettingsForm from '@/components/general-settings-form'
+import TopicsManagement from '@/components/topics-management'
 
 interface CalendarConnection {
   id: string
@@ -31,9 +33,16 @@ interface SyncProgress {
 
 function SettingsPageContent() {
   const searchParams = useSearchParams()
+  const [activeSection, setActiveSection] = useState('general')
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
+  const [showNamingDialog, setShowNamingDialog] = useState(false)
+  const [pendingConnection, setPendingConnection] = useState<{
+    id: string
+    email: string
+    calendarName: string
+  } | null>(null)
   const [newConnectionTitle, setNewConnectionTitle] = useState('')
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
@@ -50,11 +59,28 @@ function SettingsPageContent() {
     const error = searchParams.get('error')
     
     if (success === 'calendar_connected') {
-      setNotification({
-        type: 'success',
-        message: 'Google Calendar connected successfully!'
-      })
-      // Clear the URL parameter
+      // Get connection details from URL parameters for naming
+      const connectionId = searchParams.get('connectionId')
+      const email = searchParams.get('email')
+      const calendarName = searchParams.get('calendarName')
+      
+      if (connectionId && email && calendarName) {
+        // Show naming dialog
+        setPendingConnection({
+          id: connectionId,
+          email,
+          calendarName: decodeURIComponent(calendarName)
+        })
+        setNewConnectionTitle(decodeURIComponent(calendarName)) // Set default to calendar name
+        setShowNamingDialog(true)
+      } else {
+        // Fallback to old behavior
+        setNotification({
+          type: 'success',
+          message: 'Google Calendar connected successfully!'
+        })
+      }
+      // Clear the URL parameters
       window.history.replaceState({}, '', '/settings')
     } else if (error) {
       let errorMessage = 'An error occurred while connecting to Google Calendar.'
@@ -104,17 +130,15 @@ function SettingsPageContent() {
   }
 
   const handleAddConnection = async () => {
-    if (!newConnectionTitle.trim()) return
-
     setAdding(true)
     try {
-      // First, save the title for the connection
+      // Initiate Google OAuth without requiring a title first
       const response = await fetch('/api/settings/calendar-connections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ title: newConnectionTitle }),
+        body: JSON.stringify({}), // No title required initially
       })
 
       if (response.ok) {
@@ -126,6 +150,46 @@ function SettingsPageContent() {
       console.error('Failed to initiate calendar connection:', error)
       setAdding(false)
     }
+  }
+
+  const handleSaveConnectionName = async () => {
+    if (!pendingConnection || !newConnectionTitle.trim()) return
+
+    try {
+      const response = await fetch(`/api/settings/calendar-connections/${pendingConnection.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title: newConnectionTitle }),
+      })
+
+      if (response.ok) {
+        setShowNamingDialog(false)
+        setPendingConnection(null)
+        setNewConnectionTitle('')
+        setNotification({
+          type: 'success',
+          message: 'Google Calendar connected and named successfully!'
+        })
+        fetchCalendarConnections() // Refresh the list
+      }
+    } catch (error) {
+      console.error('Failed to save connection name:', error)
+    }
+  }
+
+  const handleSkipNaming = async () => {
+    if (!pendingConnection) return
+
+    setShowNamingDialog(false)
+    setPendingConnection(null)
+    setNewConnectionTitle('')
+    setNotification({
+      type: 'success',
+      message: 'Google Calendar connected successfully!'
+    })
+    fetchCalendarConnections() // Refresh the list
   }
 
   const handleToggleConnection = async (connectionId: string, isActive: boolean) => {
@@ -317,9 +381,16 @@ function SettingsPageContent() {
     }
   }
 
+  // Define menu sections
+  const menuSections = [
+    { id: 'general', label: 'General', icon: Settings },
+    { id: 'topics', label: 'Topics', icon: Tags },
+    { id: 'calendar', label: 'Calendar', icon: Calendar },
+  ]
+
   return (
     <div className="container mx-auto px-6 py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Settings</h1>
           <p className="text-gray-600">
@@ -351,218 +422,290 @@ function SettingsPageContent() {
           </div>
         )}
 
-        {/* Calendar Integration Section */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Calendar Integration
-            </CardTitle>
-            <CardDescription>
-              Connect Google Calendar accounts to track meetings with industry analysts.
-              This helps us identify and analyze conversations with precision.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* Add New Connection */}
-            <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <h3 className="text-lg font-medium mb-3">Add Calendar Connection</h3>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Label htmlFor="connection-title" className="text-sm font-medium text-gray-700">
-                    Display Name
+        <div className="flex gap-8">
+          {/* Secondary Menu */}
+          <div className="w-64 flex-shrink-0">
+            <nav className="space-y-2">
+              {menuSections.map((section) => {
+                const Icon = section.icon
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors ${
+                      activeSection === section.id
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {section.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            {activeSection === 'general' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    General Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure your company information and platform settings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <GeneralSettingsForm />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSection === 'topics' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tags className="w-5 h-5" />
+                    Topic Management
+                  </CardTitle>
+                  <CardDescription>
+                    Manage predefined topics for analyst expertise areas. Core topics represent Clear Company's key strengths.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TopicsManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSection === 'calendar' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Calendar Integration
+                  </CardTitle>
+                  <CardDescription>
+                    Connect Google Calendar accounts to track briefings with industry analysts
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {/* Instructions */}
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Connect team members' Google Calendars with read-only access</li>
+                      <li>• We automatically identify meetings with known industry analysts</li>
+                      <li>• Track conversation history and timing with precision</li>
+                      <li>• All calendar data is processed securely and privately</li>
+                    </ul>
+                  </div>
+
+                  {/* Connected Calendars Section */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-medium mb-4">Connected Calendars</h3>
+                    
+                    {loading ? (
+                      <div className="text-center py-8 text-gray-500">
+                        Loading calendar connections...
+                      </div>
+                    ) : calendarConnections.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                        <p>No calendar connections yet</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {calendarConnections.map((connection) => {
+                          const status = getConnectionStatus(connection)
+                          const StatusIcon = status.icon
+                          
+                          return (
+                            <div
+                              key={connection.id}
+                              className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h4 className="font-medium text-gray-900">{connection.title}</h4>
+                                  <div className={`flex items-center gap-1 text-sm ${status.color}`}>
+                                    <StatusIcon className="w-4 h-4" />
+                                    {status.text}
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-600">{connection.email}</p>
+                                <p className="text-xs text-gray-500">
+                                  Last sync: {formatLastSync(connection.lastSyncAt)}
+                                </p>
+                                
+                                {/* Real-time sync progress */}
+                                {(() => {
+                                  const progress = syncProgress.get(connection.id)
+                                  if (progress?.isRunning) {
+                                    return (
+                                      <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                        <div className="flex items-center gap-2 text-blue-700">
+                                          <Clock className="w-3 h-3 animate-spin" />
+                                          <span className="font-medium">{progress.message}</span>
+                                        </div>
+                                        {progress.relevantMeetingsCount > 0 && (
+                                          <div className="mt-1 text-blue-600">
+                                            <span className="font-semibold">{progress.relevantMeetingsCount}</span> analyst meetings identified
+                                            {progress.totalEventsProcessed && (
+                                              <span className="text-blue-500"> • {progress.totalEventsProcessed} events processed</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {progress.lastAnalystFound && (
+                                          <div className="text-blue-600 mt-1">
+                                            Latest: {progress.lastAnalystFound}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  if (progress?.completed) {
+                                    return (
+                                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                                        <div className="flex items-center gap-2 text-green-700">
+                                          <CheckCircle className="w-3 h-3" />
+                                          <span>{progress.message}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  if (progress?.error) {
+                                    return (
+                                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                                        <div className="flex items-center gap-2 text-red-700">
+                                          <AlertCircle className="w-3 h-3" />
+                                          <span>{progress.message}</span>
+                                        </div>
+                                      </div>
+                                    )
+                                  }
+                                  
+                                  return null
+                                })()} 
+                              </div>
+      
+                              <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Label htmlFor={`active-${connection.id}`} className="text-sm">
+                                    Active
+                                  </Label>
+                                  <Switch
+                                    id={`active-${connection.id}`}
+                                    checked={connection.isActive}
+                                    onCheckedChange={(checked) =>
+                                      handleToggleConnection(connection.id, checked)
+                                    }
+                                  />
+                                </div>
+                                
+                                {connection.isActive && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => startCalendarSync(connection.id)}
+                                    disabled={syncProgress.get(connection.id)?.isRunning}
+                                    className="bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                  >
+                                    {syncProgress.get(connection.id)?.isRunning ? (
+                                      <Clock className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="w-4 h-4" />
+                                    )}
+                                    <span className="ml-1">
+                                      {syncProgress.get(connection.id)?.isRunning ? 'Syncing...' : 'Sync Now'}
+                                    </span>
+                                  </Button>
+                                )}
+                                
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteConnection(connection.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add Calendar Connection Section */}
+                  <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                    <h3 className="text-lg font-medium mb-3">Add Calendar Connection</h3>
+                    <div className="text-center">
+                      <Button
+                        onClick={handleAddConnection}
+                        disabled={adding}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {adding ? 'Connecting...' : 'Connect Google Calendar'}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Naming Dialog */}
+          {showNamingDialog && pendingConnection && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                <h3 className="text-lg font-medium mb-4">Name Your Calendar Connection</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Connected: <strong>{pendingConnection.email}</strong>
+                </p>
+                
+                <div className="mb-4">
+                  <Label htmlFor="connection-name" className="text-sm font-medium text-gray-700">
+                    Display Name (optional)
                   </Label>
                   <Input
-                    id="connection-title"
+                    id="connection-name"
                     placeholder="e.g., Chief Product Officer, Marketing Director"
                     value={newConnectionTitle}
                     onChange={(e) => setNewConnectionTitle(e.target.value)}
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    This name will help identify whose calendar is connected
+                    Default: {pendingConnection.calendarName}
                   </p>
                 </div>
-                <div className="flex items-end">
+                
+                <div className="flex gap-3 justify-end">
                   <Button
-                    onClick={handleAddConnection}
-                    disabled={!newConnectionTitle.trim() || adding}
-                    className="flex items-center gap-2"
+                    variant="outline"
+                    onClick={handleSkipNaming}
                   >
-                    <Plus className="w-4 h-4" />
-                    {adding ? 'Connecting...' : 'Connect Google Calendar'}
+                    Use Default Name
+                  </Button>
+                  <Button
+                    onClick={handleSaveConnectionName}
+                    disabled={!newConnectionTitle.trim()}
+                  >
+                    Save Custom Name
                   </Button>
                 </div>
               </div>
             </div>
-
-            {/* Existing Connections */}
-            <div>
-              <h3 className="text-lg font-medium mb-4">Connected Calendars</h3>
-              
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">
-                  Loading calendar connections...
-                </div>
-              ) : calendarConnections.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p>No calendar connections yet</p>
-                  <p className="text-sm">Add your first calendar connection above to get started</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {calendarConnections.map((connection) => {
-                    const status = getConnectionStatus(connection)
-                    const StatusIcon = status.icon
-                    
-                    return (
-                      <div
-                        key={connection.id}
-                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-medium text-gray-900">{connection.title}</h4>
-                            <div className={`flex items-center gap-1 text-sm ${status.color}`}>
-                              <StatusIcon className="w-4 h-4" />
-                              {status.text}
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600">{connection.email}</p>
-                          <p className="text-xs text-gray-500">
-                            Last sync: {formatLastSync(connection.lastSyncAt)}
-                          </p>
-                          
-                          {/* Real-time sync progress */}
-                          {(() => {
-                            const progress = syncProgress.get(connection.id)
-                            if (progress?.isRunning) {
-                              return (
-                                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                                  <div className="flex items-center gap-2 text-blue-700">
-                                    <Clock className="w-3 h-3 animate-spin" />
-                                    <span className="font-medium">{progress.message}</span>
-                                  </div>
-                                  {progress.relevantMeetingsCount > 0 && (
-                                    <div className="mt-1 text-blue-600">
-                                      <span className="font-semibold">{progress.relevantMeetingsCount}</span> analyst meetings identified
-                                      {progress.totalEventsProcessed && (
-                                        <span className="text-blue-500"> • {progress.totalEventsProcessed} events processed</span>
-                                      )}
-                                    </div>
-                                  )}
-                                  {progress.lastAnalystFound && (
-                                    <div className="text-blue-600 mt-1">
-                                      Latest: {progress.lastAnalystFound}
-                                    </div>
-                                  )}
-                                </div>
-                              )
-                            }
-                            
-                            if (progress?.completed) {
-                              return (
-                                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                                  <div className="flex items-center gap-2 text-green-700">
-                                    <CheckCircle className="w-3 h-3" />
-                                    <span>{progress.message}</span>
-                                  </div>
-                                </div>
-                              )
-                            }
-                            
-                            if (progress?.error) {
-                              return (
-                                <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                                  <div className="flex items-center gap-2 text-red-700">
-                                    <AlertCircle className="w-3 h-3" />
-                                    <span>{progress.message}</span>
-                                  </div>
-                                </div>
-                              )
-                            }
-                            
-                            return null
-                          })()} 
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label htmlFor={`active-${connection.id}`} className="text-sm">
-                              Active
-                            </Label>
-                            <Switch
-                              id={`active-${connection.id}`}
-                              checked={connection.isActive}
-                              onCheckedChange={(checked) =>
-                                handleToggleConnection(connection.id, checked)
-                              }
-                            />
-                          </div>
-                          
-                          {connection.isActive && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => startCalendarSync(connection.id)}
-                              disabled={syncProgress.get(connection.id)?.isRunning}
-                              className="bg-blue-50 text-blue-600 hover:bg-blue-100"
-                            >
-                              {syncProgress.get(connection.id)?.isRunning ? (
-                                <Clock className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="w-4 h-4" />
-                              )}
-                              <span className="ml-1">
-                                {syncProgress.get(connection.id)?.isRunning ? 'Syncing...' : 'Sync Now'}
-                              </span>
-                            </Button>
-                          )}
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteConnection(connection.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Instructions */}
-            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">How it works:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Connect team members' Google Calendars with read-only access</li>
-                <li>• We automatically identify meetings with known industry analysts</li>
-                <li>• Track conversation history and timing with precision</li>
-                <li>• All calendar data is processed securely and privately</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Future Settings Sections */}
-        <Card>
-          <CardHeader>
-            <CardTitle>General Settings</CardTitle>
-            <CardDescription>
-              Additional configuration options will be available here
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500 text-center py-8">
-              More settings coming soon...
-            </p>
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
     </div>
   )

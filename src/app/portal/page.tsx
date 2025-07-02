@@ -60,22 +60,11 @@ const priorityActions = [
     bgColor: 'bg-gradient-to-br from-yellow-50 to-amber-100',
     iconColor: 'text-yellow-600'
   },
-  {
-    title: 'Industry Testimonials',
-    description: 'See what your peer analysts are saying about our platform',
-    href: '/portal/testimonials',
-    icon: MessageSquare,
-    badge: 'Updated',
-    badgeColor: 'bg-emerald-100 text-emerald-800',
-    bgColor: 'bg-gradient-to-br from-emerald-50 to-teal-100',
-    iconColor: 'text-emerald-600'
-  }
 ]
 
 // Quick stats
 const quickStats = [
   { label: 'Exclusive Content Items', value: '24', icon: FileText, color: 'text-blue-600' },
-  { label: 'Completed Briefings', value: '8', icon: Calendar, color: 'text-green-600' },
   { label: 'Research Reports', value: '12', icon: Download, color: 'text-purple-600' },
   { label: 'Video Resources', value: '16', icon: Play, color: 'text-orange-600' }
 ]
@@ -113,16 +102,6 @@ export default function AnalystPortalDashboard() {
               </div>
             </div>
             
-            {/* CPO Photo */}
-            <div className="flex-shrink-0 hidden lg:block">
-              <div className="w-32 h-32 bg-white bg-opacity-20 rounded-full flex items-center justify-center overflow-hidden">
-                <img 
-                  src="https://media.licdn.com/dms/image/v2/C4E03AQExN7FOgOVffA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516217373346?e=1756339200&v=beta&t=duPb2jgDUrrZr1s_ArOPtpfHNDETSM7H31dasVnwNP0"
-                  alt="Arnaud Grunwald, Chief Product Officer"
-                  className="w-28 h-28 rounded-full object-cover border-4 border-white border-opacity-30"
-                />
-              </div>
-            </div>
           </div>
         </div>
       </div>

@@ -20,9 +20,9 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/portal', icon: Home },
-  { name: 'Content', href: '/portal/content', icon: FileText },
-  { name: 'Briefings', href: '/portal/briefings', icon: Calendar },
-  { name: 'Testimonials', href: '/portal/testimonials', icon: MessageSquare },
+  { name: 'Publications', href: '/portal/content', icon: FileText },
+  { name: 'Briefings (8)', href: '/portal/briefings', icon: Calendar },
+  { name: 'Analyst Testimonials', href: '/portal/testimonials', icon: MessageSquare },
   { name: 'News', href: '/portal/news', icon: Newspaper },
 ]
 
@@ -67,6 +67,37 @@ export default function PortalLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Impersonation Banner - Moved to top */}
+      {isImpersonating && (
+        <div className="bg-black text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center py-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-white">
+                  <span className="mr-2">🎭</span>
+                  You are viewing the analyst portal as <strong>{analystUser.firstName} {analystUser.lastName}</strong>
+                  {analystUser.company && (
+                    <span className="text-gray-300"> from {analystUser.company}</span>
+                  )}
+                </p>
+                <p className="text-xs text-gray-300 mt-1">
+                  This view reflects the permissions, content, and experience that {analystUser.firstName} would see.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('impersonatedAnalyst')
+                  window.location.href = '/'
+                }}
+                className="px-3 py-1 text-xs font-medium text-black bg-white hover:bg-gray-100 rounded-md transition-colors"
+              >
+                Exit Impersonation
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -151,37 +182,6 @@ export default function PortalLayout({
         </div>
       </nav>
 
-      {/* Impersonation Banner */}
-      {isImpersonating && (
-        <div className="bg-amber-50 border-b border-amber-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center py-3">
-              <UserCheck className="w-5 h-5 text-amber-600 mr-3" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-amber-800">
-                  <span className="mr-2">🎭</span>
-                  You are viewing the analyst portal as <strong>{analystUser.firstName} {analystUser.lastName}</strong>
-                  {analystUser.company && (
-                    <span className="text-amber-700"> from {analystUser.company}</span>
-                  )}
-                </p>
-                <p className="text-xs text-amber-600 mt-1">
-                  This view reflects the permissions, content, and experience that {analystUser.firstName} would see.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  sessionStorage.removeItem('impersonatedAnalyst')
-                  window.location.href = '/'
-                }}
-                className="px-3 py-1 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-md transition-colors"
-              >
-                Exit Impersonation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

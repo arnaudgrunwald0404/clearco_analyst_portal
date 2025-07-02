@@ -61,18 +61,8 @@ export async function GET() {
 // POST - Initiate new calendar connection
 export async function POST(request: NextRequest) {
   try {
-    const { title } = await request.json()
-
-    if (!title) {
-      return NextResponse.json(
-        { error: 'Title is required' },
-        { status: 400 }
-      )
-    }
-
-    // Store the title in session/temporary storage
-    // In a real implementation, you'd want to use a more robust session store
-    const state = Buffer.from(JSON.stringify({ title })).toString('base64')
+    // No title required for initial connection - we'll get it after OAuth
+    const state = Buffer.from(JSON.stringify({ connectFirst: true })).toString('base64')
 
     // Generate authorization URL
     const scopes = [
