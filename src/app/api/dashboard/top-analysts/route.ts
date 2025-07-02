@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@supabase/supabase-js'
 
-const prisma = new PrismaClient()
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+}
+
+// Create a Supabase client with the service role key for API routes
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 function formatLastContact(date: Date | null): string {
   if (!date) return 'Never'
@@ -20,64 +37,47 @@ function formatLastContact(date: Date | null): string {
 }
 
 export async function GET() {
-  if (!process.env.DATABASE_URL) {
-    return NextResponse.json(
-      { error: 'Missing DATABASE_URL environment variable' },
-      { status: 500 }
-    )
-  }
   try {
     // Get top analysts sorted by influence score
-    const analysts = await prisma.analyst.findMany({
-      where: {
-        status: 'ACTIVE'
-      },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        company: true,
-        influenceScore: true,
-        relationshipHealth: true,
-        lastContactDate: true,
-        interactions: {
-          select: {
-            date: true
-          },
-          orderBy: {
-            date: 'desc'
-          },
-          take: 1
-        },
-        calendarMeetings: {
-          select: {
-            endTime: true
-          },
-          where: {
-            isAnalystMeeting: true
-          },
-          orderBy: {
-            endTime: 'desc'
-          },
-          take: 1
-        }
-      },
-      orderBy: {
-        influenceScore: 'desc'
-      },
-      take: 5
-    })
+    const { data: analysts, error } = await supabase
+      .from('Analyst')
+      .select(`
+        id,
+        firstName,
+        lastName,
+        company,
+        influenceScore,
+        relationshipHealth,
+        lastContactDate,
+        interactions!inner (
+          date
+        ),
+        calendarMeetings!inner (
+          endTime
+        )
+      `)
+      .eq('status', 'ACTIVE')
+      .order('date', { foreignTable: 'interactions', ascending: false })
+      .order('endTime', { foreignTable: 'calendarMeetings', ascending: false })
+      .order('influenceScore', { ascending: false })
+      .limit(5)
+
+    if (error) throw error
+
+    if (!analysts) {
+      return NextResponse.json([])
+    }
 
     const topAnalysts = analysts.map(analyst => {
       // Find the most recent contact date from various sources
       const contactDates = [
         analyst.lastContactDate,
-        analyst.interactions[0]?.date,
-        analyst.calendarMeetings[0]?.endTime
-      ].filter(Boolean) as Date[]
+        analyst.interactions?.[0]?.date,
+        analyst.calendarMeetings?.[0]?.endTime
+      ].filter(Boolean) as string[]
 
       const lastContact = contactDates.length > 0 
-        ? new Date(Math.max(...contactDates.map(d => d.getTime())))
+        ? new Date(Math.max(...contactDates.map(d => new Date(d).getTime())))
         : null
 
       return {

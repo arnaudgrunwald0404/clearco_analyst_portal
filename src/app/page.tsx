@@ -3,8 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
-import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, Award, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
 import SocialMediaActivity from '@/components/social-media-activity'
 
 interface DashboardMetrics {
@@ -16,15 +15,6 @@ interface DashboardMetrics {
   activeAlerts: number
   briefingsThisMonth: number
   relationshipHealth: number
-}
-
-interface TopAnalyst {
-  id: string
-  name: string
-  company: string
-  influence: number
-  lastContact: string
-  health: string
 }
 
 interface ActivityItem {
@@ -72,28 +62,10 @@ const iconMap: { [key: string]: any } = {
   Video
 }
 
-function getHealthColor(health: string) {
-  switch (health) {
-    case 'EXCELLENT':
-      return 'text-green-600 bg-green-100'
-    case 'GOOD':
-      return 'text-blue-600 bg-blue-100'
-    case 'FAIR':
-      return 'text-yellow-600 bg-yellow-100'
-    case 'POOR':
-      return 'text-orange-600 bg-orange-100'
-    case 'CRITICAL':
-      return 'text-red-600 bg-red-100'
-    default:
-      return 'text-gray-600 bg-gray-100'
-  }
-}
-
 function DashboardContent() {
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
-  const [topAnalysts, setTopAnalysts] = useState<TopAnalyst[]>([])
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,9 +100,8 @@ function DashboardContent() {
 
     const fetchDashboardData = async () => {
       try {
-        const [metricsRes, analystsRes, activityRes, actionItemsRes] = await Promise.all([
+        const [metricsRes, activityRes, actionItemsRes] = await Promise.all([
           fetch('/api/dashboard/metrics'),
-          fetch('/api/dashboard/top-analysts'),
           fetch('/api/dashboard/recent-activity'),
           fetch('/api/action-items?status=pending')
         ])
@@ -138,11 +109,6 @@ function DashboardContent() {
         if (metricsRes.ok) {
           const metricsData = await metricsRes.json()
           setMetrics(metricsData)
-        }
-
-        if (analystsRes.ok) {
-          const analystsData = await analystsRes.json()
-          setTopAnalysts(analystsData)
         }
 
         if (activityRes.ok) {
@@ -431,7 +397,7 @@ function DashboardContent() {
       </div>
 
       {/* Enhanced Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Recent Activity */}
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
@@ -465,61 +431,17 @@ function DashboardContent() {
           </div>
         </div>
 
-        {/* Top Analysts */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Top Analysts
-            </h3>
-            <div className="space-y-4">
-              {topAnalysts.length === 0 ? (
-                <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No analysts found</p>
-                  <p className="text-xs text-gray-400">Add analysts to see top performers here</p>
-                </div>
-              ) : (
-                topAnalysts.map((analyst, index) => (
-                  <div key={analyst.id} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-medium text-blue-800">
-                          {analyst.name.split(' ').map(n => n[0]).join('')}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{analyst.name}</p>
-                        <p className="text-xs text-gray-500">{analyst.company}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-gray-900">{analyst.influence}</span>
-                        <span className={cn(
-                          'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-                          getHealthColor(analyst.health)
-                        )}>
-                          {analyst.health.charAt(0) + analyst.health.slice(1).toLowerCase()}
-                        </span>
-                      </div>
-                      <p className="text-xs text-gray-500">{analyst.lastContact}</p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Social Media Activity */}
-        <div className="xl:col-span-1">
-          <SocialMediaActivity />
+        <div className="bg-white shadow rounded-lg">
+          <Suspense fallback={<div>Loading social media activity...</div>}>
+            <SocialMediaActivity />
+          </Suspense>
         </div>
       </div>
 
-      {/* Briefing Follow-ups Widget */}
-      <div>
-        <ActionItemsWidget 
+      {/* Action Items */}
+      <div className="bg-white shadow rounded-lg">
+        <ActionItemsWidget
           actionItems={actionItems}
           loading={actionItemsLoading}
           onComplete={handleCompleteActionItem}

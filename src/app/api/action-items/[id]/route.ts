@@ -1,5 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@supabase/supabase-js'
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
+}
+if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+}
+
+// Create a Supabase client with the service role key for API routes
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+)
 
 export async function PATCH(
   request: NextRequest,
@@ -23,7 +42,7 @@ export async function PATCH(
     
     if (description !== undefined) updateData.description = description
     if (assignedTo !== undefined) updateData.assignedTo = assignedTo
-    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate).toISOString() : null
     if (priority !== undefined) updateData.priority = priority
     if (category !== undefined) updateData.category = category
     if (notes !== undefined) updateData.notes = notes
@@ -32,7 +51,7 @@ export async function PATCH(
     if (isCompleted !== undefined) {
       updateData.isCompleted = isCompleted
       if (isCompleted) {
-        updateData.completedAt = new Date()
+        updateData.completedAt = new Date().toISOString()
         updateData.completedBy = completedBy || 'System'
       } else {
         updateData.completedAt = null
@@ -40,31 +59,35 @@ export async function PATCH(
       }
     }
 
-    const actionItem = await prisma.actionItem.update({
-      where: { id },
-      data: updateData,
-      include: {
-        briefing: {
-          select: {
-            id: true,
-            title: true,
-            scheduledAt: true,
-            analysts: {
-              include: {
-                analyst: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    company: true
-                  }
-                }
-              },
-              take: 1
-            }
-          }
-        }
-      }
-    })
+    const { data: actionItem, error } = await supabase
+      .from('ActionItem')
+      .update(updateData)
+      .eq('id', id)
+      .select(`
+        *,
+        briefing:Briefing (
+          id,
+          title,
+          scheduledAt,
+          analysts:BriefingAnalyst (
+            analyst:Analyst (
+              firstName,
+              lastName,
+              company
+            )
+          )
+        )
+      `)
+      .single()
+
+    if (error) throw error
+
+    if (!actionItem) {
+      return NextResponse.json(
+        { success: false, error: 'Action item not found' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -72,7 +95,7 @@ export async function PATCH(
         ...actionItem,
         briefing: {
           ...actionItem.briefing,
-          primaryAnalyst: actionItem.briefing.analysts[0]?.analyst || null
+          primaryAnalyst: actionItem.briefing?.analysts?.[0]?.analyst || null
         }
       }
     })
@@ -93,9 +116,12 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    await prisma.actionItem.delete({
-      where: { id }
-    })
+    const { error } = await supabase
+      .from('ActionItem')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
 
     return NextResponse.json({
       success: true,
