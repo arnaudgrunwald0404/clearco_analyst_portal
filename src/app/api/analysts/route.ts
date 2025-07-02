@@ -9,9 +9,16 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
 }
 
+// Create a Supabase client with the service role key for API routes
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
 )
 
 export async function POST(request: NextRequest) {
@@ -134,14 +141,22 @@ export async function GET(request: NextRequest) {
     const { data: analysts, error } = await query
 
     if (error) {
+      console.error('Supabase error:', error)
       throw error
     }
 
+    if (!analysts) {
+      return NextResponse.json({
+        success: true,
+        data: []
+      })
+    }
+
     // Transform the data to match the expected format
-    const transformedAnalysts = analysts?.map(analyst => ({
+    const transformedAnalysts = analysts.map(analyst => ({
       ...analyst,
       coveredTopics: analyst.coveredTopics || []
-    })) || []
+    }))
 
     return NextResponse.json({
       success: true,
