@@ -44,6 +44,8 @@ export async function GET(request: NextRequest) {
       // If no profile exists, create one
       if (!profile && !profileError) {
         console.log('Creating new user profile for:', data.user.id)
+        const timestamp = new Date().toISOString()
+
         const { error: createError } = await supabase
           .from('User')
           .insert({
@@ -51,7 +53,9 @@ export async function GET(request: NextRequest) {
             email: data.user.email || '',
             name: `${data.user.user_metadata?.first_name || data.user.email?.split('@')[0] || ''} ${data.user.user_metadata?.last_name || ''}`.trim(),
             password: 'oauth_user',
-            role: 'ADMIN'
+            role: 'ADMIN',
+            createdAt: timestamp,
+            updatedAt: timestamp
           })
         
         if (createError) {

@@ -65,6 +65,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: user?.email || ''
         }
 
+        const timestamp = new Date().toISOString()
+
         const { error: createError } = await supabase
           .from('User')
           .insert({
@@ -72,7 +74,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: user?.email || '',
             name: `${newProfile.first_name} ${newProfile.last_name}`.trim(),
             password: 'oauth_user', // placeholder for OAuth users
-            role: newProfile.role
+            role: newProfile.role,
+            createdAt: timestamp,
+            updatedAt: timestamp
           })
 
         if (createError) {
