@@ -27363,3 +27363,81 @@ Would search RSS feed: https://www.idc.com/about/rss for terms: "holger, mueller
 ✅ Daily publication discovery completed successfully at 2025-06-28T21:52:02.304Z
 [Sat Jun 28 14:52:03 PDT 2025] Publication discovery completed successfully
 [Sat Jun 28 14:52:03 PDT 2025] ----------------------------------------
+[Wed Jul  2 02:00:01 PDT 2025] Starting publication discovery cron job
+
+> analyst-portal@0.1.0 discover:daily
+> npx tsx src/scripts/daily-publication-discovery.ts
+
+🔍 Starting daily publication discovery job...
+⏰ Started at: 2025-07-02T09:00:06.732Z
+⚠️  GOOGLE_SEARCH_API_KEY not set - Google search will be disabled
+⚠️  BING_SEARCH_API_KEY not set - Bing search will be disabled
+⚠️  No search API keys configured - running in limited mode
+🔍 Using alternative search engines (DuckDuckGo, Direct Web, etc.)
+⚠️  Running in limited mode - consider adding search API keys for better results
+🔍 Starting publication discovery crawl...
+❌ Publication discovery failed: PrismaClientInitializationError: 
+Invalid `prisma.analyst.findMany()` invocation:
+
+
+Can't reach database server at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`
+
+Please make sure your database server is running at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`.
+    at Zn.handleRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:7759)
+    at Zn.handleAndLogRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6784)
+    at Zn.request (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6491)
+    at async l (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:130:9778)
+    at async PublicationDiscoveryCrawler.startFullDiscovery (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/lib/publication-discovery/crawler.ts:62:24)
+    at async main (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/scripts/daily-publication-discovery.ts:57:19) {
+  clientVersion: '6.10.1',
+  errorCode: undefined,
+  retryable: undefined
+}
+❌ Daily publication discovery failed: PrismaClientInitializationError: 
+Invalid `prisma.analyst.findMany()` invocation:
+
+
+Can't reach database server at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`
+
+Please make sure your database server is running at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`.
+    at Zn.handleRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:7759)
+    at Zn.handleAndLogRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6784)
+    at Zn.request (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6491)
+    at async l (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:130:9778)
+    at async PublicationDiscoveryCrawler.startFullDiscovery (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/lib/publication-discovery/crawler.ts:62:24)
+    at async main (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/scripts/daily-publication-discovery.ts:57:19) {
+  clientVersion: '6.10.1',
+  errorCode: undefined,
+  retryable: undefined
+}
+🚨 Sending critical error alert...
+Critical error alert prepared: Publication Discovery Critical Error 🚨
+
+The daily publication discovery has failed completely:
+
+Error: 
+Invalid `prisma.analyst.findMany()` invocation:
+
+
+Can't reach database server at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`
+
+Please make sure your database server is running at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`.
+Stack: PrismaClientInitializationError: 
+Invalid `prisma.analyst.findMany()` invocation:
+
+
+Can't reach database server at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`
+
+Please make sure your database server is running at `db.qimvwwfwakvgfvclqpue.supabase.co:5432`.
+    at Zn.handleRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:7759)
+    at Zn.handleAndLogRequestError (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6784)
+    at Zn.request (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:121:6491)
+    at async l (/Users/arnaudgrunwald/AGcodework/analyst-portal/node_modules/@prisma/client/runtime/library.js:130:9778)
+    at async PublicationDiscoveryCrawler.startFullDiscovery (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/lib/publication-discovery/crawler.ts:62:24)
+    at async main (/Users/arnaudgrunwald/AGcodework/analyst-portal/src/scripts/daily-publication-discovery.ts:57:19)
+
+Time: 2025-07-02T09:00:06.766Z
+
+Please investigate immediately.
+[Wed Jul  2 02:00:06 PDT 2025] Publication discovery failed with exit code 1
+[Wed Jul  2 02:00:07 PDT 2025] ----------------------------------------
