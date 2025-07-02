@@ -116,6 +116,12 @@ async function calculateRelationshipHealth(): Promise<number> {
 }
 
 export async function GET() {
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json(
+      { error: 'Missing DATABASE_URL environment variable' },
+      { status: 500 }
+    )
+  }
   try {
     // Get basic counts
     const [
