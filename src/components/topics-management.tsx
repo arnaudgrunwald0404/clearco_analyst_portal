@@ -16,7 +16,7 @@ import {
   ChevronUp, 
   ChevronDown,
   Star,
-  Target,
+  Sparkles,
   AlertCircle
 } from 'lucide-react'
 
@@ -26,7 +26,6 @@ interface PredefinedTopic {
   category: 'CORE' | 'ADDITIONAL'
   description?: string
   order: number
-  isActive: boolean
   createdAt: string
   updatedAt: string
 }
@@ -37,15 +36,16 @@ interface EditingTopic {
   category: 'CORE' | 'ADDITIONAL'
   description: string
   order: number
-  isActive: boolean
 }
 
 export default function TopicsManagement() {
   const [topics, setTopics] = useState<PredefinedTopic[]>([])
+  const [companyName, setCompanyName] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [editingTopic, setEditingTopic] = useState<EditingTopic | null>(null)
   const [isCreating, setIsCreating] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [simplifying, setSimplifying] = useState(false);
+  const [simplificationResults, setSimplificationResults] = useState<any | null>(null);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -53,6 +53,7 @@ export default function TopicsManagement() {
 
   useEffect(() => {
     fetchTopics()
+    fetchCompanyName()
   }, [])
 
   const fetchTopics = async () => {
@@ -72,6 +73,19 @@ export default function TopicsManagement() {
     }
   }
 
+  const fetchCompanyName = async () => {
+    try {
+      const response = await fetch('/api/settings/general')
+      if (response.ok) {
+        const data = await response.json()
+        setCompanyName(data.companyName || 'Your Company')
+      }
+    } catch (error) {
+      console.error('Error fetching company name:', error)
+      setCompanyName('Your Company') // Fallback
+    }
+  }
+
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message })
     setTimeout(() => setNotification(null), 5000)
@@ -83,8 +97,7 @@ export default function TopicsManagement() {
       name: '',
       category,
       description: '',
-      order: nextOrder,
-      isActive: true
+      order: nextOrder
     })
     setIsCreating(true)
   }
@@ -95,8 +108,7 @@ export default function TopicsManagement() {
       name: topic.name,
       category: topic.category,
       description: topic.description || '',
-      order: topic.order,
-      isActive: topic.isActive
+      order: topic.order
     })
     setIsCreating(false)
   }
@@ -123,8 +135,7 @@ export default function TopicsManagement() {
           name: editingTopic.name.trim(),
           category: editingTopic.category,
           description: editingTopic.description.trim() || null,
-          order: editingTopic.order,
-          isActive: editingTopic.isActive
+          order: editingTopic.order
         }),
       })
 
@@ -205,26 +216,60 @@ export default function TopicsManagement() {
     }
   }
 
-  const toggleTopicActive = async (topic: PredefinedTopic) => {
-    try {
-      const response = await fetch(`/api/settings/topics/${topic.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...topic, isActive: !topic.isActive }),
-      })
-
-      if (response.ok) {
-        await fetchTopics()
-        showNotification('success', `Topic ${!topic.isActive ? 'activated' : 'deactivated'}`)
-      }
-    } catch (error) {
-      console.error('Error toggling topic:', error)
-      showNotification('error', 'Failed to update topic')
-    }
-  }
 
   const coreTopics = topics.filter(t => t.category === 'CORE')
-  const additionalTopics = topics.filter(t => t.category === 'ADDITIONAL')
+  const runTopicSimplification = async () => {
+    setSimplifying(true);
+    setSimplificationResults(null);
+    setNotification(null);
+
+    try {
+      const response = await fetch('/api/settings/topics/simplify', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSimplificationResults(data);
+        showNotification('success', data.message || 'Analysis complete!');
+      } else {
+        throw new Error(data.error || 'Failed to run simplification');
+      }
+    } catch (error) {
+      console.error('Error running topic simplification:', error);
+      showNotification('error', error instanceof Error ? error.message : 'Failed to run simplification');
+    } finally {
+      setSimplifying(false);
+    }
+  };
+
+  const applySimplification = async () => {
+    if (!simplificationResults?.simplifiedTopics) return;
+
+    setSaving(true);
+    try {
+      const response = await fetch('/api/settings/topics/simplify', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ simplifiedTopics: simplificationResults.simplifiedTopics }),
+      });
+
+      if (response.ok) {
+        await fetchTopics();
+        setSimplificationResults(null);
+        showNotification('success', 'Topic simplification applied successfully!');
+      } else {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to apply simplification');
+      }
+    } catch (error) {
+      console.error('Error applying topic simplification:', error);
+      showNotification('error', error instanceof Error ? error.message : 'Failed to apply simplification');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -268,10 +313,7 @@ export default function TopicsManagement() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium flex items-center gap-2">
             <Star className="w-5 h-5 text-yellow-500" />
-            Core Topics
-            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-              Clear Company Strengths
-            </Badge>
+            Core Topics for {companyName || 'Your Company'}
           </h3>
           <Button
             onClick={() => startCreating('CORE')}
@@ -279,7 +321,7 @@ export default function TopicsManagement() {
             className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add Core Topic
+            Add
           </Button>
         </div>
 
@@ -293,7 +335,6 @@ export default function TopicsManagement() {
               onEdit={startEditing}
               onDelete={deleteTopic}
               onMove={moveTopicOrder}
-              onToggleActive={toggleTopicActive}
             />
           ))}
           
@@ -310,15 +351,78 @@ export default function TopicsManagement() {
         </div>
       </div>
 
+      {/* Topic Simplification Section */}
+      <div className="p-6 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-lg font-medium flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              Run Topic Simplification (GPT-Powered)
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Automatically consolidate and simplify your 'Additional Topics' list using AI, while preserving your 'Core Topics'.
+            </p>
+          </div>
+          <Button 
+            onClick={runTopicSimplification}
+            disabled={simplifying || saving}
+            className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white"
+          >
+            {simplifying ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                {simplificationResults ? 'Re-run Analysis' : 'Run Analysis'}
+              </>
+            )}
+          </Button>
+        </div>
+
+        {simplificationResults && (
+          <div className="mt-4 space-y-4">
+            <div className="p-4 rounded-lg bg-white border border-gray-200">
+              <h4 className="font-medium text-gray-800">Analysis Results</h4>
+              <p className="text-sm text-gray-600">Original topics: {simplificationResults.stats.originalCount} | Simplified topics: {simplificationResults.stats.suggestedCount} | Reduction: {simplificationResults.stats.reductionPercentage}%</p>
+            </div>
+
+            {simplificationResults.suggestions.length > 0 && (
+              <div>
+                <h5 className="font-medium mb-2">Suggestions:</h5>
+                <ul className="space-y-2">
+                  {simplificationResults.suggestions.map((s: any, i: number) => (
+                    <li key={i} className="p-3 rounded-lg bg-gray-100 text-sm">
+                      <p><strong>Action:</strong> <span className="capitalize">{s.action}</span></p>
+                      <p><strong>Original:</strong> {s.originalTopics.join(', ')}</p>
+                      <p><strong>New:</strong> {s.newTopic}</p>
+                      <p><strong>Reason:</strong> {s.reasoning}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <Button variant="outline" onClick={() => setSimplificationResults(null)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={applySimplification} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
+                {saving ? 'Applying...' : 'Apply Simplification'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Additional Topics Section */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium flex items-center gap-2">
             <Target className="w-5 h-5 text-blue-500" />
             Additional Topics
-            <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-              Strategic Coverage
-            </Badge>
           </h3>
           <Button
             onClick={() => startCreating('ADDITIONAL')}
@@ -327,7 +431,7 @@ export default function TopicsManagement() {
             className="flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Add Additional Topic
+            Add
           </Button>
         </div>
 
@@ -341,7 +445,6 @@ export default function TopicsManagement() {
               onEdit={startEditing}
               onDelete={deleteTopic}
               onMove={moveTopicOrder}
-              onToggleActive={toggleTopicActive}
             />
           ))}
           
@@ -358,20 +461,6 @@ export default function TopicsManagement() {
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-2">Topic Summary</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-gray-600">Core Topics:</span>
-            <span className="ml-2 font-medium">{coreTopics.filter(t => t.isActive).length} active, {coreTopics.filter(t => !t.isActive).length} inactive</span>
-          </div>
-          <div>
-            <span className="text-gray-600">Additional Topics:</span>
-            <span className="ml-2 font-medium">{additionalTopics.filter(t => t.isActive).length} active, {additionalTopics.filter(t => !t.isActive).length} inactive</span>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
@@ -383,25 +472,19 @@ interface TopicCardProps {
   onEdit: (topic: PredefinedTopic) => void
   onDelete: (id: string, name: string) => void
   onMove: (id: string, direction: 'up' | 'down') => void
-  onToggleActive: (topic: PredefinedTopic) => void
 }
 
-function TopicCard({ topic, isFirst, isLast, onEdit, onDelete, onMove, onToggleActive }: TopicCardProps) {
+function TopicCard({ topic, isFirst, isLast, onEdit, onDelete, onMove }: TopicCardProps) {
   return (
-    <div className={`p-4 border border-gray-200 rounded-lg ${
-      topic.isActive ? 'bg-white' : 'bg-gray-50 opacity-75'
-    }`}>
+    <div className="p-4 border border-gray-200 rounded-lg bg-white">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h4 className={`font-medium ${topic.isActive ? 'text-gray-900' : 'text-gray-500'}`}>
+            <h4 className="font-medium text-gray-900">
               {topic.name}
             </h4>
             {topic.category === 'CORE' && (
               <Star className="w-4 h-4 text-yellow-500" />
-            )}
-            {!topic.isActive && (
-              <Badge variant="secondary" className="text-xs">Inactive</Badge>
             )}
           </div>
           {topic.description && (
@@ -430,18 +513,6 @@ function TopicCard({ topic, isFirst, isLast, onEdit, onDelete, onMove, onToggleA
             >
               <ChevronDown className="w-3 h-3" />
             </Button>
-          </div>
-
-          {/* Active toggle */}
-          <div className="flex items-center gap-2">
-            <Label htmlFor={`active-${topic.id}`} className="text-sm">
-              Active
-            </Label>
-            <Switch
-              id={`active-${topic.id}`}
-              checked={topic.isActive}
-              onCheckedChange={() => onToggleActive(topic)}
-            />
           </div>
 
           {/* Edit button */}
@@ -510,17 +581,6 @@ function TopicEditCard({ topic, isCreating, saving, onChange, onSave, onCancel }
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="topic-active" className="text-sm">
-              Active
-            </Label>
-            <Switch
-              id="topic-active"
-              checked={topic.isActive}
-              onCheckedChange={(checked) => onChange({ ...topic, isActive: checked })}
-            />
-          </div>
-
           <Badge variant="secondary" className={
             topic.category === 'CORE' 
               ? 'bg-yellow-100 text-yellow-800' 

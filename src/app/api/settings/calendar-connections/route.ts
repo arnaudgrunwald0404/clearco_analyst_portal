@@ -26,11 +26,22 @@ function decryptToken(encryptedToken: string): string {
 
 // GET - Fetch all calendar connections for the user
 export async function GET() {
+  console.log('🔍 [Calendar Connections] GET request started')
+  console.log('🕐 [Calendar Connections] Timestamp:', new Date().toISOString())
+  
   try {
     // For now, we'll use a hardcoded user ID
     // In production, this should come from the session/auth
     const userId = 'user-1' // This should be replaced with actual user authentication
+    console.log('👤 [Calendar Connections] Using userId:', userId)
 
+    console.log('🔗 [Calendar Connections] Attempting to connect to database...')
+    
+    // Test database connection first
+    await prisma.$connect()
+    console.log('✅ [Calendar Connections] Database connection successful')
+
+    console.log('📊 [Calendar Connections] Querying calendar connections...')
     const connections = await prisma.calendarConnection.findMany({
       where: {
         userId: userId,
@@ -48,13 +59,34 @@ export async function GET() {
       },
     })
 
+    console.log('📈 [Calendar Connections] Query successful')
+    console.log('📊 [Calendar Connections] Found connections:', connections.length)
+    console.log('📝 [Calendar Connections] Connection details:', JSON.stringify(connections, null, 2))
+
     return NextResponse.json(connections)
   } catch (error) {
-    console.error('Error fetching calendar connections:', error)
+    console.error('❌ [Calendar Connections] Error occurred:')
+    console.error('📝 [Calendar Connections] Error details:', error)
+    console.error('🔍 [Calendar Connections] Error name:', error?.name)
+    console.error('💬 [Calendar Connections] Error message:', error?.message)
+    console.error('📚 [Calendar Connections] Error stack:', error?.stack)
+    
+    // Check if it's a database connection error
+    if (error?.message?.includes('connect') || error?.message?.includes('ECONNREFUSED')) {
+      console.error('🔌 [Calendar Connections] Database connection failed')
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to fetch calendar connections' },
+      { 
+        error: 'Failed to fetch calendar connections',
+        details: error?.message,
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
+  } finally {
+    await prisma.$disconnect()
+    console.log('🔚 [Calendar Connections] Database disconnected')
   }
 }
 

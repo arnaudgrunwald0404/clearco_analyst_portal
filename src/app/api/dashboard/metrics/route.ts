@@ -1,91 +1,82 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-}
-
-// Create a Supabase client with the service role key for API routes
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Get basic counts using Supabase queries
+    // Calculate date 90 days ago
+    const ninetyDaysAgo = new Date()
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
+
+    // Get basic counts using Prisma
     const [
-      { count: totalAnalysts },
-      { count: activeAnalysts },
-      { count: newslettersSent },
-      { count: contentItems },
-      { count: activeAlerts },
-      { count: briefingsThisMonth }
+      totalAnalysts,
+      activeAnalysts,
+      analystsAddedPast90Days,
+      newslettersSentPast90Days,
+      contentItemsPast90Days,
+      activeAlerts,
+      briefingsPast90Days
     ] = await Promise.all([
-      supabase.from('Analyst').select('*', { count: 'exact', head: true }),
-      supabase.from('Analyst').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-      supabase.from('Newsletter').select('*', { count: 'exact', head: true }).eq('status', 'SENT'),
-      supabase.from('Content').select('*', { count: 'exact', head: true }),
-      supabase.from('Alert').select('*', { count: 'exact', head: true }).eq('isRead', false),
-      supabase.from('Briefing').select('*', { count: 'exact', head: true }).gte('scheduledAt', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString())
+      prisma.analyst.count(),
+      prisma.analyst.count({ where: { status: 'ACTIVE' } }),
+      prisma.analyst.count({ where: { createdAt: { gte: ninetyDaysAgo } } }),
+      prisma.newsletter.count({ where: { status: 'SENT', sentAt: { gte: ninetyDaysAgo } } }),
+      prisma.content.count({ where: { createdAt: { gte: ninetyDaysAgo } } }),
+      prisma.alert.count({ where: { isRead: false } }),
+      prisma.briefing.count({ where: { scheduledAt: { gte: ninetyDaysAgo } } })
     ])
 
-    // Calculate engagement rate
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString()
+    // Get detailed content items from past 90 days
+    const recentContentItems = await prisma.content.findMany({
+      where: { createdAt: { gte: ninetyDaysAgo } },
+      select: { id: true, title: true, type: true, createdAt: true, isPublished: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    })
 
+    // Get newly added analysts from past 90 days
+    const newAnalysts = await prisma.analyst.findMany({
+      where: { createdAt: { gte: ninetyDaysAgo } },
+      select: { id: true, firstName: true, lastName: true, company: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10
+    })
+
+    // Calculate engagement metrics
     const [
-      { count: newsletterEngagements },
-      { count: completedBriefings },
-      { count: recentInteractions },
-      { count: calendarMeetings }
+      newsletterEngagements,
+      completedBriefings,
+      recentInteractions,
+      calendarMeetings
     ] = await Promise.all([
-      supabase
-        .from('NewsletterSubscription')
-        .select('*', { count: 'exact', head: true })
-        .or('opened.eq.true,clicked.eq.true')
-        .gte('sentAt', thirtyDaysAgoStr),
-      supabase
-        .from('Briefing')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'COMPLETED')
-        .gte('completedAt', thirtyDaysAgoStr),
-      supabase
-        .from('Interaction')
-        .select('*', { count: 'exact', head: true })
-        .gte('date', thirtyDaysAgoStr),
-      supabase
-        .from('CalendarMeeting')
-        .select('*', { count: 'exact', head: true })
-        .eq('isAnalystMeeting', true)
-        .gte('startTime', thirtyDaysAgoStr)
+      prisma.newsletterSubscription.count({
+        where: {
+          OR: [{ opened: true }, { clicked: true }],
+          sentAt: { gte: ninetyDaysAgo }
+        }
+      }),
+      prisma.briefing.count({
+        where: { status: 'COMPLETED', completedAt: { gte: ninetyDaysAgo } }
+      }),
+      prisma.interaction.count({ where: { date: { gte: ninetyDaysAgo } } }),
+      prisma.calendarMeeting.count({
+        where: { isAnalystMeeting: true, startTime: { gte: ninetyDaysAgo } }
+      })
     ])
 
-    // Calculate engagement rate
-    const totalEngagements = (newsletterEngagements || 0) + (completedBriefings || 0) + 
-                           (recentInteractions || 0) + (calendarMeetings || 0)
-    const engagementRate = (activeAnalysts || 0) > 0 
-      ? Math.min(Math.round((totalEngagements / (activeAnalysts || 1)) * 100), 100)
+    const totalEngagements = newsletterEngagements + completedBriefings + recentInteractions + calendarMeetings
+    const engagementRate = activeAnalysts > 0
+      ? Math.min(Math.round((totalEngagements / activeAnalysts) * 100), 100)
       : 0
 
     // Calculate relationship health
-    const { data: analysts } = await supabase
-      .from('Analyst')
-      .select('relationshipHealth, influenceScore')
-      .eq('status', 'ACTIVE')
+    const analysts = await prisma.analyst.findMany({
+      where: { status: 'ACTIVE' },
+      select: { relationshipHealth: true, influenceScore: true }
+    })
 
     let relationshipHealth = 0
-    if (analysts && analysts.length > 0) {
+    if (analysts.length > 0) {
       const healthScores = analysts.map(analyst => {
         let healthScore = 0
         switch (analyst.relationshipHealth) {
@@ -105,14 +96,17 @@ export async function GET() {
     }
 
     const metrics = {
-      totalAnalysts: totalAnalysts || 0,
-      activeAnalysts: activeAnalysts || 0,
-      newslettersSent: newslettersSent || 0,
-      contentItems: contentItems || 0,
+      totalAnalysts,
+      activeAnalysts,
+      analystsAddedPast90Days,
+      newslettersSentPast90Days,
+      contentItemsPast90Days,
       engagementRate,
-      activeAlerts: activeAlerts || 0,
-      briefingsThisMonth: briefingsThisMonth || 0,
-      relationshipHealth
+      activeAlerts,
+      briefingsPast90Days,
+      relationshipHealth,
+      recentContentItems,
+      newAnalysts
     }
 
     return NextResponse.json(metrics)

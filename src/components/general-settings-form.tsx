@@ -135,18 +135,10 @@ export default function GeneralSettingsForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Message Banner */}
-      {message && (
-        <div className={`p-4 rounded-lg border flex items-center gap-2 ${
-          message.type === 'success' 
-            ? 'bg-green-50 border-green-200 text-green-800' 
-            : 'bg-red-50 border-red-200 text-red-800'
-        }`}>
-          {message.type === 'success' ? (
-            <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          )}
+      {/* Error Message Banner (only show errors at top) */}
+      {message && message.type === 'error' && (
+        <div className="p-4 rounded-lg border flex items-center gap-2 bg-red-50 border-red-200 text-red-800">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <span>{message.text}</span>
         </div>
       )}
@@ -242,8 +234,8 @@ export default function GeneralSettingsForm() {
         </p>
       </div>
 
-      {/* Save Button */}
-      <div className="pt-4">
+      {/* Save Button with inline success message */}
+      <div className="pt-4 flex items-center gap-4">
         <Button
           type="submit"
           disabled={saving}
@@ -252,6 +244,14 @@ export default function GeneralSettingsForm() {
           <Save className="w-4 h-4" />
           {saving ? 'Saving...' : 'Save Settings'}
         </Button>
+        
+        {/* Inline success message */}
+        {message && message.type === 'success' && (
+          <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+            <CheckCircle className="w-4 h-4" />
+            <span>{message.text}</span>
+          </div>
+        )}
       </div>
 
       {/* Settings Info */}

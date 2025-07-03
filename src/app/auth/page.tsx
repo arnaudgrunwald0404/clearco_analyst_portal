@@ -220,7 +220,7 @@ function AuthPageContent() {
                 ClearCompany
               </h2>
               <h3 className="text-xl font-semibold text-purple-800 mb-4">
-                Analyst Portal
+                Industry Analyst Portal
               </h3>
               <h4 className="text-lg font-medium text-gray-800 mb-2">
                 {authMode === 'signin' ? 'Sign In' : 'Sign Up'}

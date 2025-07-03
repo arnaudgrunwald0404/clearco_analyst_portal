@@ -372,6 +372,51 @@ model ActionItem {
   briefing    Briefing  @relation(fields: [briefingId], references: [id], onDelete: Cascade)
 }
 
+model GeneralSettings {
+  id              String   @id @default(cuid())
+  companyName     String   @default("")
+  protectedDomain String   @default("")
+  logoUrl         String   @default("")
+  industryName    String   @default("HR Technology")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("general_settings")
+}
+
+model AnalystPortalSettings {
+  id                String   @id @default(cuid())
+  welcomeQuote      String   @default("")
+  quoteAuthor       String   @default("")
+  authorImageUrl    String   @default("")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("analyst_portal_settings")
+}
+
+model PredefinedTopic {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  category    TopicCategory
+  description String?
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Award {
+  id                String   @id @default(cuid())
+  awardName         String
+  publicationDate   DateTime
+  processStartDate  DateTime
+  contactInfo       String
+  priority          AwardPriority @default(MEDIUM)
+  topics            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 enum Role {
   ADMIN
   EDITOR
@@ -466,30 +511,14 @@ enum SocialPlatform {
   OTHER
 }
 
-model GeneralSettings {
-  id                String    @id @default(cuid())
-  companyName       String    @default("")
-  protectedDomain   String    @default("")
-  logoUrl           String    @default("")
-  industryName      String    @default("HR Technology")
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  @@map("general_settings")
-}
-
-model PredefinedTopic {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  category    TopicCategory
-  description String?
-  order       Int       @default(0)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
 enum TopicCategory {
   CORE
   ADDITIONAL
+}
+
+enum AwardPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }

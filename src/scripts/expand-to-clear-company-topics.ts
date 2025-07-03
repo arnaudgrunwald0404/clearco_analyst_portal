@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -20,8 +20,7 @@ try {
   console.log('⚠️  Could not load .env file')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const prisma = new PrismaClient()
 
 // Expansion mapping to add Clear Company core areas
 const expansionMap: Record<string, string[]> = {
@@ -55,33 +54,21 @@ async function expandToCompanyFocusedTopics() {
   console.log('🔄 Expanding Topics to Clear Company Focus')
   console.log('═'.repeat(50))
   
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Missing Supabase credentials')
-    return
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  
   try {
     // Fetch all analysts with their current topics
     console.log('📊 Fetching analysts and their current topics...')
-    const { data: analysts, error: fetchError } = await supabase
-      .from('Analyst')
-      .select(`
-        id, 
-        firstName, 
-        lastName,
-        AnalystCoveredTopic (
-          topic
-        )
-      `)
-    
-    if (fetchError) {
-      console.error('❌ Error fetching analysts:', fetchError)
-      return
-    }
+    const analysts = await prisma.analyst.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        coveredTopics: {
+          select: { topic: true }
+        }
+      }
+    })
 
-    if (!analysts || analysts.length === 0) {
+    if (analysts.length === 0) {
       console.log('ℹ️  No analysts found')
       return
     }
@@ -91,8 +78,8 @@ async function expandToCompanyFocusedTopics() {
     // Get all current unique topics
     const currentTopics = new Set<string>()
     analysts.forEach(analyst => {
-      if (analyst.AnalystCoveredTopic && Array.isArray(analyst.AnalystCoveredTopic)) {
-        analyst.AnalystCoveredTopic.forEach((topicEntry: any) => {
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        analyst.coveredTopics.forEach((topicEntry) => {
           if (topicEntry.topic && topicEntry.topic.trim()) {
             currentTopics.add(topicEntry.topic.trim())
           }
@@ -148,8 +135,8 @@ async function expandToCompanyFocusedTopics() {
     let updatedCount = 0
 
     for (const analyst of analysts) {
-      if (analyst.AnalystCoveredTopic && Array.isArray(analyst.AnalystCoveredTopic)) {
-        const currentAnalystTopics = analyst.AnalystCoveredTopic.map((t: any) => t.topic)
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        const currentAnalystTopics = analyst.coveredTopics.map((t) => t.topic)
         const newTopics: string[] = []
 
         // Expand each current topic
@@ -174,33 +161,22 @@ async function expandToCompanyFocusedTopics() {
             JSON.stringify(currentAnalystTopics.sort()) !== JSON.stringify(newTopics.sort())) {
           
           // Delete existing topics
-          const { error: deleteError } = await supabase
-            .from('AnalystCoveredTopic')
-            .delete()
-            .eq('analystId', analyst.id)
-          
-          if (deleteError) {
-            console.error(`❌ Error deleting topics for ${analyst.firstName} ${analyst.lastName}:`, deleteError)
-            continue
-          }
+          await prisma.analystCoveredTopic.deleteMany({
+            where: { analystId: analyst.id }
+          })
           
           // Insert new expanded topics
           const topicInserts = newTopics.map(topic => ({
-            id: `topic_${analyst.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             analystId: analyst.id,
             topic: topic
           }))
           
-          const { error: insertError } = await supabase
-            .from('AnalystCoveredTopic')
-            .insert(topicInserts)
+          await prisma.analystCoveredTopic.createMany({
+            data: topicInserts
+          })
           
-          if (insertError) {
-            console.error(`❌ Error inserting topics for ${analyst.firstName} ${analyst.lastName}:`, insertError)
-          } else {
-            console.log(`✅ Updated ${analyst.firstName} ${analyst.lastName}: ${currentAnalystTopics.length} → ${newTopics.length} topics`)
-            updatedCount++
-          }
+          console.log(`✅ Updated ${analyst.firstName} ${analyst.lastName}: ${currentAnalystTopics.length} → ${newTopics.length} topics`)
+          updatedCount++
         }
       }
     }
@@ -214,6 +190,8 @@ async function expandToCompanyFocusedTopics() {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

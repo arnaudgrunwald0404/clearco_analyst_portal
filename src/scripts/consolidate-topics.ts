@@ -1,26 +1,32 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@/lib/supabase/client'
+import { PrismaClient } from '@prisma/client'
 import { consolidateTopics, analyzeTopicConsolidation } from '@/lib/topic-consolidation'
+
+const prisma = new PrismaClient()
 
 async function extractAndConsolidateTopics() {
   console.log('🔍 Extracting current topics from database...')
   
-  const supabase = createClient()
-  
   try {
     // Get all analysts with their covered topics
-    const { data: analysts, error } = await supabase
-      .from('analysts')
-      .select('id, name, covered_topics')
-      .not('covered_topics', 'is', null)
-    
-    if (error) {
-      console.error('❌ Error fetching analysts:', error)
-      return
-    }
+    const analysts = await prisma.analyst.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        coveredTopics: {
+          select: { topic: true }
+        }
+      },
+      where: {
+        coveredTopics: {
+          some: {}
+        }
+      }
+    })
 
-    if (!analysts || analysts.length === 0) {
+    if (analysts.length === 0) {
       console.log('ℹ️  No analysts found with topics')
       return
     }
@@ -28,10 +34,10 @@ async function extractAndConsolidateTopics() {
     // Extract all unique topics
     const allTopics = new Set<string>()
     analysts.forEach(analyst => {
-      if (analyst.covered_topics && Array.isArray(analyst.covered_topics)) {
-        analyst.covered_topics.forEach((topic: string) => {
-          if (topic && topic.trim()) {
-            allTopics.add(topic.trim())
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        analyst.coveredTopics.forEach((topicEntry) => {
+          if (topicEntry.topic && topicEntry.topic.trim()) {
+            allTopics.add(topicEntry.topic.trim())
           }
         })
       }
@@ -83,6 +89,8 @@ async function extractAndConsolidateTopics() {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

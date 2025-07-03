@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert'
 import { NextRequest } from 'next/server'
+import dotenv from 'dotenv'
+
+// Load environment variables from .env file
+dotenv.config()
 
 const originalEnv = { ...process.env }
 

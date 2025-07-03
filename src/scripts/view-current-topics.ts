@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -20,39 +20,26 @@ try {
   console.log('⚠️  Could not load .env file')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const prisma = new PrismaClient()
 
 async function viewCurrentTopics() {
   console.log('🔍 Current Topics in Database')
   console.log('═'.repeat(50))
   
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Missing Supabase credentials')
-    return
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  
   try {
     // Fetch all analysts with their topics
-    const { data: analysts, error: fetchError } = await supabase
-      .from('Analyst')
-      .select(`
-        id, 
-        firstName, 
-        lastName,
-        AnalystCoveredTopic (
-          topic
-        )
-      `)
-    
-    if (fetchError) {
-      console.error('❌ Error fetching analysts:', fetchError)
-      return
-    }
+    const analysts = await prisma.analyst.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        coveredTopics: {
+          select: { topic: true }
+        }
+      }
+    })
 
-    if (!analysts || analysts.length === 0) {
+    if (analysts.length === 0) {
       console.log('ℹ️  No analysts found')
       return
     }
@@ -62,9 +49,9 @@ async function viewCurrentTopics() {
     let analystsWithTopics = 0
     
     analysts.forEach(analyst => {
-      if (analyst.AnalystCoveredTopic && Array.isArray(analyst.AnalystCoveredTopic)) {
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
         analystsWithTopics++
-        analyst.AnalystCoveredTopic.forEach((topicEntry: any) => {
+        analyst.coveredTopics.forEach((topicEntry) => {
           if (topicEntry.topic && topicEntry.topic.trim()) {
             allTopics.add(topicEntry.topic.trim())
           }
@@ -83,6 +70,8 @@ async function viewCurrentTopics() {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

@@ -4,8 +4,18 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
-  console.log('🔄 Google OAuth callback started')
-  console.log('📍 Request URL:', request.url)
+  console.log('\n' + '='.repeat(80))
+  console.log('🔄 [GENERAL OAUTH] Google OAuth callback started')
+  console.log('🕐 [GENERAL OAUTH] Timestamp:', new Date().toISOString())
+  console.log('📍 [GENERAL OAUTH] Request URL:', request.url)
+  console.log('🌐 [GENERAL OAUTH] Request method:', request.method)
+  
+  // Check environment variables
+  console.log('🔍 [GENERAL OAUTH] Environment check:')
+  console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing')
+  console.log('  - NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL || 'Missing')
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
   
   try {
     const { searchParams } = new URL(request.url)

@@ -74,11 +74,13 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
   // Protected admin pages - show sidebar
   if (user && (user.role === 'ADMIN' || user.role === 'EDITOR')) {
     return (
-      <div className="flex h-screen bg-gray-100">
-        <Sidebar />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+      <div className="flex flex-col h-screen bg-gray-100">
+        <div className="flex flex-1">
+          <Sidebar />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
     )
   }

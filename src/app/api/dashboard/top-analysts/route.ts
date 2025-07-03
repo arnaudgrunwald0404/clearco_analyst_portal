@@ -1,24 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-}
-
-// Create a Supabase client with the service role key for API routes
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { prisma } from '@/lib/prisma'
 
 function formatLastContact(date: Date | null): string {
   if (!date) return 'Never'
@@ -38,35 +19,31 @@ function formatLastContact(date: Date | null): string {
 
 export async function GET() {
   try {
-    // Get top analysts sorted by influence score
-    const { data: analysts, error } = await supabase
-      .from('Analyst')
-      .select(`
-        id,
-        firstName,
-        lastName,
-        company,
-        influenceScore,
-        relationshipHealth,
-        lastContactDate,
-        interactions!inner (
-          date
-        ),
-        calendarMeetings!inner (
-          endTime
-        )
-      `)
-      .eq('status', 'ACTIVE')
-      .order('date', { foreignTable: 'interactions', ascending: false })
-      .order('endTime', { foreignTable: 'calendarMeetings', ascending: false })
-      .order('influenceScore', { ascending: false })
-      .limit(5)
-
-    if (error) throw error
-
-    if (!analysts) {
-      return NextResponse.json([])
-    }
+    // Get top analysts with their interactions and calendar meetings
+    const analysts = await prisma.analyst.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        company: true,
+        influenceScore: true,
+        relationshipHealth: true,
+        lastContactDate: true,
+        interactions: {
+          select: { date: true },
+          orderBy: { date: 'desc' },
+          take: 1
+        },
+        calendarMeetings: {
+          select: { endTime: true },
+          orderBy: { endTime: 'desc' },
+          take: 1
+        }
+      },
+      orderBy: { influenceScore: 'desc' },
+      take: 5
+    })
 
     const topAnalysts = analysts.map(analyst => {
       // Find the most recent contact date from various sources
@@ -74,7 +51,7 @@ export async function GET() {
         analyst.lastContactDate,
         analyst.interactions?.[0]?.date,
         analyst.calendarMeetings?.[0]?.endTime
-      ].filter(Boolean) as string[]
+      ].filter(Boolean) as Date[]
 
       const lastContact = contactDates.length > 0 
         ? new Date(Math.max(...contactDates.map(d => new Date(d).getTime())))

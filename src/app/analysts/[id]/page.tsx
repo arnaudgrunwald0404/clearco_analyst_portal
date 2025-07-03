@@ -22,7 +22,9 @@ import {
   Activity,
   Users,
   Award,
-  Briefcase
+  Briefcase,
+  Search,
+  RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -160,6 +162,63 @@ function formatDate(dateString: string) {
 
 export default function AnalystDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [socialSearchLoading, setSocialSearchLoading] = useState({
+    linkedin: false,
+    twitter: false
+  })
+
+  const searchSocialProfile = async (platform: 'linkedin' | 'twitter') => {
+    setSocialSearchLoading(prev => ({ ...prev, [platform]: true }))
+    
+    try {
+      const response = await fetch('/api/analysts/search-social', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystId: params.id,
+          analystName: `${mockAnalyst.firstName} ${mockAnalyst.lastName}`,
+          company: mockAnalyst.company,
+          platform
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.result) {
+          const searchResult = result.result
+          
+          if (searchResult.confidence > 0) {
+            const confirmMessage = `Found ${platform} profile with ${searchResult.confidence}% confidence:\n\n` +
+              `${platform === 'linkedin' ? 'URL' : 'Handle'}: ${searchResult.url || searchResult.handle}\n` +
+              `Reason: ${searchResult.reason}\n\n` +
+              `Would you like to save this to the analyst profile?`
+              
+            if (confirm(confirmMessage)) {
+              // The API already updates the database if confidence > 70%
+              // For lower confidence, we could show in UI or ask user to confirm
+              if (searchResult.confidence > 70) {
+                // Refresh the component to show the new social profile
+                window.location.reload()
+              } else {
+                alert('Profile found but with low confidence. You may want to verify manually.')
+              }
+            }
+          } else {
+            alert(`No reliable ${platform} profile found. ${searchResult.reason}`)
+          }
+        } else {
+          alert('Search failed: ' + (result.error || 'Unknown error'))
+        }
+      } else {
+        alert('Search request failed')
+      }
+    } catch (error) {
+      console.error(`Error searching ${platform} profile:`, error)
+      alert(`Error searching ${platform} profile. Please try again.`)
+    } finally {
+      setSocialSearchLoading(prev => ({ ...prev, [platform]: false }))
+    }
+  }
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: User },

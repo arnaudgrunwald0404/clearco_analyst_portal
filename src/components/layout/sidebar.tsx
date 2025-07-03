@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { AnalystImpersonationModal } from '../analyst-impersonation-modal'
@@ -17,7 +17,8 @@ import {
   MessageSquare,
   LogOut,
   ChevronDown,
-  Calendar
+  Calendar,
+  Award
 } from 'lucide-react'
 
 // Main navigation items (excluding Analyst Portal)
@@ -27,6 +28,7 @@ const mainNavigation = [
   { name: 'Briefings', href: '/briefings', icon: Calendar },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
+  { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
@@ -39,18 +41,52 @@ export function Sidebar() {
   const router = useRouter()
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isImpersonationModalOpen, setIsImpersonationModalOpen] = useState(false)
+  const [logoUrl, setLogoUrl] = useState('')
   const { user, profile, signOut } = useAuth()
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings/general')
+        if (response.ok) {
+          const data = await response.json()
+          setLogoUrl(data.logoUrl || '')
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error)
+      }
+    }
+
+    fetchSettings()
+  }, [])
 
   const handleLogout = async () => {
     try {
+      console.log('Starting forced sign out process...')
       await signOut()
-      router.push('/auth')
-    } catch (error) {
-      console.error('Error signing out:', error)
-      // Fallback: clear local storage and redirect
-      localStorage.removeItem('user')
+      
+      // Additional forced cleanup
+      localStorage.clear()
       sessionStorage.clear()
-      router.push('/auth')
+      
+      // Use window.location for hard redirect to ensure complete session termination
+      window.location.href = '/auth'
+    } catch (error) {
+      console.error('Error during forced sign out:', error)
+      
+      // Fallback: force clear everything and redirect
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      // Clear any remaining auth tokens or state
+      if (typeof document !== 'undefined') {
+        document.cookie.split(";").forEach(function(c) {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      }
+      
+      // Force redirect even if signOut failed
+      window.location.href = '/auth'
     }
   }
 
@@ -100,13 +136,20 @@ export function Sidebar() {
   return (
     <>
       <div className="flex flex-col w-64 bg-white shadow-lg">
-        <div className="flex items-center justify-center h-16 px-6 bg-blue-600">
-          <h1 className="text-xl font-bold text-white">
-            HR Tech Analysts
-          </h1>
-        </div>
-        
-        <nav className="flex-1 px-4 pb-4 mt-6">
+        {/* Logo Section */}
+        {logoUrl && (
+          <div className="flex items-center justify-center h-64 p-6 bg-gray-50 border-b border-gray-200">
+            <img
+              src={logoUrl}
+              alt="Company Logo"
+              className="max-w-full max-h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+        )}
+        <nav className="flex-1 px-4 pb-4 pt-6">
           {/* Main Navigation */}
           <ul className="space-y-2">
             {mainNavigation.map((item) => {
@@ -154,20 +197,20 @@ export function Sidebar() {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 bg-white">
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center w-full p-2 text-left rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
             >
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
                   <span className="text-xs font-medium text-white">{getUserInitials()}</span>
                 </div>
               </div>
               <div className="ml-3 flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-700 truncate">{getDisplayName()}</p>
-                <p className="text-xs text-gray-500 truncate">{getEmail()}</p>
+                <p className="text-sm font-medium text-gray-800 truncate">{getDisplayName()}</p>
+                <p className="text-xs text-gray-600 truncate">{getEmail()}</p>
               </div>
               <ChevronDown className={cn(
                 "w-4 h-4 text-gray-400 transition-transform",

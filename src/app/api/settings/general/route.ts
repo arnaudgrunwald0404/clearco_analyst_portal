@@ -43,9 +43,8 @@ export async function PUT(request: NextRequest) {
       )
     }
     
-    // Validate domain format
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,}|[a-zA-Z]{2,3}\.[a-zA-Z]{2,3})$/
-    if (!domainRegex.test(protectedDomain)) {
+    // Validate domain format - very basic check
+    if (!protectedDomain.includes('.') || protectedDomain.length < 3) {
       return NextResponse.json(
         { error: 'Please enter a valid domain (e.g., company.com)' },
         { status: 400 }
@@ -67,35 +66,42 @@ export async function PUT(request: NextRequest) {
     // Check if settings already exist
     const existingSettings = await prisma.generalSettings.findFirst()
     
+    const updateData = {
+      companyName: companyName.trim(),
+      protectedDomain: protectedDomain.trim().toLowerCase(),
+      logoUrl: logoUrl?.trim() || '',
+      industryName: industryName.trim()
+    }
+    
     let settings
     if (existingSettings) {
       // Update existing settings
       settings = await prisma.generalSettings.update({
         where: { id: existingSettings.id },
-        data: {
-          companyName: companyName.trim(),
-          protectedDomain: protectedDomain.trim().toLowerCase(),
-          logoUrl: logoUrl?.trim() || '',
-          industryName: industryName.trim()
-        }
+        data: updateData
       })
     } else {
       // Create new settings
       settings = await prisma.generalSettings.create({
-        data: {
-          companyName: companyName.trim(),
-          protectedDomain: protectedDomain.trim().toLowerCase(),
-          logoUrl: logoUrl?.trim() || '',
-          industryName: industryName.trim()
-        }
+        data: updateData
       })
     }
     
+    console.log('✅ General settings updated successfully:', settings)
+    
     return NextResponse.json(settings)
   } catch (error) {
-    console.error('Error updating general settings:', error)
+    console.error('❌ Detailed error updating general settings:')
+    console.error('Error type:', typeof error)
+    console.error('Error message:', error instanceof Error ? error.message : String(error))
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Full error object:', error)
+    
     return NextResponse.json(
-      { error: 'Failed to update general settings' },
+      { 
+        error: 'Failed to update general settings',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

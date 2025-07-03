@@ -8,7 +8,7 @@
  * --dry-run: Preview changes without applying them
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { consolidateTopics, analyzeTopicConsolidation } from '../lib/topic-consolidation'
 import * as dotenv from 'dotenv'
 import { readFileSync } from 'fs'
@@ -31,8 +31,7 @@ try {
   console.log('⚠️  Could not load .env file, using existing environment variables')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const prisma = new PrismaClient()
 
 async function applyTopicConsolidation(dryRun: boolean = false) {
   console.log('🔄 Topic Consolidation Script')
@@ -47,28 +46,32 @@ async function applyTopicConsolidation(dryRun: boolean = false) {
   console.log('─'.repeat(50))
 
   // Skip actual database operations for demo
-  if (!supabaseUrl || !supabaseKey) {
-    console.log('⚠️  Supabase credentials not configured. Running in demo mode...\n')
+  if (!process.env.DATABASE_URL) {
+    console.log('⚠️  DATABASE_URL not configured. Running in demo mode...\n')
     await demoConsolidation()
     return
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  
   try {
     // Get all analysts with their covered topics
     console.log('📊 Fetching analysts and their topics...')
-    const { data: analysts, error } = await supabase
-      .from('analysts')
-      .select('id, name, covered_topics')
-      .not('covered_topics', 'is', null)
-    
-    if (error) {
-      console.error('❌ Error fetching analysts:', error)
-      return
-    }
+    const analysts = await prisma.analyst.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        coveredTopics: {
+          select: { topic: true }
+        }
+      },
+      where: {
+        coveredTopics: {
+          some: {}
+        }
+      }
+    })
 
-    if (!analysts || analysts.length === 0) {
+    if (analysts.length === 0) {
       console.log('ℹ️  No analysts found with topics')
       return
     }
@@ -78,10 +81,10 @@ async function applyTopicConsolidation(dryRun: boolean = false) {
     // Extract all unique topics
     const allTopics = new Set<string>()
     analysts.forEach(analyst => {
-      if (analyst.covered_topics && Array.isArray(analyst.covered_topics)) {
-        analyst.covered_topics.forEach((topic: string) => {
-          if (topic && topic.trim()) {
-            allTopics.add(topic.trim())
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        analyst.coveredTopics.forEach((topicEntry) => {
+          if (topicEntry.topic && topicEntry.topic.trim()) {
+            allTopics.add(topicEntry.topic.trim())
           }
         })
       }
@@ -120,23 +123,29 @@ async function applyTopicConsolidation(dryRun: boolean = false) {
     let updatedCount = 0
     
     for (const analyst of analysts) {
-      if (analyst.covered_topics && Array.isArray(analyst.covered_topics)) {
-        const originalTopics = analyst.covered_topics
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        const originalTopics = analyst.coveredTopics.map(t => t.topic)
         const consolidatedTopics = consolidateTopics(originalTopics)
         
         // Only update if there's a difference
         if (JSON.stringify(originalTopics.sort()) !== JSON.stringify(consolidatedTopics.sort())) {
-          const { error: updateError } = await supabase
-            .from('analysts')
-            .update({ covered_topics: consolidatedTopics })
-            .eq('id', analyst.id)
+          // Delete existing topics
+          await prisma.analystCoveredTopic.deleteMany({
+            where: { analystId: analyst.id }
+          })
           
-          if (updateError) {
-            console.error(`❌ Error updating analyst ${analyst.name}:`, updateError)
-          } else {
-            console.log(`✅ Updated ${analyst.name}: ${originalTopics.length} → ${consolidatedTopics.length} topics`)
-            updatedCount++
-          }
+          // Insert consolidated topics
+          const topicInserts = consolidatedTopics.map(topic => ({
+            analystId: analyst.id,
+            topic: topic
+          }))
+          
+          await prisma.analystCoveredTopic.createMany({
+            data: topicInserts
+          })
+          
+          console.log(`✅ Updated ${analyst.firstName} ${analyst.lastName}: ${originalTopics.length} → ${consolidatedTopics.length} topics`)
+          updatedCount++
         }
       }
     }
@@ -148,6 +157,8 @@ async function applyTopicConsolidation(dryRun: boolean = false) {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 
@@ -168,7 +179,7 @@ async function demoConsolidation() {
   console.log('\n✨ Consolidated topics:', analysis.consolidated.join(', '))
   
   console.log('\n💡 To use with real database:')
-  console.log('1. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  console.log('1. Set DATABASE_URL in your .env file')
   console.log('2. Run: npx tsx src/scripts/apply-topic-consolidation.ts --dry-run')
   console.log('3. If satisfied, run: npx tsx src/scripts/apply-topic-consolidation.ts')
 }

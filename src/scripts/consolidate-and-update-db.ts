@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -20,8 +20,7 @@ try {
   console.log('⚠️  Could not load .env file')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const prisma = new PrismaClient()
 
 // Clear Company-focused consolidation - preserving core expertise areas
 const consolidationMap: Record<string, string> = {
@@ -197,101 +196,7 @@ const consolidationMap: Record<string, string> = {
   // Cloud & Technology
   "cloud computing": "Cloud Technology",
   "cloud": "Cloud Technology",
-  "cloud strategy": "Cloud Technology", 
-  "digital infrastructure": "Cloud Technology",
-  "saas": "Cloud Technology",
-  "software as a service": "Cloud Technology",
-  
-  // Security
-  "cybersecurity": "Security",
-  "information security": "Security",
-  "data security": "Security",
-  "security": "Security",
-  
-  // Data & Analytics (but keep People Analytics separate as a Clear Company core area)
-  
-  // Digital Transformation
-  "digital transformation": "Digital Transformation",
-  "digitalization": "Digital Transformation",
-  "digital": "Digital Transformation",
-  "digital strategy": "Digital Transformation",
-  
-  // Automation
-  "process automation": "Automation",
-  "automation": "Automation",
-  "rpa": "Automation",
-  "robotic process automation": "Automation",
-  "workflow optimization": "Automation",
-  
-  // Remove duplicate mappings (already covered in Clear Company core areas)
-  
-  // Leadership
-  "leadership": "Leadership",
-  "leadership development": "Leadership",
-  "management development": "Leadership",
-  "executive development": "Leadership",
-  
-  // Employee Experience
-  "employee experience": "Employee Experience",
-  "ex": "Employee Experience",
-  "employee engagement": "Employee Experience",
-  "employee satisfaction": "Employee Experience",
-  "workplace culture": "Employee Experience",
-  "company culture": "Employee Experience",
-  "organizational culture": "Employee Experience",
-  "culture": "Employee Experience",
-  "employee wellbeing": "Employee Experience",
-  "work-life balance": "Employee Experience",
-  
-  // Future of Work
-  "future of work": "Future of Work",
-  "remote work": "Future of Work",
-  "hybrid work": "Future of Work",
-  "flexible work": "Future of Work",
-  "distributed workforce": "Future of Work",
-  "virtual teams": "Future of Work",
-  "workplace technology": "Future of Work",
-  
-  // Diversity & Inclusion
-  "diversity and inclusion": "Diversity & Inclusion",
-  "d&i": "Diversity & Inclusion",
-  "dei": "Diversity & Inclusion",
-  "diversity": "Diversity & Inclusion",
-  "inclusion": "Diversity & Inclusion",
-  "equity": "Diversity & Inclusion",
-  
-  // Customer Experience
-  "customer experience": "Customer Experience",
-  "cx": "Customer Experience",
-  "cx strategy": "Customer Experience",
-  "user experience": "User Experience",
-  "ux": "User Experience",
-  
-  // Business Strategy
-  "business strategy": "Strategy",
-  "strategy": "Strategy",
-  "strategic planning": "Strategy",
-  "technology strategy": "Strategy",
-  
-  // Additional Enterprise Systems variants
-  "erp systems": "Enterprise Systems",
-  "erp": "Enterprise Systems",
-  "hris": "Enterprise Systems",
-  "hr information systems": "Enterprise Systems",
-  "hr systems": "Enterprise Systems",
-  "hrms": "Enterprise Systems",
-  "hcm": "Enterprise Systems",
-  
-  // Innovation & Research
-  "innovation": "Innovation",
-  "innovation management": "Innovation",
-  "r&d": "Innovation",
-  "research and development": "Innovation",
-  "emerging technologies": "Innovation",
-  "market research": "Market Research",
-  "competitive intelligence": "Market Research",
-  "industry analysis": "Market Research",
-  "market analysis": "Market Research",
+  "cloud strategy": "Cloud Technology",
   
   // Operations
   "operations": "Operations",
@@ -358,33 +263,21 @@ async function consolidateAndUpdateDatabase() {
   console.log('🔄 Consolidating Topics in Database')
   console.log('═'.repeat(50))
   
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Missing Supabase credentials')
-    return
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  
   try {
     // Fetch all analysts with their topics
     console.log('📊 Fetching analysts and their topics...')
-    const { data: analysts, error: fetchError } = await supabase
-      .from('Analyst')
-      .select(`
-        id, 
-        firstName, 
-        lastName,
-        AnalystCoveredTopic (
-          topic
-        )
-      `)
-    
-    if (fetchError) {
-      console.error('❌ Error fetching analysts:', fetchError)
-      return
-    }
+    const analysts = await prisma.analyst.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        coveredTopics: {
+          select: { topic: true }
+        }
+      }
+    })
 
-    if (!analysts || analysts.length === 0) {
+    if (analysts.length === 0) {
       console.log('ℹ️  No analysts found')
       return
     }
@@ -396,9 +289,9 @@ async function consolidateAndUpdateDatabase() {
     let analystsWithTopics = 0
     
     analysts.forEach(analyst => {
-      if (analyst.AnalystCoveredTopic && Array.isArray(analyst.AnalystCoveredTopic)) {
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
         analystsWithTopics++
-        analyst.AnalystCoveredTopic.forEach((topicEntry: any) => {
+        analyst.coveredTopics.forEach((topicEntry) => {
           if (topicEntry.topic && topicEntry.topic.trim()) {
             allTopics.add(topicEntry.topic.trim())
           }
@@ -438,40 +331,29 @@ async function consolidateAndUpdateDatabase() {
     let updatedCount = 0
     
     for (const analyst of analysts) {
-      if (analyst.AnalystCoveredTopic && Array.isArray(analyst.AnalystCoveredTopic)) {
-        const originalTopics = analyst.AnalystCoveredTopic.map((t: any) => t.topic)
+      if (analyst.coveredTopics && Array.isArray(analyst.coveredTopics)) {
+        const originalTopics = analyst.coveredTopics.map((t) => t.topic)
         const newTopics = consolidateTopics(originalTopics)
         
         // Only update if there's a change
         if (JSON.stringify(originalTopics.sort()) !== JSON.stringify(newTopics.sort())) {
           // Delete existing topics for this analyst
-          const { error: deleteError } = await supabase
-            .from('AnalystCoveredTopic')
-            .delete()
-            .eq('analystId', analyst.id)
-          
-          if (deleteError) {
-            console.error(`❌ Error deleting topics for ${analyst.firstName} ${analyst.lastName}:`, deleteError)
-            continue
-          }
+          await prisma.analystCoveredTopic.deleteMany({
+            where: { analystId: analyst.id }
+          })
           
           // Insert new consolidated topics
           const topicInserts = newTopics.map(topic => ({
-            id: `topic_${analyst.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             analystId: analyst.id,
             topic: topic
           }))
           
-          const { error: insertError } = await supabase
-            .from('AnalystCoveredTopic')
-            .insert(topicInserts)
+          await prisma.analystCoveredTopic.createMany({
+            data: topicInserts
+          })
           
-          if (insertError) {
-            console.error(`❌ Error inserting topics for ${analyst.firstName} ${analyst.lastName}:`, insertError)
-          } else {
-            console.log(`✅ Updated ${analyst.firstName} ${analyst.lastName}: ${originalTopics.length} → ${newTopics.length} topics`)
-            updatedCount++
-          }
+          console.log(`✅ Updated ${analyst.firstName} ${analyst.lastName}: ${originalTopics.length} → ${newTopics.length} topics`)
+          updatedCount++
         }
       }
     }
@@ -486,6 +368,8 @@ async function consolidateAndUpdateDatabase() {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

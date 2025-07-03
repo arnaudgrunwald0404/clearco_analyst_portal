@@ -20,8 +20,20 @@ function encryptToken(token: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  console.log('📅 Google Calendar OAuth callback started')
-  console.log('📍 Request URL:', request.nextUrl.toString())
+  console.log('\n' + '='.repeat(80))
+  console.log('📅 [CALENDAR OAUTH] Google Calendar OAuth callback started')
+  console.log('🕐 [CALENDAR OAUTH] Timestamp:', new Date().toISOString())
+  console.log('📍 [CALENDAR OAUTH] Request URL:', request.nextUrl.toString())
+  console.log('🌐 [CALENDAR OAUTH] Request method:', request.method)
+  console.log('📋 [CALENDAR OAUTH] Request headers:', JSON.stringify(Object.fromEntries(request.headers), null, 2))
+  
+  // Check environment variables
+  console.log('🔍 [CALENDAR OAUTH] Environment check:')
+  console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || 'Missing')
+  console.log('  - ENCRYPTION_KEY:', process.env.ENCRYPTION_KEY ? 'Present' : 'Missing')
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
   
   try {
     const searchParams = request.nextUrl.searchParams
@@ -30,11 +42,12 @@ export async function GET(request: NextRequest) {
     const error = searchParams.get('error')
     const scope = searchParams.get('scope')
 
-    console.log('📋 Calendar OAuth Parameters:')
-    console.log('  - Code:', code ? 'Present' : 'Missing')
-    console.log('  - State:', state ? 'Present' : 'Missing')
+    console.log('📋 [CALENDAR OAUTH] OAuth Parameters:')
+    console.log('  - Code:', code ? `Present (${code.substring(0, 20)}...)` : 'Missing')
+    console.log('  - State:', state ? `Present (${state.substring(0, 20)}...)` : 'Missing')
     console.log('  - Error:', error || 'None')
     console.log('  - Scope:', scope || 'None')
+    console.log('📊 [CALENDAR OAUTH] All search params:', Object.fromEntries(searchParams))
 
     if (error) {
       return NextResponse.redirect(
@@ -51,16 +64,38 @@ export async function GET(request: NextRequest) {
     // Decode the state
     let connectionData
     try {
+      console.log('🔐 [CALENDAR OAUTH] Decoding state parameter...')
       const decodedState = Buffer.from(state, 'base64').toString('utf-8')
+      console.log('📄 [CALENDAR OAUTH] Decoded state:', decodedState)
       connectionData = JSON.parse(decodedState)
+      console.log('📊 [CALENDAR OAUTH] Parsed state data:', connectionData)
     } catch (e) {
+      console.error('❌ [CALENDAR OAUTH] Failed to decode state:', e)
       return NextResponse.redirect(
         new URL('/settings?error=invalid_state', request.url)
       )
     }
 
     // Exchange the authorization code for access and refresh tokens
-    const { tokens } = await oauth2Client.getToken(code)
+    console.log('🔄 [CALENDAR OAUTH] Exchanging authorization code for tokens...')
+    console.log('🗝️ [CALENDAR OAUTH] Using client ID:', process.env.GOOGLE_CLIENT_ID)
+    console.log('🔗 [CALENDAR OAUTH] Using redirect URI:', process.env.GOOGLE_REDIRECT_URI)
+    
+    let tokens
+    try {
+      const tokenResponse = await oauth2Client.getToken(code)
+      tokens = tokenResponse.tokens
+      console.log('✅ [CALENDAR OAUTH] Token exchange successful')
+      console.log('🗝️ [CALENDAR OAUTH] Token types received:', Object.keys(tokens))
+      console.log('⏰ [CALENDAR OAUTH] Token expiry:', tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : 'None')
+    } catch (tokenError) {
+      console.error('❌ [CALENDAR OAUTH] Token exchange failed:')
+      console.error('📝 [CALENDAR OAUTH] Token error details:', tokenError)
+      console.error('💬 [CALENDAR OAUTH] Token error message:', tokenError?.message)
+      return NextResponse.redirect(
+        new URL('/settings?error=token_exchange_failed', request.url)
+      )
+    }
     
     if (!tokens.access_token) {
       return NextResponse.redirect(
@@ -72,10 +107,24 @@ export async function GET(request: NextRequest) {
     oauth2Client.setCredentials(tokens)
 
     // Get user information
+    console.log('👤 [CALENDAR OAUTH] Getting user information...')
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client })
-    const userInfo = await oauth2.userinfo.get()
+    let userInfo
+    try {
+      userInfo = await oauth2.userinfo.get()
+      console.log('✅ [CALENDAR OAUTH] User info retrieved successfully')
+      console.log('📝 [CALENDAR OAUTH] User email:', userInfo.data.email)
+      console.log('📝 [CALENDAR OAUTH] User name:', userInfo.data.name)
+      console.log('📝 [CALENDAR OAUTH] User ID:', userInfo.data.id)
+    } catch (userError) {
+      console.error('❌ [CALENDAR OAUTH] Failed to get user info:', userError)
+      return NextResponse.redirect(
+        new URL('/settings?error=user_info_failed', request.url)
+      )
+    }
 
     if (!userInfo.data.email) {
+      console.error('❌ [CALENDAR OAUTH] No email found in user info')
       return NextResponse.redirect(
         new URL('/settings?error=no_user_email', request.url)
       )
@@ -97,14 +146,42 @@ export async function GET(request: NextRequest) {
     // For now, we'll use a hardcoded user ID
     // In production, this should come from the session/auth
     const userId = 'user-1'
+    console.log('👤 [CALENDAR OAUTH] Using hardcoded userId:', userId)
 
     // Check if this Google account is already connected
-    const existingConnection = await prisma.calendarConnection.findFirst({
-      where: {
-        userId: userId,
-        googleAccountId: userInfo.data.id!,
-      },
-    })
+    console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
+    console.log('🔑 [CALENDAR OAUTH] Looking for userId:', userId)
+    console.log('🔑 [CALENDAR OAUTH] Looking for googleAccountId:', userInfo.data.id)
+    
+    let existingConnection
+    try {
+      await prisma.$connect()
+      console.log('✅ [CALENDAR OAUTH] Database connection established')
+      
+      existingConnection = await prisma.calendarConnection.findFirst({
+        where: {
+          userId: userId,
+          googleAccountId: userInfo.data.id!,
+        },
+      })
+      
+      console.log('📊 [CALENDAR OAUTH] Existing connection query result:', existingConnection ? 'Found' : 'Not found')
+      if (existingConnection) {
+        console.log('📝 [CALENDAR OAUTH] Existing connection details:', {
+          id: existingConnection.id,
+          title: existingConnection.title,
+          email: existingConnection.email,
+          isActive: existingConnection.isActive
+        })
+      }
+    } catch (dbError) {
+      console.error('❌ [CALENDAR OAUTH] Database connection/query failed:')
+      console.error('📝 [CALENDAR OAUTH] DB Error details:', dbError)
+      console.error('💬 [CALENDAR OAUTH] DB Error message:', dbError?.message)
+      return NextResponse.redirect(
+        new URL('/settings?error=database_connection_failed', request.url)
+      )
+    }
 
     let connectionId: string
     

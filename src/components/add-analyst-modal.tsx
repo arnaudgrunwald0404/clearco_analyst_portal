@@ -349,36 +349,26 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
 
       console.log('Analysts to import:', analystsToImport)
 
-      // Import analysts one by one (could be optimized with bulk API endpoint)
+      // Use bulk API endpoint for better performance
+      const response = await fetch('/api/analysts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analysts: analystsToImport })
+      })
+
       let successCount = 0
       let errorCount = 0
-      const errors: string[] = []
+      let errors: string[] = []
 
-      for (const analyst of analystsToImport) {
-        try {
-          // Convert coveredTopics array to empty for API
-          const apiData = {
-            ...analyst,
-            eligibleNewsletters: analyst.eligibleNewsletters?.length > 0 ? analyst.eligibleNewsletters.join(',') : null
-          }
-
-          const response = await fetch('/api/analysts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(apiData)
-          })
-
-          if (response.ok) {
-            successCount++
-          } else {
-            const errorData = await response.json()
-            errorCount++
-            errors.push(`${analyst.firstName} ${analyst.lastName}: ${errorData.error || 'Unknown error'}`)
-          }
-        } catch (error) {
-          errorCount++
-          errors.push(`${analyst.firstName} ${analyst.lastName}: Network error`)
-        }
+      if (response.ok) {
+        const result = await response.json()
+        successCount = result.data.count
+        errors = result.data.errors || []
+        errorCount = errors.length
+      } else {
+        const errorData = await response.json()
+        errorCount = analystsToImport.length
+        errors = [errorData.error || 'Failed to import analysts']
       }
 
       // Show results
@@ -946,7 +936,7 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
                       </h3>
                       <div className="text-center">
                         <p className="text-gray-600 mb-2">
-                          Successfully imported <span className="font-semibold text-green-600">{bulkData?.successCount}</span> analysts!
+                          Successfully imported <span className="font-semibold text-green-600">{bulkData?.successCount ?? '0'}</span> analysts!
                         </p>
                         {bulkData?.errorCount && bulkData.errorCount > 0 && (
                           <p className="text-sm text-amber-600">

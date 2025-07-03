@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -21,56 +21,56 @@ try {
   console.log('⚠️  Could not load .env file')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const prisma = new PrismaClient()
 
 async function checkDatabase() {
   console.log('🔍 Checking database connection...')
-  console.log('URL:', supabaseUrl)
-  console.log('Key (first 20 chars):', supabaseKey.substring(0, 20) + '...')
-  
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  console.log('DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...')
   
   try {
-    // Try to list tables
-    const { data: tables, error } = await supabase.rpc('get_schema_tables')
-    if (error) {
-      console.log('Cannot list tables, trying direct query...')
-      
-      // Try a simple query to see what tables exist
-      const { data, error: queryError } = await supabase
-        .from('analysts')
-        .select('count(*)')
-        .limit(1)
-      
-      if (queryError) {
-        console.error('❌ Query error:', queryError)
-        
-        // Try with different table names
-        const possibleTables = ['analysts', 'user_profiles', 'profiles']
-        for (const table of possibleTables) {
-          const { data, error } = await supabase
-            .from(table)
-            .select('*')
-            .limit(1)
-          
-          if (!error) {
-            console.log(`✅ Found table: ${table}`)
-            console.log('Sample record:', data)
-          } else {
-            console.log(`❌ No table: ${table}`)
-          }
-        }
-      } else {
-        console.log('✅ Connected to analysts table')
-        console.log('Count data:', data)
+    // Test connection with a simple query
+    await prisma.$connect()
+    console.log('✅ Connected to database')
+    
+    // Try to query different models to check if they exist
+    const models = [
+      { name: 'analyst', query: () => prisma.analyst.count() },
+      { name: 'user', query: () => prisma.user.count() },
+      { name: 'newsletter', query: () => prisma.newsletter.count() },
+      { name: 'briefing', query: () => prisma.briefing.count() },
+      { name: 'actionItem', query: () => prisma.actionItem.count() },
+      { name: 'award', query: () => prisma.award.count() }
+    ]
+    
+    console.log('\n📊 Checking model accessibility:')
+    for (const model of models) {
+      try {
+        const count = await model.query()
+        console.log(`✅ ${model.name}: ${count} records`)
+      } catch (error) {
+        console.log(`❌ ${model.name}: Error - ${error instanceof Error ? error.message : 'Unknown error'}`)
       }
-    } else {
-      console.log('✅ Available tables:', tables)
+    }
+    
+    // Try to get a sample analyst record
+    try {
+      const sampleAnalyst = await prisma.analyst.findFirst({
+        select: { id: true, firstName: true, lastName: true, email: true }
+      })
+      if (sampleAnalyst) {
+        console.log('\n📋 Sample analyst record:')
+        console.log(sampleAnalyst)
+      } else {
+        console.log('\n📋 No analyst records found')
+      }
+    } catch (error) {
+      console.log('\n❌ Error fetching sample analyst:', error instanceof Error ? error.message : 'Unknown error')
     }
     
   } catch (error) {
     console.error('❌ Connection error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

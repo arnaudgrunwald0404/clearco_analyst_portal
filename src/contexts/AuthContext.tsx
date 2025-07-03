@@ -131,9 +131,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOut = async () => {
-    await supabase.auth.signOut()
-    setUser(null)
-    setProfile(null)
+    try {
+      // Force sign out from Supabase
+      await supabase.auth.signOut({ scope: 'global' })
+      
+      // Clear all local state
+      setUser(null)
+      setProfile(null)
+      
+      // Clear all browser storage
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      // Clear any cookies (if any were set)
+      if (typeof document !== 'undefined') {
+        document.cookie.split(";").forEach(function(c) {
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      }
+      
+      console.log('Forced sign out completed successfully')
+    } catch (error) {
+      console.error('Error during forced sign out:', error)
+      
+      // Even if Supabase sign out fails, clear local state and storage
+      setUser(null)
+      setProfile(null)
+      localStorage.clear()
+      sessionStorage.clear()
+      
+      // Force redirect to auth page after clearing everything
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth'
+      }
+    }
   }
 
   useEffect(() => {

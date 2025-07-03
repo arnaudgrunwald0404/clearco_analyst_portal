@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const prisma = new PrismaClient()
 
 export async function PUT(
   request: NextRequest,
@@ -11,7 +10,7 @@ export async function PUT(
   try {
     const { id } = params
     const body = await request.json()
-    const { name, category, description, order, isActive } = body
+    const { name, category, description, order } = body
 
     if (!name || !category) {
       return NextResponse.json(
@@ -27,15 +26,16 @@ export async function PUT(
       )
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Check if another topic with the same name exists (excluding current topic)
-    const { data: existingTopic } = await supabase
-      .from('PredefinedTopic')
-      .select('id')
-      .eq('name', name)
-      .neq('id', id)
-      .single()
+    const existingTopic = await prisma.predefinedTopic.findFirst({
+      where: {
+        name: name.trim(),
+        NOT: {
+          id: id
+        }
+      }
+    })
 
     if (existingTopic) {
       return NextResponse.json(
@@ -45,35 +45,27 @@ export async function PUT(
     }
 
     // Update topic
-    const { data: updatedTopic, error } = await supabase
-      .from('PredefinedTopic')
-      .update({
-        name: name.trim(),
-        category,
-        description: description?.trim() || null,
-        order: order || 0,
-        isActive: isActive !== undefined ? isActive : true
+    try {
+      const updatedTopic = await prisma.predefinedTopic.update({
+        where: { id },
+        data: {
+          name: name.trim(),
+          category,
+          description: description?.trim() || null,
+          order: order || 0
+        }
       })
-      .eq('id', id)
-      .select()
-      .single()
 
-    if (error) {
-      console.error('Error updating topic:', error)
-      return NextResponse.json(
-        { error: 'Failed to update topic' },
-        { status: 500 }
-      )
+      return NextResponse.json(updatedTopic)
+    } catch (prismaError: any) {
+      if (prismaError.code === 'P2025') {
+        return NextResponse.json(
+          { error: 'Topic not found' },
+          { status: 404 }
+        )
+      }
+      throw prismaError
     }
-
-    if (!updatedTopic) {
-      return NextResponse.json(
-        { error: 'Topic not found' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json(updatedTopic)
   } catch (error) {
     console.error('Error in topic PUT API:', error)
     return NextResponse.json(
@@ -89,14 +81,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = params
-    const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Check if topic exists and get its name for response
-    const { data: topic } = await supabase
-      .from('PredefinedTopic')
-      .select('name')
-      .eq('id', id)
-      .single()
+    const topic = await prisma.predefinedTopic.findUnique({
+      where: { id },
+      select: { name: true }
+    })
 
     if (!topic) {
       return NextResponse.json(
@@ -106,21 +96,12 @@ export async function DELETE(
     }
 
     // Check if topic is currently being used by any analysts
-    const { data: usedByAnalysts, error: checkError } = await supabase
-      .from('AnalystCoveredTopic')
-      .select('analystId')
-      .eq('topic', topic.name)
-      .limit(1)
+    const usedByAnalysts = await prisma.analystCoveredTopic.findFirst({
+      where: { topic: topic.name },
+      select: { analystId: true }
+    })
 
-    if (checkError) {
-      console.error('Error checking topic usage:', checkError)
-      return NextResponse.json(
-        { error: 'Failed to check topic usage' },
-        { status: 500 }
-      )
-    }
-
-    if (usedByAnalysts && usedByAnalysts.length > 0) {
+    if (usedByAnalysts) {
       return NextResponse.json(
         { error: 'Cannot delete topic that is currently assigned to analysts' },
         { status: 409 }
@@ -128,21 +109,19 @@ export async function DELETE(
     }
 
     // Delete topic
-    const { error } = await supabase
-      .from('PredefinedTopic')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      console.error('Error deleting topic:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete topic' },
-        { status: 500 }
-      )
-    }
+    await prisma.predefinedTopic.delete({
+      where: { id }
+    })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Topic not found' },
+        { status: 404 }
+      )
+    }
+    
     console.error('Error in topic DELETE API:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

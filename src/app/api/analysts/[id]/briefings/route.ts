@@ -11,7 +11,24 @@ export async function GET(
     // Fetch briefing history ordered by most recent first
     const briefings = await prisma.briefing.findMany({
       where: {
-        analystId: id
+        analysts: {
+          some: {
+            analystId: id
+          }
+        }
+      },
+      include: {
+        analysts: {
+          include: {
+            analyst: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
         scheduledAt: 'desc'

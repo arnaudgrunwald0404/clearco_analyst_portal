@@ -1,24 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-}
-
-// Create a Supabase client with the service role key for API routes
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-)
+import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,53 +8,49 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority')
     const assignedTo = searchParams.get('assignedTo')
 
-    let query = supabase
-      .from('ActionItem')
-      .select(`
-        *,
-        briefing:Briefing (
-          id,
-          title,
-          scheduledAt,
-          analysts:BriefingAnalyst (
-            analyst:Analyst (
-              firstName,
-              lastName,
-              company
-            )
-          )
-        )
-      `)
-      .order('isCompleted', { ascending: true })
-      .order('priority', { ascending: false })
-      .order('dueDate', { ascending: true })
-      .order('createdAt', { ascending: false })
-
-    // Apply filters
+    // Build where clause
+    const where: any = {}
+    
     if (status === 'pending') {
-      query = query.eq('isCompleted', false)
+      where.isCompleted = false
     } else if (status === 'completed') {
-      query = query.eq('isCompleted', true)
+      where.isCompleted = true
     }
     
     if (priority) {
-      query = query.eq('priority', priority)
+      where.priority = priority
     }
     
     if (assignedTo) {
-      query = query.eq('assignedTo', assignedTo)
+      where.assignedTo = assignedTo
     }
 
-    const { data: actionItems, error } = await query
-
-    if (error) throw error
-
-    if (!actionItems) {
-      return NextResponse.json({
-        success: true,
-        data: []
-      })
-    }
+    const actionItems = await prisma.actionItem.findMany({
+      where,
+      include: {
+        briefing: {
+          include: {
+            analysts: {
+              include: {
+                analyst: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    company: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { isCompleted: 'asc' },
+        { priority: 'desc' },
+        { dueDate: 'asc' },
+        { createdAt: 'desc' }
+      ]
+    })
 
     const processedItems = actionItems.map(item => ({
       ...item,
@@ -119,39 +96,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the action item
-    const { data: actionItem, error: createError } = await supabase
-      .from('ActionItem')
-      .insert({
+    const actionItem = await prisma.actionItem.create({
+      data: {
         briefingId,
         description,
         assignedTo,
         assignedBy,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        dueDate: dueDate ? new Date(dueDate) : null,
         priority,
         category,
         notes
-      })
-      .select(`
-        *,
-        briefing:Briefing (
-          id,
-          title,
-          analysts:BriefingAnalyst (
-            analyst:Analyst (
-              firstName,
-              lastName,
-              company
-            )
-          )
-        )
-      `)
-      .single()
-
-    if (createError) throw createError
-
-    if (!actionItem) {
-      throw new Error('Failed to create action item')
-    }
+      },
+      include: {
+        briefing: {
+          include: {
+            analysts: {
+              include: {
+                analyst: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    company: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
 
     return NextResponse.json({
       success: true,

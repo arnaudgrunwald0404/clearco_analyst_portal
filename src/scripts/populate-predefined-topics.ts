@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 
-import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -20,8 +20,7 @@ try {
   console.log('⚠️  Could not load .env file')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const prisma = new PrismaClient()
 
 // Clear Company Core Topics (Preferred)
 const coreTopics = [
@@ -61,47 +60,25 @@ async function populatePredefinedTopics() {
   console.log('🔄 Populating Predefined Topics Table')
   console.log('═'.repeat(50))
   
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Missing Supabase credentials')
-    return
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
-  
   try {
     console.log('🗑️  Clearing existing predefined topics...')
     
     // Clear existing topics
-    const { error: deleteError } = await supabase
-      .from('PredefinedTopic')
-      .delete()
-      .neq('id', 'nonexistent') // Delete all
-    
-    if (deleteError) {
-      console.error('❌ Error clearing existing topics:', deleteError)
-      return
-    }
-
+    await prisma.predefinedTopic.deleteMany({})
     console.log('✅ Cleared existing topics')
 
     // Insert Core Topics
     console.log('\n📊 Inserting Core Topics (Clear Company Preferred)...')
     const coreTopicsToInsert = coreTopics.map(topic => ({
       name: topic.name,
-      category: 'CORE',
+      category: 'CORE' as const,
       order: topic.order,
-      description: `Core Clear Company expertise area: ${topic.name}`,
-      isActive: true
+      description: `Core Clear Company expertise area: ${topic.name}`
     }))
 
-    const { error: coreError } = await supabase
-      .from('PredefinedTopic')
-      .insert(coreTopicsToInsert)
-
-    if (coreError) {
-      console.error('❌ Error inserting core topics:', coreError)
-      return
-    }
+    await prisma.predefinedTopic.createMany({
+      data: coreTopicsToInsert
+    })
 
     console.log(`✅ Inserted ${coreTopics.length} core topics`)
 
@@ -109,53 +86,41 @@ async function populatePredefinedTopics() {
     console.log('\n📊 Inserting Additional Strategic Topics...')
     const additionalTopicsToInsert = additionalTopics.map(topic => ({
       name: topic.name,
-      category: 'ADDITIONAL',
+      category: 'ADDITIONAL' as const,
       order: topic.order,
-      description: `Strategic topic for comprehensive analyst coverage: ${topic.name}`,
-      isActive: true
+      description: `Strategic topic for comprehensive analyst coverage: ${topic.name}`
     }))
 
-    const { error: additionalError } = await supabase
-      .from('PredefinedTopic')
-      .insert(additionalTopicsToInsert)
-
-    if (additionalError) {
-      console.error('❌ Error inserting additional topics:', additionalError)
-      return
-    }
+    await prisma.predefinedTopic.createMany({
+      data: additionalTopicsToInsert
+    })
 
     console.log(`✅ Inserted ${additionalTopics.length} additional topics`)
 
     // Verify insertion
-    const { data: allTopics, error: verifyError } = await supabase
-      .from('PredefinedTopic')
-      .select('*')
-      .order('order')
-
-    if (verifyError) {
-      console.error('❌ Error verifying topics:', verifyError)
-      return
-    }
+    const allTopics = await prisma.predefinedTopic.findMany({
+      orderBy: { order: 'asc' }
+    })
 
     console.log('\n🎉 Population Complete!')
     console.log('─'.repeat(50))
-    console.log(`✅ Total topics inserted: ${allTopics?.length || 0}`)
+    console.log(`✅ Total topics inserted: ${allTopics.length}`)
     
-    const coreCount = allTopics?.filter(t => t.category === 'CORE').length || 0
-    const additionalCount = allTopics?.filter(t => t.category === 'ADDITIONAL').length || 0
+    const coreCount = allTopics.filter(t => t.category === 'CORE').length
+    const additionalCount = allTopics.filter(t => t.category === 'ADDITIONAL').length
     
     console.log(`✅ Core topics: ${coreCount}`)
     console.log(`✅ Additional topics: ${additionalCount}`)
 
     console.log('\n📋 Core Topics (Clear Company Preferred):')
     console.log('─'.repeat(50))
-    allTopics?.filter(t => t.category === 'CORE').forEach((topic, index) => {
+    allTopics.filter(t => t.category === 'CORE').forEach((topic, index) => {
       console.log(`${index + 1}. ${topic.name}`)
     })
 
     console.log('\n📋 Additional Strategic Topics:')
     console.log('─'.repeat(50))
-    allTopics?.filter(t => t.category === 'ADDITIONAL').forEach((topic, index) => {
+    allTopics.filter(t => t.category === 'ADDITIONAL').forEach((topic, index) => {
       console.log(`${index + 1}. ${topic.name}`)
     })
 
@@ -166,6 +131,8 @@ async function populatePredefinedTopics() {
 
   } catch (error) {
     console.error('❌ Error:', error)
+  } finally {
+    await prisma.$disconnect()
   }
 }
 

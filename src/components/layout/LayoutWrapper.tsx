@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Sidebar } from './sidebar'
+import Header from '@/components/ui/Header'
 import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -36,7 +37,10 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        {children}
+        <Header />
+        <div className="p-6">
+          {children}
+        </div>
       </main>
     </div>
   )

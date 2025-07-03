@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { getRandomBannerImagePath } from '@/lib/banner-utils'
 import {
   FileText,
   MessageSquare,
@@ -20,10 +21,9 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/portal', icon: Home },
-  { name: 'Publications', href: '/portal/content', icon: FileText },
-  { name: 'Briefings (8)', href: '/portal/briefings', icon: Calendar },
-  { name: 'Analyst Testimonials', href: '/portal/testimonials', icon: MessageSquare },
-  { name: 'News', href: '/portal/news', icon: Newspaper },
+  { name: 'Your Publications', href: '/portal/content', icon: FileText },
+  { name: 'Your Briefings (8)', href: '/portal/briefings', icon: Calendar },
+  { name: 'Peer Testimonials', href: '/portal/testimonials', icon: MessageSquare },
 ]
 
 export default function PortalLayout({
@@ -34,8 +34,24 @@ export default function PortalLayout({
   const pathname = usePathname()
   const [isLoggedIn, setIsLoggedIn] = useState(true) // For now, assume logged in
   const [impersonatedAnalyst, setImpersonatedAnalyst] = useState<any>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [bannerImage, setBannerImage] = useState<string>('')
+  const [companySettings, setCompanySettings] = useState<any>(null)
 
-  // Load impersonated analyst from sessionStorage
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (!target.closest('.user-dropdown')) {
+        setIsDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Load impersonated analyst from sessionStorage and set persistent banner per session
   useEffect(() => {
     const stored = sessionStorage.getItem('impersonatedAnalyst')
     if (stored) {
@@ -45,6 +61,28 @@ export default function PortalLayout({
         console.error('Error parsing impersonated analyst:', error)
       }
     }
+    
+    // Get or set a banner image for this session (persist per session)
+    let sessionBanner = sessionStorage.getItem('portalBannerImage')
+    if (!sessionBanner) {
+      sessionBanner = getRandomBannerImagePath()
+      sessionStorage.setItem('portalBannerImage', sessionBanner)
+    }
+    setBannerImage(sessionBanner)
+  }, [])
+
+  // Fetch company settings
+  useEffect(() => {
+    const fetchCompanySettings = async () => {
+      try {
+        const response = await fetch('/api/settings/general')
+        const data = await response.json()
+        setCompanySettings(data)
+      } catch (error) {
+        console.error('Error fetching company settings:', error)
+      }
+    }
+    fetchCompanySettings()
   }, [])
 
   // Use impersonated analyst data or fallback to default
@@ -52,7 +90,7 @@ export default function PortalLayout({
     firstName: 'Sarah',
     lastName: 'Chen',
     email: 'sarah.chen@clearcompany.com',
-    company: 'ClearCompany',
+    company: companySettings?.companyName || 'ClearCompany',
     title: 'Vice President Analyst'
   }
 
@@ -98,93 +136,122 @@ export default function PortalLayout({
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            {/* Logo */}
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">
-                HR Tech Analysts Portal
-              </h1>
-            </div>
+      {/* Combined Banner with Header and Navigation Overlay */}
+      {bannerImage && (
+        <div className="relative w-full h-48 bg-cover bg-center bg-no-repeat" 
+             style={{ backgroundImage: `url(${bannerImage})` }}>
+          
+          {/* Gradient overlay for better readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/60" />
+          
+          {/* Header content overlay */}
+          <div className="relative z-10 h-full flex flex-col">
+            {/* Centered header content - moved up by half tab height (16px) to center above tabs */}
+            <div className="flex-1 flex items-center justify-center" style={{ marginBottom: '16px' }}>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <div className="flex justify-between items-center">
+                  {/* Title */}
+                  <div className="flex items-center">
+                    <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Atkinson Hyperlegible, system-ui, -apple-system, sans-serif' }}>
+                      {companySettings?.companyName || 'ClearCompany'} Industry Analyst Portal
+                    </h1>
+                  </div>
 
-            {/* User menu */}
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600">
-                <Bell className="w-5 h-5" />
-              </button>
-              
-              {/* ClearCompany Admin Link */}
-              {isClearCompanyUser && (
-                <Link
-                  href="/"
-                  className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Back to Admin Dashboard"
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Admin</span>
-                  <ExternalLink className="w-3 h-3 ml-1" />
-                </Link>
-              )}
-              
-              <div className="flex items-center space-x-3">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs font-medium text-white">
-                      {analystUser.firstName.charAt(0)}{analystUser.lastName.charAt(0)}
-                    </span>
+                  {/* User menu */}
+                  <div className="flex items-center space-x-4">
+                    <button className="p-2 text-white/80 hover:text-white">
+                      <Bell className="w-5 h-5" />
+                    </button>
+                    
+                    {/* ClearCompany Admin Link */}
+                    {isClearCompanyUser && (
+                      <Link
+                        href="/"
+                        className="flex items-center px-3 py-2 text-sm font-medium text-white/90 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        title="Back to Admin Dashboard"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        <span className="hidden sm:inline">Admin</span>
+                        <ExternalLink className="w-3 h-3 ml-1" />
+                      </Link>
+                    )}
+                    
+                    <div className="relative user-dropdown">
+                      <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="flex items-center space-x-3 hover:bg-white/10 rounded-lg p-2 transition-colors border border-white/30 backdrop-blur-sm"
+                      >
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                            <span className="text-xs font-medium text-blue-600">
+                              {analystUser.firstName.charAt(0)}{analystUser.lastName.charAt(0)}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="hidden md:block text-left">
+                          <p className="text-sm font-medium text-white">
+                            {analystUser.firstName} {analystUser.lastName}
+                          </p>
+                          <p className="text-xs text-white/80">{analystUser.company}</p>
+                        </div>
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isDropdownOpen && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                          <div className="py-1">
+                            <button
+                              onClick={() => {
+                                setIsLoggedIn(false)
+                                setIsDropdownOpen(false)
+                              }}
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <LogOut className="w-4 h-4 mr-3" />
+                              Sign Out
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="hidden md:block">
-                  <p className="text-sm font-medium text-gray-700">
-                    {analystUser.firstName} {analystUser.lastName}
-                  </p>
-                  <p className="text-xs text-gray-500">{analystUser.company}</p>
+              </div>
+            </div>
+
+            {/* Bottom section - Navigation tabs aligned with content boundary */}
+            <div className="absolute bottom-0 left-0 right-0">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex space-x-1">
+                  {navigation.map((item) => {
+                    const isActive = pathname === item.href
+                    
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className={cn(
+                          'flex items-center px-3 py-2 text-sm transition-all duration-200 border-t border-l border-r',
+                          isActive
+                            ? 'bg-white text-gray-800 font-bold shadow-lg border-gray-200 rounded-t-lg opacity-100'
+                            : 'bg-white text-gray-600 font-semibold hover:text-gray-800 hover:opacity-100 border-gray-300 rounded-t-lg opacity-80'
+                        )}
+                      >
+                        <item.icon className="w-4 h-4 mr-2" />
+                        {item.name}
+                      </Link>
+                    )
+                  })}
                 </div>
               </div>
-
-              <button 
-                onClick={() => setIsLoggedIn(false)}
-                className="p-2 text-gray-400 hover:text-gray-600"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </div>
           </div>
         </div>
-      </header>
-
-      {/* Navigation tabs */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center px-3 py-4 text-sm font-medium border-b-2 transition-colors',
-                    isActive
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  )}
-                >
-                  <item.icon className="w-4 h-4 mr-2" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      </nav>
+      )}
 
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-7">
         {children}
       </main>
     </div>

@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Calendar, Plus, Trash2, CheckCircle, AlertCircle, Clock, X, RefreshCw, Settings, User, Building, Globe, Image, Tags, Edit, Save, ChevronUp, ChevronDown } from 'lucide-react'
+import { Calendar, Plus, Trash2, CheckCircle, AlertCircle, Clock, X, RefreshCw, Settings, User, Building, Globe, Image, Tags, Edit, Save, ChevronUp, ChevronDown, Users } from 'lucide-react'
 import GeneralSettingsForm from '@/components/general-settings-form'
 import TopicsManagement from '@/components/topics-management'
+import AnalystPortalSettingsForm from '@/components/analyst-portal-settings-form'
 
 interface CalendarConnection {
   id: string
@@ -116,16 +117,67 @@ function SettingsPageContent() {
   }, [])
 
   const fetchCalendarConnections = async () => {
+    console.log('\n' + '='.repeat(80))
+    console.log('🔄 [FRONTEND] Fetching calendar connections...')
+    console.log('🕐 [FRONTEND] Timestamp:', new Date().toISOString())
+    console.log('🌐 [FRONTEND] URL:', '/api/settings/calendar-connections')
+    
     try {
+      console.log('📡 [FRONTEND] Making fetch request...')
       const response = await fetch('/api/settings/calendar-connections')
+      
+      console.log('📊 [FRONTEND] Response received:')
+      console.log('  - Status:', response.status)
+      console.log('  - Status Text:', response.statusText)
+      console.log('  - Headers:', Object.fromEntries(response.headers))
+      console.log('  - OK:', response.ok)
+      
       if (response.ok) {
-        const connections = await response.json()
-        setCalendarConnections(connections)
+        const contentType = response.headers.get('content-type')
+        console.log('📋 [FRONTEND] Content-Type:', contentType)
+        
+        if (contentType && contentType.includes('application/json')) {
+          console.log('✅ [FRONTEND] Response is JSON, parsing...')
+          const connections = await response.json()
+          console.log('📊 [FRONTEND] Parsed connections:', connections)
+          console.log('📈 [FRONTEND] Connection count:', connections.length)
+          setCalendarConnections(connections)
+          console.log('✅ [FRONTEND] Calendar connections set successfully')
+        } else {
+          console.error('❌ [FRONTEND] Expected JSON but received:', contentType)
+          const responseText = await response.text()
+          console.error('📝 [FRONTEND] Response body:', responseText)
+          throw new Error('Invalid response format')
+        }
+      } else {
+        console.error('❌ [FRONTEND] Failed to fetch calendar connections:')
+        console.error('  - Status:', response.status)
+        console.error('  - Status Text:', response.statusText)
+        
+        // Try to get response body for more details
+        try {
+          const responseText = await response.text()
+          console.error('📝 [FRONTEND] Error response body:', responseText)
+        } catch (bodyError) {
+          console.error('❌ [FRONTEND] Could not read error response body:', bodyError)
+        }
+        
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
-      console.error('Failed to fetch calendar connections:', error)
+      console.error('❌ [FRONTEND] Failed to fetch calendar connections:')
+      console.error('📝 [FRONTEND] Error details:', error)
+      console.error('🏷️ [FRONTEND] Error name:', error?.name)
+      console.error('💬 [FRONTEND] Error message:', error?.message)
+      console.error('📚 [FRONTEND] Error stack:', error?.stack)
+      
+      setNotification({
+        type: 'error',
+        message: 'Failed to load calendar connections'
+      })
     } finally {
       setLoading(false)
+      console.log('🔚 [FRONTEND] fetchCalendarConnections completed')
     }
   }
 
@@ -142,12 +194,27 @@ function SettingsPageContent() {
       })
 
       if (response.ok) {
-        const { authUrl } = await response.json()
-        // Redirect to Google OAuth
-        window.location.href = authUrl
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const { authUrl } = await response.json()
+          // Redirect to Google OAuth
+          window.location.href = authUrl
+        } else {
+          console.error('Expected JSON but received:', contentType)
+          throw new Error('Invalid response format from server')
+        }
+      } else {
+        console.error('Failed to initiate calendar connection:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error('Failed to initiate calendar connection:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to start calendar connection process'
+      })
       setAdding(false)
     }
   }
@@ -165,6 +232,10 @@ function SettingsPageContent() {
       })
 
       if (response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          await response.json() // Consume the response
+        }
         setShowNamingDialog(false)
         setPendingConnection(null)
         setNewConnectionTitle('')
@@ -173,9 +244,18 @@ function SettingsPageContent() {
           message: 'Google Calendar connected and named successfully!'
         })
         fetchCalendarConnections() // Refresh the list
+      } else {
+        console.error('Failed to save connection name:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error('Failed to save connection name:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to save connection name'
+      })
     }
   }
 
@@ -203,14 +283,27 @@ function SettingsPageContent() {
       })
 
       if (response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          await response.json() // Consume the response
+        }
         setCalendarConnections(connections =>
           connections.map(conn =>
             conn.id === connectionId ? { ...conn, isActive } : conn
           )
         )
+      } else {
+        console.error('Failed to toggle connection:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error('Failed to toggle connection:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to update connection status'
+      })
     }
   }
 
@@ -223,12 +316,29 @@ function SettingsPageContent() {
       })
 
       if (response.ok) {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          await response.json() // Consume the response
+        }
         setCalendarConnections(connections =>
           connections.filter(conn => conn.id !== connectionId)
         )
+        setNotification({
+          type: 'success',
+          message: 'Calendar connection deleted successfully'
+        })
+      } else {
+        console.error('Failed to delete connection:', response.status, response.statusText)
+        const errorText = await response.text()
+        console.error('Response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
       console.error('Failed to delete connection:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to delete connection'
+      })
     }
   }
 
@@ -386,6 +496,7 @@ function SettingsPageContent() {
     { id: 'general', label: 'General', icon: Settings },
     { id: 'topics', label: 'Topics', icon: Tags },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
+    { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
   ]
 
   return (
@@ -398,29 +509,6 @@ function SettingsPageContent() {
           </p>
         </div>
 
-        {/* Notification Banner */}
-        {notification && (
-          <div className={`mb-6 p-4 rounded-lg border flex items-center justify-between ${
-            notification.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : 'bg-red-50 border-red-200 text-red-800'
-          }`}>
-            <div className="flex items-center gap-2">
-              {notification.type === 'success' ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                <AlertCircle className="w-5 h-5" />
-              )}
-              <span>{notification.message}</span>
-            </div>
-            <button
-              onClick={() => setNotification(null)}
-              className="text-current hover:opacity-70"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
         <div className="flex gap-8">
           {/* Secondary Menu */}
@@ -473,11 +561,28 @@ function SettingsPageContent() {
                     Topic Management
                   </CardTitle>
                   <CardDescription>
-                    Manage predefined topics for analyst expertise areas. Core topics represent Clear Company's key strengths.
+                    Manage predefined topics for analyst expertise areas.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <TopicsManagement />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeSection === 'analyst-portal' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Analyst Portal
+                  </CardTitle>
+                  <CardDescription>
+                    Configure the analyst portal welcome experience and content
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AnalystPortalSettingsForm />
                 </CardContent>
               </Card>
             )}
@@ -504,6 +609,29 @@ function SettingsPageContent() {
                       <li>• All calendar data is processed securely and privately</li>
                     </ul>
                   </div>
+
+                  {notification && (
+                    <div className={`mb-6 p-4 rounded-lg border flex items-center justify-between ${
+                      notification.type === 'success' 
+                        ? 'bg-green-50 border-green-200 text-green-800' 
+                        : 'bg-red-50 border-red-200 text-red-800'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {notification.type === 'success' ? (
+                          <CheckCircle className="w-5 h-5" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5" />
+                        )}
+                        <span>{notification.message}</span>
+                      </div>
+                      <button
+                        onClick={() => setNotification(null)}
+                        className="text-current hover:opacity-70"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
 
                   {/* Connected Calendars Section */}
                   <div className="mb-8">

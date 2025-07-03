@@ -8,7 +8,7 @@ import { ToastProvider } from "@/components/ui/toast";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "HR Tech Analyst Portal",
+  title: "Analyst ManagementPortal",
   description: "Industry analyst relationship management portal for HR tech companies",
 };
 
@@ -19,6 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+      </head>
       <body className={inter.className}>
         <ToastProvider>
           <AuthProvider>

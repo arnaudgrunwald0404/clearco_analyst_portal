@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2 } from 'lucide-react'
+import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 
 interface AnalystDrawerProps {
@@ -29,6 +29,7 @@ interface AnalystDrawerProps {
     relationshipHealth?: string
     keyThemes?: string[]
     website?: string
+    coveredTopics?: string[] | { topic: string }[]
   }
 }
 
@@ -164,6 +165,138 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   }>({ isOpen: false, type: null, post: null })
   const [engagementText, setEngagementText] = useState('')
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [socialSearchLoading, setSocialSearchLoading] = useState({
+    linkedin: false,
+    twitter: false,
+    phone: false,
+    website: false
+  })
+  const [searchResultsModal, setSearchResultsModal] = useState<{
+    isOpen: boolean
+    type: 'linkedin' | 'twitter' | 'phone' | 'website' | null
+    results: any[]
+  }>({ isOpen: false, type: null, results: [] })
+  const [selectedResults, setSelectedResults] = useState<string[]>([])
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [editedData, setEditedData] = useState<{
+    status: string
+    influence: string
+    relationshipHealth: string
+    email: string
+    phone: string
+    linkedIn: string
+    twitter: string
+    website: string
+    coveredTopics: string[]
+  }>({
+    status: analyst?.status || 'ACTIVE',
+    influence: analyst?.influence || 'MEDIUM',
+    relationshipHealth: analyst?.relationshipHealth || 'GOOD',
+    email: analyst?.email || '',
+    phone: analyst?.phone || '',
+    linkedIn: analyst?.linkedIn || '',
+    twitter: analyst?.twitter || '',
+    website: analyst?.website || '',
+    coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+  })
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Handle entering edit mode
+  const handleEnterEditMode = () => {
+    if (!analyst) return
+    
+    setEditedData({
+      status: analyst.status || 'ACTIVE',
+      influence: analyst.influence || 'MEDIUM',
+      relationshipHealth: analyst.relationshipHealth || 'GOOD',
+      email: analyst.email || '',
+      phone: analyst.phone || '',
+      linkedIn: analyst.linkedIn || '',
+      twitter: analyst.twitter || '',
+      website: analyst.website || '',
+      coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+    })
+    setIsEditMode(true)
+  }
+
+  // Handle canceling edit mode
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
+    setEditedData({
+      status: analyst?.status || 'ACTIVE',
+      influence: analyst?.influence || 'MEDIUM',
+      relationshipHealth: analyst?.relationshipHealth || 'GOOD',
+      email: analyst?.email || '',
+      phone: analyst?.phone || '',
+      linkedIn: analyst?.linkedIn || '',
+      twitter: analyst?.twitter || '',
+      website: analyst?.website || '',
+      coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+    })
+  }
+
+  // Handle saving edit mode
+  const handleSaveEdit = async () => {
+    if (!analyst?.id) return
+    
+    setIsSaving(true)
+    try {
+      const response = await fetch(`/api/analysts/${analyst.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editedData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          // Update the analyst object inline
+          Object.assign(analyst, {
+            status: editedData.status,
+            influence: editedData.influence,
+            relationshipHealth: editedData.relationshipHealth,
+            email: editedData.email,
+            phone: editedData.phone,
+            linkedIn: editedData.linkedIn,
+            twitter: editedData.twitter,
+            website: editedData.website,
+            coveredTopics: editedData.coveredTopics.map(topic => ({ topic }))
+          })
+          setIsEditMode(false)
+          // Force a re-render
+          setActiveTab(activeTab)
+        } else {
+          alert('Failed to save changes: ' + result.error)
+        }
+      } else {
+        alert('Failed to save changes')
+      }
+    } catch (error) {
+      console.error('Error saving changes:', error)
+      alert('Error saving changes. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Handle adding a new topic
+  const handleAddTopic = () => {
+    const newTopic = prompt('Enter a new topic:')
+    if (newTopic && newTopic.trim()) {
+      setEditedData(prev => ({
+        ...prev,
+        coveredTopics: [...prev.coveredTopics, newTopic.trim()]
+      }))
+    }
+  }
+
+  // Handle removing a topic
+  const handleRemoveTopic = (index: number) => {
+    setEditedData(prev => ({
+      ...prev,
+      coveredTopics: prev.coveredTopics.filter((_, i) => i !== index)
+    }))
+  }
 
   // Fetch data when drawer opens or tab changes
   useEffect(() => {
@@ -193,6 +326,23 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     fetchData('social-posts', setSocialPosts, 'socialPosts')
     fetchData('briefings', setBriefings, 'briefings')
   }, [isOpen, analyst?.id])
+
+  // Update edit data when analyst changes
+  useEffect(() => {
+    if (analyst) {
+      setEditedData({
+        status: analyst.status || 'ACTIVE',
+        influence: analyst.influence || 'MEDIUM',
+        relationshipHealth: analyst.relationshipHealth || 'GOOD',
+        email: analyst.email || '',
+        phone: analyst.phone || '',
+        linkedIn: analyst.linkedIn || '',
+        twitter: analyst.twitter || '',
+        website: analyst.website || '',
+        coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+      })
+    }
+  }, [analyst])
 
   // Handle body scroll when drawer is open
   useEffect(() => {
@@ -324,6 +474,178 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     }
   }
 
+  const searchSocialProfile = async (platform: 'linkedin' | 'twitter' | 'phone' | 'website') => {
+    setSocialSearchLoading(prev => ({ ...prev, [platform]: true }))
+    
+    try {
+      const response = await fetch('/api/analysts/search-social', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystId: analyst.id,
+          analystName: `${analyst.firstName} ${analyst.lastName}`,
+          company: analyst.company,
+          platform
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.results && result.results.length > 0) {
+          // Show selection modal with multiple results
+          setSearchResultsModal({
+            isOpen: true,
+            type: platform,
+            results: result.results
+          })
+          setSelectedResults([])
+        } else if (result.success && result.result) {
+          // Single result - show old logic for backward compatibility
+          const searchResult = result.result
+          
+          if (searchResult.confidence > 0) {
+            const confirmMessage = `Found ${platform} with ${searchResult.confidence}% confidence:\n\n` +
+              `${getPlatformFieldName(platform)}: ${searchResult.url || searchResult.handle || searchResult.value}\n` +
+              `Reason: ${searchResult.reason}\n\n` +
+              `Would you like to save this to the analyst profile?`
+              
+            if (confirm(confirmMessage)) {
+              await saveSocialMediaResult(platform, searchResult)
+            }
+          } else {
+            alert(`No reliable ${platform} found. ${searchResult.reason}`)
+          }
+        } else {
+          alert(`No ${platform} found.`)
+        }
+      } else {
+        alert('Search request failed')
+      }
+    } catch (error) {
+      console.error(`Error searching ${platform}:`, error)
+      alert(`Error searching ${platform}. Please try again.`)
+    } finally {
+      setSocialSearchLoading(prev => ({ ...prev, [platform]: false }))
+    }
+  }
+  
+  const getPlatformFieldName = (platform: string) => {
+    switch (platform) {
+      case 'linkedin': return 'LinkedIn URL'
+      case 'twitter': return 'Twitter Handle'
+      case 'phone': return 'Phone Number'
+      case 'website': return 'Website URL'
+      default: return 'Value'
+    }
+  }
+  
+  const saveSocialMediaResult = async (platform: 'linkedin' | 'twitter' | 'phone' | 'website', searchResult: any) => {
+    try {
+      // Determine the field name and value based on platform
+      let fieldName: string
+      let fieldValue: string
+      
+      switch (platform) {
+        case 'linkedin':
+          fieldName = 'linkedIn'
+          fieldValue = searchResult.url || ''
+          break
+        case 'twitter':
+          fieldName = 'twitter'
+          fieldValue = searchResult.handle || searchResult.url || ''
+          break
+        case 'phone':
+          fieldName = 'phone'
+          fieldValue = searchResult.value || searchResult.url || ''
+          break
+        case 'website':
+          fieldName = 'website'
+          fieldValue = searchResult.url || ''
+          break
+        default:
+          throw new Error(`Unknown platform: ${platform}`)
+      }
+      
+      // Save to database
+      const response = await fetch(`/api/analysts/${analyst.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          [fieldName]: fieldValue
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          // Update the analyst object to reflect the change immediately
+          (analyst as any)[fieldName] = fieldValue
+          
+          // Update the edit data as well if we're in edit mode
+          if (isEditMode) {
+            setEditedData(prev => ({
+              ...prev,
+              [fieldName]: fieldValue
+            }))
+          }
+          
+          // Force a re-render to show the updated value
+          setActiveTab(activeTab)
+          
+          // Show success message
+          const displayValue = fieldValue.length > 50 ? fieldValue.substring(0, 50) + '...' : fieldValue
+          alert(`✅ Successfully saved ${getPlatformFieldName(platform)}: ${displayValue}`)
+        } else {
+          throw new Error(result.error || 'Failed to save')
+        }
+      } else {
+        throw new Error(`Server error: ${response.status}`)
+      }
+    } catch (error) {
+      console.error(`Error saving ${platform} result:`, error)
+      alert(`❌ Failed to save ${getPlatformFieldName(platform)}. Please try again.`)
+    }
+  }
+
+  const handleSaveSelectedResults = async () => {
+    if (selectedResults.length === 0 || !searchResultsModal.type) return
+    
+    try {
+      const response = await fetch(`/api/analysts/${analyst.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          [searchResultsModal.type]: selectedResults
+        })
+      })
+      
+      if (response.ok) {
+        // Update the analyst object inline instead of reloading
+        if (searchResultsModal.type === 'linkedin') {
+          analyst.linkedIn = selectedResults[0] // Assuming we take the first one for LinkedIn
+        } else if (searchResultsModal.type === 'twitter') {
+          analyst.twitter = selectedResults[0] // Assuming we take the first one for Twitter
+        } else if (searchResultsModal.type === 'phone') {
+          analyst.phone = selectedResults[0] // Assuming we take the first one for Phone
+        } else if (searchResultsModal.type === 'website') {
+          analyst.website = selectedResults[0] // Assuming we take the first one for Website
+        }
+        
+        setSearchResultsModal({ isOpen: false, type: null, results: [] })
+        setSelectedResults([])
+        
+        // Force a re-render by updating state
+        // This is a simple way to trigger re-render without full page reload
+        setActiveTab(activeTab)
+      } else {
+        alert('Failed to save selected results')
+      }
+    } catch (error) {
+      console.error('Error saving results:', error)
+      alert('Error saving results. Please try again.')
+    }
+  }
+
   // Don't render if no analyst is provided
   if (!analyst) return null
 
@@ -380,12 +702,47 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
+            <div className="flex items-center space-x-2">
+              {/* Edit Mode Toggle */}
+              {!isEditMode ? (
+                <button
+                  onClick={handleEnterEditMode}
+                  className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span>Edit Profile</span>
+                </button>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    <span>Cancel</span>
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={isSaving}
+                    className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <Loader className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}
@@ -393,7 +750,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'publications', label: 'Content' },
-              { id: 'social', label: 'Social Media' },
               { id: 'briefings', label: 'Briefing History' }
             ].map((tab) => (
               <button
@@ -415,28 +771,75 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                {/* Status and Influence */}
-                <div className="grid grid-cols-2 gap-4">
+                {/* Status, Influence, and Relationship Health */}
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium text-gray-500">Status</label>
                     <div className="mt-1">
-                      <span className={cn(
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getStatusColor(analyst.status)
-                      )}>
-                        {analyst.status}
-                      </span>
+                      {isEditMode ? (
+                        <select
+                          value={editedData.status}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, status: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="ACTIVE">Active</option>
+                          <option value="INACTIVE">Inactive</option>
+                          <option value="ARCHIVED">Archived</option>
+                        </select>
+                      ) : (
+                        <span className={cn(
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          getStatusColor(analyst.status)
+                        )}>
+                          {analyst.status}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Influence</label>
                     <div className="mt-1">
-                      <span className={cn(
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        getInfluenceColor(analyst.influence)
-                      )}>
-                        {analyst.influence.replace('_', ' ')}
-                      </span>
+                      {isEditMode ? (
+                        <select
+                          value={editedData.influence}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, influence: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="LOW">Low</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="HIGH">High</option>
+                          <option value="VERY_HIGH">Very High</option>
+                        </select>
+                      ) : (
+                        <span className={cn(
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          getInfluenceColor(analyst.influence)
+                        )}>
+                          {analyst.influence.replace('_', ' ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Relationship Health</label>
+                    <div className="mt-1">
+                      {isEditMode ? (
+                        <select
+                          value={editedData.relationshipHealth}
+                          onChange={(e) => setEditedData(prev => ({ ...prev, relationshipHealth: e.target.value }))}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="EXCELLENT">Excellent</option>
+                          <option value="GOOD">Good</option>
+                          <option value="FAIR">Fair</option>
+                          <option value="POOR">Poor</option>
+                          <option value="CRITICAL">Critical</option>
+                        </select>
+                      ) : (
+                        <span className="text-sm text-gray-700">
+                          {analyst.relationshipHealth || 'N/A'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -445,76 +848,345 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Contact Information</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Mail className="w-4 h-4 text-gray-400" />
-                      <a href={`mailto:${analyst.email}`} className="text-blue-600 hover:underline">
-                        {analyst.email}
-                      </a>
+                    {/* Email */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3 flex-1">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <div className="flex-1">
+                          <div className="text-xs font-medium text-gray-500">Email</div>
+                          {isEditMode ? (
+                            <input
+                              type="email"
+                              value={editedData.email}
+                              onChange={(e) => setEditedData(prev => ({ ...prev, email: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter email address"
+                            />
+                          ) : (
+                            <a href={`mailto:${analyst.email}`} className="text-blue-600 hover:underline text-sm">
+                              {analyst.email}
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {analyst.phone && (
-                      <div className="flex items-center space-x-3">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <a href={`tel:${analyst.phone}`} className="text-blue-600 hover:underline">
-                          {analyst.phone}
-                        </a>
+
+                    {/* Phone */}
+                    <div className="flex items-center space-x-3">
+                      <Phone className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-gray-500">Phone</div>
+                        {isEditMode ? (
+                          <input
+                            type="tel"
+                            value={editedData.phone}
+                            onChange={(e) => setEditedData(prev => ({ ...prev, phone: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter phone number"
+                          />
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {analyst.phone ? (
+                              <a href={`tel:${analyst.phone}`} className="text-blue-600 hover:underline text-sm">
+                                {analyst.phone}
+                              </a>
+                            ) : (
+                              <>
+                                <span className="text-gray-500 text-sm">N/A</span>
+                                <button
+                                  onClick={() => searchSocialProfile('phone')}
+                                  disabled={socialSearchLoading.phone}
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                                >
+                                  {socialSearchLoading.phone ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Search className="w-3 h-3" />
+                                  )}
+                                  <span>Search with AI</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {analyst.linkedIn && (
-                      <div className="flex items-center space-x-3">
-                        <Linkedin className="w-4 h-4 text-gray-400" />
-                        <a href={analyst.linkedIn} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          LinkedIn Profile
-                        </a>
+                    </div>
+
+                    {/* LinkedIn */}
+                    <div className="flex items-center space-x-3">
+                      <Linkedin className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-gray-500">LinkedIn</div>
+                        {isEditMode ? (
+                          <input
+                            type="url"
+                            value={editedData.linkedIn}
+                            onChange={(e) => setEditedData(prev => ({ ...prev, linkedIn: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter LinkedIn URL"
+                          />
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {analyst.linkedIn ? (
+                              <a href={analyst.linkedIn} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                LinkedIn Profile
+                              </a>
+                            ) : (
+                              <>
+                                <span className="text-gray-500 text-sm">N/A</span>
+                                <button
+                                  onClick={() => searchSocialProfile('linkedin')}
+                                  disabled={socialSearchLoading.linkedin}
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                                >
+                                  {socialSearchLoading.linkedin ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Search className="w-3 h-3" />
+                                  )}
+                                  <span>Search with AI</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {analyst.twitter && (
-                      <div className="flex items-center space-x-3">
-                        <Twitter className="w-4 h-4 text-gray-400" />
-                        <a href={`https://twitter.com/${analyst.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          {analyst.twitter}
-                        </a>
+                    </div>
+
+                    {/* Twitter/X */}
+                    <div className="flex items-center space-x-3">
+                      <Twitter className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-gray-500">Twitter/X</div>
+                        {isEditMode ? (
+                          <input
+                            type="text"
+                            value={editedData.twitter}
+                            onChange={(e) => setEditedData(prev => ({ ...prev, twitter: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter Twitter handle"
+                          />
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {analyst.twitter ? (
+                              <a href={`https://twitter.com/${analyst.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                {analyst.twitter}
+                              </a>
+                            ) : (
+                              <>
+                                <span className="text-gray-500 text-sm">N/A</span>
+                                <button
+                                  onClick={() => searchSocialProfile('twitter')}
+                                  disabled={socialSearchLoading.twitter}
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                                >
+                                  {socialSearchLoading.twitter ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Search className="w-3 h-3" />
+                                  )}
+                                  <span>Search with AI</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {analyst.website && (
-                      <div className="flex items-center space-x-3">
-                        <Globe className="w-4 h-4 text-gray-400" />
-                        <a href={analyst.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                          Website
-                        </a>
+                    </div>
+
+                    {/* Website */}
+                    <div className="flex items-center space-x-3">
+                      <Globe className="w-4 h-4 text-gray-400" />
+                      <div className="flex-1">
+                        <div className="text-xs font-medium text-gray-500">Website</div>
+                        {isEditMode ? (
+                          <input
+                            type="url"
+                            value={editedData.website}
+                            onChange={(e) => setEditedData(prev => ({ ...prev, website: e.target.value }))}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Enter website URL"
+                          />
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            {analyst.website ? (
+                              <a href={analyst.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                                Website
+                              </a>
+                            ) : (
+                              <>
+                                <span className="text-gray-500 text-sm">N/A</span>
+                                <button
+                                  onClick={() => searchSocialProfile('website')}
+                                  disabled={socialSearchLoading.website}
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                                >
+                                  {socialSearchLoading.website ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Search className="w-3 h-3" />
+                                  )}
+                                  <span>Search with AI</span>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Expertise */}
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-3">Covered Topics</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analyst.coveredTopics && analyst.coveredTopics.length > 0 ? (
-                      analyst.coveredTopics.map((topic, index) => (
-                        <span
-                          key={index}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
-                        >
-                          {typeof topic === 'string' ? topic : topic.topic}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-gray-500 italic">No topics specified</span>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-gray-900">Covered Topics</h3>
+                    {isEditMode && (
+                      <button
+                        onClick={handleAddTopic}
+                        className="inline-flex items-center space-x-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                      >
+                        <span>+ Add Topic</span>
+                      </button>
                     )}
                   </div>
+                  {isEditMode ? (
+                    editedData.coveredTopics.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {editedData.coveredTopics.map((topic, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 group"
+                          >
+                            {topic}
+                            <button
+                              onClick={() => handleRemoveTopic(index)}
+                              className="ml-2 text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500 border-2 border-dashed border-gray-200 rounded-lg">
+                        <Tag className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No topics specified.</p>
+                        <button
+                          onClick={handleAddTopic}
+                          className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Add your first topic
+                        </button>
+                      </div>
+                    )
+                  ) : (
+                    analyst.coveredTopics && analyst.coveredTopics.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {analyst.coveredTopics.map((topic, index) => (
+                          <span
+                            key={index}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+                          >
+                            {typeof topic === 'string' ? topic : topic.topic}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        <Tag className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No topics specified.</p>
+                      </div>
+                    )
+                  )}
                 </div>
 
-                {/* Relationship Health */}
-                {analyst.relationshipHealth && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-3">Relationship Health</h3>
-                    <div className="flex items-center space-x-3">
-                      <TrendingUp className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-700">{analyst.relationshipHealth}</span>
-                    </div>
+                {/* Social Media Activity */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-medium text-gray-900">Social Media Activity</h3>
+                    {loading.socialPosts ? (
+                      <Loader className="w-4 h-4 animate-spin text-blue-600" />
+                    ) : (
+                      <span className="text-sm text-gray-500">Latest 5 posts</span>
+                    )}
                   </div>
-                )}
+                  
+                  {loading.socialPosts ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader className="w-6 h-6 animate-spin text-blue-600" />
+                    </div>
+                  ) : socialPosts.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      <MessageSquare className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                      <p className="text-sm">No social media posts found.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {socialPosts.slice(0, 5).map((post) => (
+                        <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all">
+                          {/* Post Header */}
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              {getPlatformIcon(post.platform)}
+                              <span className="text-xs font-medium text-gray-600">
+                                {post.platform}
+                              </span>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-gray-500">
+                                {formatDate(post.postedAt)}
+                              </span>
+                            </div>
+                            
+                            <div className="flex items-center space-x-1">
+                              {post.url && (
+                                <a
+                                  href={post.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Post Content */}
+                          <p className="text-sm text-gray-800 mb-2 leading-relaxed line-clamp-3">{post.content}</p>
+                          
+                          {/* Engagement Info */}
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center space-x-1">
+                                <TrendingUp className="w-3 h-3" />
+                                <span>{post.engagements || 0} engagements</span>
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex items-center space-x-1">
+                              <button
+                                onClick={() => setEngagementModal({ isOpen: true, type: 'reply', post })}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors"
+                              >
+                                <Reply className="w-3 h-3" />
+                                Reply
+                              </button>
+                              <button
+                                onClick={() => setEngagementModal({ isOpen: true, type: 'share', post })}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded transition-colors"
+                              >
+                                <Share className="w-3 h-3" />
+                                Share
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Bio */}
                 {analyst.bio && (
@@ -598,177 +1270,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
               </div>
             )}
 
-            {activeTab === 'social' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">Latest Social Media Posts</h3>
-                  {loading.socialPosts ? (
-                    <Loader className="w-4 h-4 animate-spin text-blue-600" />
-                  ) : (
-                    <div className="flex items-center space-x-4">
-                      <span className="text-sm text-gray-500">{socialPosts.length} recent posts</span>
-                      <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                        Refresh
-                      </button>
-                    </div>
-                  )}
-                </div>
-                
-                {loading.socialPosts ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader className="w-8 h-8 animate-spin text-blue-600" />
-                  </div>
-                ) : socialPosts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <MessageSquare className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-                    <p>No social media posts found.</p>
-                    <p className="text-xs mt-1">Posts will appear here once our crawler finds relevant content.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {socialPosts.map((post) => (
-                    <div key={post.id} className="border border-gray-200 rounded-lg p-5 hover:shadow-sm transition-all">
-                      {/* Post Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          {getPlatformIcon(post.platform)}
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-700">
-                                {post.platform}
-                              </span>
-                              {post.mentionsCompany && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                  <Sparkles className="w-3 h-3 mr-1" />
-                                  Mentions Us
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-xs text-gray-500">
-                              {formatDate(post.postedAt)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center space-x-2">
-                          {post.relevanceScore && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {post.relevanceScore}% relevant
-                            </span>
-                          )}
-                          {post.url && (
-                            <a
-                              href={post.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {/* Post Content */}
-                      <p className="text-sm text-gray-800 mb-4 leading-relaxed">{post.content}</p>
-                      
-                      {/* Analysis Tags */}
-                      {post.themes && post.themes.length > 0 && (
-                        <div className="mb-4">
-                          <div className="flex items-center mb-2">
-                            <Tag className="w-3 h-3 text-gray-400 mr-1" />
-                            <span className="text-xs font-medium text-gray-500">THEMES</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {post.themes.map((theme, index) => (
-                              <span
-                                key={index}
-                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
-                              >
-                                {theme}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Engagement Actions */}
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          {post.sentiment && (
-                            <div className="flex items-center space-x-1">
-                              <span className="text-gray-400">Sentiment:</span>
-                              <span className={cn(
-                                'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium',
-                                post.sentiment === 'POSITIVE' ? 'bg-green-100 text-green-800' :
-                                post.sentiment === 'NEGATIVE' ? 'bg-red-100 text-red-800' :
-                                'bg-gray-100 text-gray-800'
-                              )}>
-                                {post.sentiment.toLowerCase()}
-                              </span>
-                            </div>
-                          )}
-                          
-                          <div className="flex items-center space-x-1">
-                            <TrendingUp className="w-3 h-3" />
-                            <span>{post.engagements || 0} engagements</span>
-                          </div>
-                          
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>Analyzed {formatDate(post.analyzedAt || post.createdAt)}</span>
-                          </div>
-                        </div>
-                        
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => setEngagementModal({ isOpen: true, type: 'reply', post })}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                          >
-                            <Reply className="w-3 h-3" />
-                            Reply
-                          </button>
-                          <button
-                            onClick={() => setEngagementModal({ isOpen: true, type: 'share', post })}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                          >
-                            <Share className="w-3 h-3" />
-                            Share
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    ))}
-                  </div>
-                )}
-                
-                {/* Social Media Summary */}
-                {socialPosts.length > 0 && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Activity Summary</h4>
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <div className="text-lg font-bold text-blue-600">{socialPosts.length}</div>
-                        <div className="text-xs text-gray-600">Recent Posts</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-green-600">
-                          {socialPosts.filter(p => p.mentionsCompany).length}
-                        </div>
-                        <div className="text-xs text-gray-600">Mentions Us</div>
-                      </div>
-                      <div>
-                        <div className="text-lg font-bold text-purple-600">
-                          {Math.round(socialPosts.reduce((sum, p) => sum + (p.relevanceScore || 0), 0) / socialPosts.length) || 0}%
-                        </div>
-                        <div className="text-xs text-gray-600">Avg Relevance</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
 
             {activeTab === 'briefings' && (
               <div className="space-y-4">
@@ -999,6 +1500,137 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       {engagementModal.type === 'reply' ? 'Post Reply' : 'Share Post'}
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+      
+      {/* Search Results Selection Modal */}
+      {searchResultsModal.isOpen && (
+        <>
+          {/* Modal Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 z-60"
+            onClick={() => setSearchResultsModal({ isOpen: false, type: null, results: [] })}
+          />
+          
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <Search className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Select {getPlatformFieldName(searchResultsModal.type || 'website')}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSearchResultsModal({ isOpen: false, type: null, results: [] })}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Results List */}
+              <div className="p-6 max-h-96 overflow-y-auto">
+                <p className="text-sm text-gray-600 mb-4">
+                  We found {searchResultsModal.results.length} potential {searchResultsModal.type} results. 
+                  Select the ones that belong to {analyst.firstName} {analyst.lastName}:
+                </p>
+                
+                <div className="space-y-3">
+                  {searchResultsModal.results.map((result, index) => (
+                    <div 
+                      key={index} 
+                      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <input
+                          type="checkbox"
+                          id={`result-${index}`}
+                          checked={selectedResults.includes(result.url || result.handle || result.value)}
+                          onChange={(e) => {
+                            const value = result.url || result.handle || result.value
+                            if (e.target.checked) {
+                              setSelectedResults(prev => [...prev, value])
+                            } else {
+                              setSelectedResults(prev => prev.filter(item => item !== value))
+                            }
+                          }}
+                          className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <div className="flex-1">
+                          <label htmlFor={`result-${index}`} className="cursor-pointer">
+                            <div className="font-medium text-gray-900 mb-1">
+                              {result.url || result.handle || result.value}
+                            </div>
+                            {result.title && (
+                              <div className="text-sm text-gray-600 mb-1">{result.title}</div>
+                            )}
+                            {result.description && (
+                              <div className="text-sm text-gray-500 mb-2">{result.description}</div>
+                            )}
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <span className="font-medium">Confidence:</span>
+                                <span className={cn(
+                                  'px-2 py-0.5 rounded-full font-medium',
+                                  result.confidence >= 80 ? 'bg-green-100 text-green-800' :
+                                  result.confidence >= 60 ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
+                                )}>
+                                  {result.confidence}%
+                                </span>
+                              </div>
+                              {result.reason && (
+                                <div className="flex items-center space-x-1">
+                                  <span className="font-medium">Reason:</span>
+                                  <span>{result.reason}</span>
+                                </div>
+                              )}
+                            </div>
+                          </label>
+                        </div>
+                        {(result.url || result.handle || result.value) && (
+                          <a
+                            href={result.url || (result.handle?.startsWith('@') ? `https://twitter.com/${result.handle.substring(1)}` : result.value)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between p-6 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  {selectedResults.length} of {searchResultsModal.results.length} selected
+                </div>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setSearchResultsModal({ isOpen: false, type: null, results: [] })}
+                    className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveSelectedResults}
+                    disabled={selectedResults.length === 0}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Save Selected
+                  </button>
                 </div>
               </div>
             </div>
