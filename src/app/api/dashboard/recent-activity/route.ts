@@ -24,7 +24,7 @@ function formatTimeAgo(date: Date): string {
   const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
   
-  if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`
+  if (diffInMinutes < 60) return `${diffInMinutes} min)`
   if (diffInHours < 24) return `${diffInHours} hours ago`
   if (diffInDays === 1) return '1 day ago'
   return `${diffInDays} days ago`

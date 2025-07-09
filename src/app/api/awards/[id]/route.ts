@@ -11,11 +11,12 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const award = await prisma.award.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
     if (!award) {
       return NextResponse.json(
@@ -38,9 +39,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const {
       awardName,
@@ -57,7 +59,7 @@ export async function PUT(
       )
     }
     const award = await prisma.award.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         awardName,
         publicationDate: new Date(publicationDate),
@@ -88,11 +90,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     await prisma.award.delete({
-      where: { id: params.id }
+      where: { id }
     })
     return NextResponse.json({
       success: true,

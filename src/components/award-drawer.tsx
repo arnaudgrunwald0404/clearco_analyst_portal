@@ -2,7 +2,7 @@
 
 import { Dispatch, SetStateAction } from 'react'
 import { X } from 'lucide-react'
-import { formatDateTime, getPriorityColor } from '@/lib/utils'
+import { cn, formatDateTime, getPriorityColor } from '@/lib/utils'
 
 interface AwardDrawerProps {
   isOpen: boolean

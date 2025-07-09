@@ -75,6 +75,10 @@ export async function GET(
       where: { id: analystId },
       include: {
         coveredTopics: true,
+        socialHandles: {
+          where: { isActive: true },
+          orderBy: { platform: 'asc' }
+        },
         interactions: {
           orderBy: { createdAt: 'desc' },
           take: 10

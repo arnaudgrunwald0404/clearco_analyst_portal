@@ -1,21 +1,27 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader } from 'lucide-react'
+import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Upload } from 'lucide-react'
 import { cn, getPriorityColor } from '@/lib/utils'
 import AwardDrawer from '@/components/award-drawer'
 import AddAwardModal from '@/components/add-award-modal'
 import AwardActionsMenu from '@/components/award-actions-menu'
+import BulkUploadModal from '@/components/bulk-upload-modal'
 import { useToast } from '@/components/ui/toast'
 
 interface Award {
   id: string
-  awardName: string
-  publicationDate: string
-  processStartDate: string
-  contactInfo: string
+  name: string
+  link?: string
+  organization: string
+  productTopics?: string[] | string  // JSON array or string
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  topics: string
+  submissionDate: string
+  publicationDate: string
+  owner?: string
+  status: 'EVALUATING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'WINNER' | 'FINALIST' | 'NOT_SELECTED' | 'WITHDRAWN'
+  cost?: string
+  notes?: string
   createdAt: string
   updatedAt: string
 }
@@ -23,11 +29,13 @@ interface Award {
 export default function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPriority, setFilterPriority] = useState('ALL')
+  const [filterStatus, setFilterStatus] = useState('ALL')
   const [sortField, setSortField] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [selectedAward, setSelectedAward] = useState<Award | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
   const [awards, setAwards] = useState<Award[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -96,13 +104,19 @@ export default function AwardsPage() {
   // Enhanced filtering and sorting
   const filteredAndSortedAwards = useMemo(() => {
     const filtered = awards.filter(award => {
-      const matchesSearch = award.awardName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        award.contactInfo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        award.topics.toLowerCase().includes(searchTerm.toLowerCase())
+      const productTopicsStr = Array.isArray(award.productTopics) 
+        ? award.productTopics.join(' ') 
+        : (award.productTopics || '')
+      
+      const matchesSearch = award.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        award.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        productTopicsStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (award.owner && award.owner.toLowerCase().includes(searchTerm.toLowerCase()))
       
       const matchesPriority = filterPriority === 'ALL' || award.priority === filterPriority
+      const matchesStatus = filterStatus === 'ALL' || award.status === filterStatus
       
-      return matchesSearch && matchesPriority
+      return matchesSearch && matchesPriority && matchesStatus
     })
 
     // Apply sorting
@@ -112,22 +126,31 @@ export default function AwardsPage() {
         let bValue: any
 
         switch (sortField) {
-          case 'awardName':
-            aValue = a.awardName.toLowerCase()
-            bValue = b.awardName.toLowerCase()
+          case 'name':
+            aValue = a.name.toLowerCase()
+            bValue = b.name.toLowerCase()
             break
           case 'publicationDate':
             aValue = new Date(a.publicationDate).getTime()
             bValue = new Date(b.publicationDate).getTime()
             break
-          case 'processStartDate':
-            aValue = new Date(a.processStartDate).getTime()
-            bValue = new Date(b.processStartDate).getTime()
+          case 'submissionDate':
+            aValue = new Date(a.submissionDate).getTime()
+            bValue = new Date(b.submissionDate).getTime()
             break
           case 'priority':
             const priorityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 }
             aValue = priorityOrder[a.priority] || 0
             bValue = priorityOrder[b.priority] || 0
+            break
+          case 'status':
+            const statusOrder = { 'WINNER': 7, 'FINALIST': 6, 'UNDER_REVIEW': 5, 'SUBMITTED': 4, 'EVALUATING': 3, 'NOT_SELECTED': 2, 'WITHDRAWN': 1 }
+            aValue = statusOrder[a.status] || 0
+            bValue = statusOrder[b.status] || 0
+            break
+          case 'organization':
+            aValue = a.organization.toLowerCase()
+            bValue = b.organization.toLowerCase()
             break
           default:
             return 0
@@ -163,10 +186,16 @@ export default function AwardsPage() {
             Never Miss An Award Again
           </p>
         </div>
-        <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Award
-        </button>
+        <div className="flex space-x-3">
+          <button onClick={() => setIsBulkUploadOpen(true)} className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
+            <Upload className="w-4 h-4 mr-2" />
+            Bulk Import
+          </button>
+          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Award
+          </button>
+        </div>
       </div>
 
       {/* Search and Filter Bar */}
@@ -176,7 +205,7 @@ export default function AwardsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search awards by name, contact info, or topics..."
+              placeholder="Search awards by name, organization, topics, or owner..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -378,6 +407,45 @@ export default function AwardsPage() {
           fetchAwards()
           setIsAddModalOpen(false)
         }}
+      />
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadModal
+        isOpen={isBulkUploadOpen}
+        onClose={() => setIsBulkUploadOpen(false)}
+        onItemsAdded={() => {
+          fetchAwards()
+          setIsBulkUploadOpen(false)
+        }}
+        type="awards"
+        apiEndpoint="/api/awards/bulk"
+        fieldMappings={{
+          awardName: ['award name', 'awardname', 'name', 'title', 'award_name', 'award'],
+          publicationDate: ['publication date', 'publicationdate', 'publication_date', 'pub date', 'pub_date'],
+          processStartDate: ['process start date', 'processstartdate', 'process_start_date', 'start date', 'start_date'],
+          lastSubmissionDate: ['last submission date', 'lastsubmissiondate', 'last_submission_date', 'last submission', 'last_submission'],
+          nextSubmissionDate: ['next submission date', 'nextsubmissiondate', 'next_submission_date', 'next submission', 'next_submission'],
+          contactInfo: ['contact info', 'contactinfo', 'contact_info', 'contact information', 'contact', 'email'],
+          organizer: ['organizer', 'organization', 'org', 'company', 'sponsor'],
+          priority: ['priority', 'importance', 'level', 'urgency'],
+          topics: ['topics', 'categories', 'tags', 'subjects', 'areas'],
+          notes: ['notes', 'comments', 'additional info', 'description', 'remarks', 'additional_info']
+        }}
+        requiredFields={['awardName', 'publicationDate', 'processStartDate', 'contactInfo']}
+        templateData={[
+          {
+            awardName: 'Best HR Technology Award 2024',
+            publicationDate: '2024-12-01',
+            processStartDate: '2024-06-01',
+            lastSubmissionDate: '2024-11-15',
+            nextSubmissionDate: '2024-11-30',
+            contactInfo: 'awards@example.com',
+            organizer: 'HR Tech Awards',
+            priority: 'HIGH',
+            topics: 'HR Technology, Innovation',
+            notes: 'Annual industry recognition award'
+          }
+        ]}
       />
     </div>
   )

@@ -344,160 +344,151 @@ export default function AnalystsPage() {
       {!loading && !error && (
         <div className="bg-white shadow rounded-lg">
           <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+            {/* Grid Header */}
+            <div className="grid grid-cols-12 gap-4 bg-gray-50 px-6 py-3 border-b border-gray-200 font-medium text-xs text-gray-500 uppercase tracking-wider">
+              <div 
+                className="col-span-3 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                 onClick={() => handleSort('name')}
               >
-                <div className="flex items-center space-x-1">
-                  <span>Analyst</span>
-                  {getSortIcon('name')}
-                </div>
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                <span>Analyst</span>
+                {getSortIcon('name')}
+              </div>
+              <div 
+                className="col-span-2 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                 onClick={() => handleSort('company')}
               >
-                <div className="flex items-center space-x-1">
-                  <span>Company & Title</span>
-                  {getSortIcon('company')}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <span>Company & Title</span>
+                {getSortIcon('company')}
+              </div>
+              <div className="col-span-4">
                 Covered Topics
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+              </div>
+              <div 
+                className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                 onClick={() => handleSort('influence')}
               >
-                <div className="flex items-center space-x-1">
-                  <span>Influence</span>
-                  {getSortIcon('influence')}
-                </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
-              </th>
-              <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                onClick={() => handleSort('lastBriefing')}
-              >
-                <div className="flex items-center space-x-1">
-                  <span>Last Briefing/Touchpoint</span>
+                <span>Influence</span>
+                {getSortIcon('influence')}
+              </div>
+                <div 
+                  className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
+                  onClick={() => handleSort('lastBriefing')}
+                >
+                  <span>Last Touchpoint</span>
                   {getSortIcon('lastBriefing')}
                 </div>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredAndSortedAnalysts.map((analyst) => (
-              <tr key={analyst.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(analyst)}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-10 w-10">
-                      {analyst.profileImageUrl ? (
-                        <img
-                          src={analyst.profileImageUrl}
-                          alt={`${analyst.firstName} ${analyst.lastName}`}
-                          className="h-10 w-10 rounded-full object-cover"
-                          onError={(e) => {
-                            // Fallback to initials if image fails to load
-                            e.currentTarget.style.display = 'none'
-                            if (e.currentTarget.nextSibling) {
-                              (e.currentTarget.nextSibling as HTMLElement).style.display = 'flex'
-                            }
-                          }}
-                        />
-                      ) : null}
-                      <div 
-                        className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center"
-                        style={{ display: analyst.profileImageUrl ? 'none' : 'flex' }}
-                      >
-                        <span className="text-sm font-medium text-blue-800">
-                          {analyst.firstName.charAt(0)}{analyst.lastName.charAt(0)}
+                <div 
+                  className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
+                >
+                  <span>Actions</span>
+
+                </div>
+            </div>
+            
+            {/* Grid Body */}
+            <div className="divide-y divide-gray-200">
+              {filteredAndSortedAnalysts.map((analyst) => (
+                <div key={analyst.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(analyst)}>
+                  {/* Analyst - 2/12 */}
+                  <div className="col-span-3">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        {analyst.profileImageUrl ? (
+                          <img
+                            src={analyst.profileImageUrl}
+                            alt={`${analyst.firstName} ${analyst.lastName}`}
+                            className="h-10 w-10 rounded-full object-cover"
+                            onError={(e) => {
+                              // Fallback to initials if image fails to load
+                              e.currentTarget.style.display = 'none'
+                              if (e.currentTarget.nextSibling) {
+                                (e.currentTarget.nextSibling as HTMLElement).style.display = 'flex'
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center"
+                          style={{ display: analyst.profileImageUrl ? 'none' : 'flex' }}
+                        >
+                          <span className="text-sm font-medium text-blue-800">
+                            {analyst.firstName.charAt(0)}{analyst.lastName.charAt(0)}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="ml-3 min-w-0 flex-1">
+                        <div className="text-sm font-medium text-gray-900 truncate">
+                          {analyst.firstName} {analyst.lastName}
+                        </div>
+                        <div className="text-sm text-gray-500 truncate">{analyst.email}</div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Company & Title - 2/12 */}
+                  <div className="col-span-2">
+                    <div className="text-sm text-gray-900 truncate">{analyst.company}</div>
+                    <div className="text-sm text-gray-500 truncate">{analyst.title}</div>
+                  </div>
+                  
+                  {/* Covered Topics - 3/12 (25% width) */}
+                  <div className="col-span-4">
+                    <div className="flex flex-wrap gap-1">
+                      {analyst.coveredTopics.map((topicObj, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                        >
+                          {topicObj.topic}
                         </span>
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {analyst.firstName} {analyst.lastName}
-                      </div>
-                      <div className="text-sm text-gray-500">{analyst.email}</div>
+                      ))}
                     </div>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">{analyst.company}</div>
-                  <div className="text-sm text-gray-500">{analyst.title}</div>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex flex-wrap gap-1">
-                    {analyst.coveredTopics.map((topicObj, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                      >
-                        {topicObj.topic}
-                      </span>
-                    ))}
+                  
+                  {/* Influence - 1/12 */}
+                  <div className="col-span-1">
+                    <span className={cn(
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                      getInfluenceColor(analyst.influence)
+                    )}>
+                      {analyst.influence.replace('_', ' ')}
+                    </span>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={cn(
-                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                    getInfluenceColor(analyst.influence)
-                  )}>
-                    {analyst.influence.replace('_', ' ')}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={cn(
-                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                    getStatusColor(analyst.status)
-                  )}>
-                    {analyst.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm text-gray-900">
+                  
+                  
+                  {/* Last Briefing - 2/12 */}
+                  <div className="col-span-1 text-center">
+                    <div className="text-sm text-gray-900 ">
                       {new Date(analyst.updatedAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                       })}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Last updated
-                    </div>
+                    </div>     
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
-                  <AnalystActionsMenu
-                    analystId={analyst.id}
-                    analystName={`${analyst.firstName || ''} ${analyst.lastName || ''}`.trim()}
-                    onDelete={handleAnalystDeleted}
-                    onEdit={() => handleEditAnalyst(analyst)}
-                    onView={() => handleViewAnalyst(analyst)}
-                  />
-                </td>
-              </tr>
-            ))}
-            {filteredAndSortedAnalysts.length === 0 && (
-              <tr>
-                <td colSpan={7} className="text-center py-12">
-                  <div className="text-gray-500">No analysts found matching your criteria.</div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        </div>
+                  
+                  {/* Actions - 1/12 */}
+                  <div className="col-span-1 text-center" onClick={(e) => e.stopPropagation()}>
+                    <AnalystActionsMenu
+                      analystId={analyst.id}
+                      analystName={`${analyst.firstName || ''} ${analyst.lastName || ''}`.trim()}
+                      onDelete={handleAnalystDeleted}
+                      onEdit={() => handleEditAnalyst(analyst)}
+                      onView={() => handleViewAnalyst(analyst)}
+                    />
+                  </div>
+                </div>
+              ))}
+              
+              {filteredAndSortedAnalysts.length === 0 && (
+                <div className="grid grid-cols-12 gap-4 px-6 py-12">
+                  <div className="col-span-12 text-center text-gray-500">
+                    No analysts found matching your criteria.
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

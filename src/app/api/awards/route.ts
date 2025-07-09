@@ -5,18 +5,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      awardName,
-      publicationDate,
-      processStartDate,
-      contactInfo,
+      name,
+      link,
+      organization,
+      productTopics,
       priority,
-      topics
+      submissionDate,
+      publicationDate,
+      owner,
+      status,
+      cost,
+      notes
     } = body
 
     // Validate required fields
-    if (!awardName || !publicationDate || !processStartDate || !contactInfo) {
+    if (!name || !publicationDate || !submissionDate || !organization) {
       return NextResponse.json(
-        { error: 'Award name, publication date, process start date, and contact information are required' },
+        { error: 'Award name, publication date, submission date, and organization are required' },
         { status: 400 }
       )
     }
@@ -24,12 +29,17 @@ export async function POST(request: NextRequest) {
     // Create the award
     const award = await prisma.award.create({
       data: {
-        awardName,
-        publicationDate: new Date(publicationDate),
-        processStartDate: new Date(processStartDate),
-        contactInfo,
+        name,
+        link: link || null,
+        organization,
+        productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
         priority: priority || 'MEDIUM',
-        topics: topics || ''
+        submissionDate: new Date(submissionDate),
+        publicationDate: new Date(publicationDate),
+        owner: owner || null,
+        status: status || 'EVALUATING',
+        cost: cost || null,
+        notes: notes || null
       }
     })
 

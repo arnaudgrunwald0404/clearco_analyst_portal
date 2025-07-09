@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   FileText,
   MessageSquare,
@@ -16,7 +17,8 @@ import {
   Calendar,
   ExternalLink,
   Settings,
-  UserCheck
+  UserCheck,
+  Loader2
 } from 'lucide-react'
 
 const navigation = [
@@ -32,7 +34,8 @@ export default function PortalLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const [isLoggedIn, setIsLoggedIn] = useState(true) // For now, assume logged in
+  const router = useRouter()
+  const { user, profile, loading, signOut } = useAuth()
   const [impersonatedAnalyst, setImpersonatedAnalyst] = useState<any>(null)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [bannerImage, setBannerImage] = useState<string>('')
@@ -85,6 +88,30 @@ export default function PortalLayout({
     fetchCompanySettings()
   }, [])
 
+  // Check authentication
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth')
+    }
+  }, [user, loading, router])
+
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect if not authenticated
+  if (!user || !profile) {
+    return null
+  }
+
   // Use impersonated analyst data or fallback to default
   const analystUser = impersonatedAnalyst || {
     firstName: 'Sarah',
@@ -97,11 +124,6 @@ export default function PortalLayout({
   // Check if user is a ClearCompany employee (admin viewing portal)
   const isClearCompanyUser = analystUser.email?.endsWith('@clearcompany.com')
   const isImpersonating = !!impersonatedAnalyst
-
-  if (!isLoggedIn) {
-    // Login form would go here
-    return <div>Login form...</div>
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -202,8 +224,8 @@ export default function PortalLayout({
                           <div className="py-1">
                             <button
                               onClick={() => {
-                                setIsLoggedIn(false)
-                                setIsDropdownOpen(false)
+                            setIsDropdownOpen(false)
+                            signOut()
                               }}
                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                             >

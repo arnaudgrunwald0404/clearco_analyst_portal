@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle } from 'lucide-react'
+import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 
 interface AnalystDrawerProps {
@@ -200,6 +200,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [profilePictureModal, setProfilePictureModal] = useState<{
+    isOpen: boolean
+    pictures: any[]
+    loading: boolean
+  }>({ isOpen: false, pictures: [], loading: false })
 
   // Handle entering edit mode
   const handleEnterEditMode = () => {
@@ -474,6 +479,78 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     }
   }
 
+  const searchProfilePictures = async () => {
+    setProfilePictureModal(prev => ({ ...prev, loading: true, isOpen: true }))
+    
+    try {
+      const response = await fetch('/api/analysts/search-profile-pictures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystName: `${analyst.firstName} ${analyst.lastName}`,
+          company: analyst.company,
+          title: analyst.title
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.results) {
+          setProfilePictureModal(prev => ({
+            ...prev,
+            pictures: result.results,
+            loading: false
+          }))
+        } else {
+          alert('No profile pictures found')
+          setProfilePictureModal(prev => ({ ...prev, loading: false, isOpen: false }))
+        }
+      } else {
+        alert('Failed to search for profile pictures')
+        setProfilePictureModal(prev => ({ ...prev, loading: false, isOpen: false }))
+      }
+    } catch (error) {
+      console.error('Error searching for profile pictures:', error)
+      alert('Error searching for profile pictures. Please try again.')
+      setProfilePictureModal(prev => ({ ...prev, loading: false, isOpen: false }))
+    }
+  }
+
+  const selectProfilePicture = async (pictureUrl: string) => {
+    try {
+      const response = await fetch(`/api/analysts/${analyst.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profileImageUrl: pictureUrl
+        })
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          // Update the analyst object to reflect the change immediately
+          analyst.profileImageUrl = pictureUrl
+          
+          // Close the modal
+          setProfilePictureModal({ isOpen: false, pictures: [], loading: false })
+          
+          // Force a re-render to show the updated picture
+          setActiveTab(activeTab)
+          
+          alert('✅ Profile picture updated successfully!')
+        } else {
+          throw new Error(result.error || 'Failed to save')
+        }
+      } else {
+        throw new Error(`Server error: ${response.status}`)
+      }
+    } catch (error) {
+      console.error('Error saving profile picture:', error)
+      alert('❌ Failed to save profile picture. Please try again.')
+    }
+  }
+
   const searchSocialProfile = async (platform: 'linkedin' | 'twitter' | 'phone' | 'website') => {
     setSocialSearchLoading(prev => ({ ...prev, [platform]: true }))
     
@@ -714,6 +791,13 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 </button>
               ) : (
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={searchProfilePictures}
+                    className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Select Photo</span>
+                  </button>
                   <button
                     onClick={handleCancelEdit}
                     disabled={isSaving}
@@ -1632,6 +1716,129 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                     Save Selected
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Profile Picture Search Modal */}
+      {profilePictureModal.isOpen && (
+        <>
+          {/* Modal Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-30 z-60"
+            onClick={() => setProfilePictureModal({ isOpen: false, pictures: [], loading: false })}
+          />
+          
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <Camera className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Select Profile Picture for {analyst.firstName} {analyst.lastName}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setProfilePictureModal({ isOpen: false, pictures: [], loading: false })}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {profilePictureModal.loading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+                    <p className="text-sm text-gray-600">Searching for profile pictures...</p>
+                  </div>
+                ) : profilePictureModal.pictures.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Image className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                    <p className="text-gray-600 mb-4">No profile pictures found.</p>
+                    <button
+                      onClick={searchProfilePictures}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    >
+                      <Search className="w-4 h-4" />
+                      Search Again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <p className="text-sm text-gray-600">
+                      Found {profilePictureModal.pictures.length} profile picture options. Click on an image to select it as the profile picture.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {profilePictureModal.pictures.map((picture, index) => (
+                        <div 
+                          key={index}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                          onClick={() => selectProfilePicture(picture.url)}
+                        >
+                          <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                            <img
+                              src={picture.url}
+                              alt={picture.title || `Profile picture option ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.src = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="#f3f4f6"/><text x="100" y="110" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#9ca3af">Image not available</text></svg>')}`
+                              }}
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-900">
+                                {picture.source}
+                              </span>
+                              <span className={cn(
+                                'px-2 py-0.5 rounded-full text-xs font-medium',
+                                picture.confidence >= 90 ? 'bg-green-100 text-green-800' :
+                                picture.confidence >= 75 ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-red-100 text-red-800'
+                              )}>
+                                {picture.confidence}% match
+                              </span>
+                            </div>
+                            
+                            {picture.title && (
+                              <p className="text-xs text-gray-600 line-clamp-2">
+                                {picture.title}
+                              </p>
+                            )}
+                            
+                            {picture.width && picture.height && (
+                              <p className="text-xs text-gray-500">
+                                {picture.width} × {picture.height}
+                              </p>
+                            )}
+                          </div>
+                          
+                          <button className="w-full mt-3 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+                            Select This Picture
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="text-center pt-4 border-t border-gray-200">
+                      <button
+                        onClick={searchProfilePictures}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Search Again
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

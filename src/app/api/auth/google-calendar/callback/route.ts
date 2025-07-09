@@ -143,10 +143,11 @@ export async function GET(request: NextRequest) {
       console.warn('Could not get calendar name, using default:', error)
     }
 
-    // For now, we'll use a hardcoded user ID
-    // In production, this should come from the session/auth
+    // Get user ID from session/auth or use fallback
+    // TODO: Replace with proper session management
     const userId = 'user-1'
-    console.log('👤 [CALENDAR OAUTH] Using hardcoded userId:', userId)
+    console.log('👤 [CALENDAR OAUTH] Using userId:', userId)
+    console.log('⚠️  [CALENDAR OAUTH] WARNING: Using hardcoded user ID - should be from session in production')
 
     // Check if this Google account is already connected
     console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
@@ -237,9 +238,25 @@ export async function GET(request: NextRequest) {
       )
     }
   } catch (error) {
-    console.error('Error in Google Calendar OAuth callback:', error)
+    console.error('\n❌ [CALENDAR OAUTH] CRITICAL ERROR in OAuth callback:')
+    console.error('📝 [CALENDAR OAUTH] Error details:', error)
+    console.error('💬 [CALENDAR OAUTH] Error message:', error?.message)
+    console.error('📚 [CALENDAR OAUTH] Error stack:', error?.stack)
+    console.error('🏷️ [CALENDAR OAUTH] Error name:', error?.name)
+    
+    // Log environment check again in error case
+    console.error('🔍 [CALENDAR OAUTH] Environment check (in error):')
+    console.error('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing')
+    console.error('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing')
+    console.error('  - GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || 'Missing')
+    console.error('  - ENCRYPTION_KEY:', process.env.ENCRYPTION_KEY ? 'Present' : 'Missing')
+    console.error('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
+    
     return NextResponse.redirect(
       new URL('/settings?error=oauth_callback_failed', request.url)
     )
+  } finally {
+    await prisma.$disconnect()
+    console.log('🔚 [CALENDAR OAUTH] Database connection closed')
   }
 }

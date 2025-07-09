@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Star,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Target
 } from 'lucide-react'
 
 interface PredefinedTopic {
@@ -34,7 +35,6 @@ interface EditingTopic {
   id?: string
   name: string
   category: 'CORE' | 'ADDITIONAL'
-  description: string
   order: number
 }
 
@@ -42,10 +42,12 @@ export default function TopicsManagement() {
   const [topics, setTopics] = useState<PredefinedTopic[]>([])
   const [companyName, setCompanyName] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [editingTopic, setEditingTopic] = useState<EditingTopic | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [simplifying, setSimplifying] = useState(false);
   const [simplificationResults, setSimplificationResults] = useState<any | null>(null);
+  const [applyToAnalysts, setApplyToAnalysts] = useState(true);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -96,7 +98,6 @@ export default function TopicsManagement() {
     setEditingTopic({
       name: '',
       category,
-      description: '',
       order: nextOrder
     })
     setIsCreating(true)
@@ -107,7 +108,6 @@ export default function TopicsManagement() {
       id: topic.id,
       name: topic.name,
       category: topic.category,
-      description: topic.description || '',
       order: topic.order
     })
     setIsCreating(false)
@@ -134,7 +134,6 @@ export default function TopicsManagement() {
         body: JSON.stringify({
           name: editingTopic.name.trim(),
           category: editingTopic.category,
-          description: editingTopic.description.trim() || null,
           order: editingTopic.order
         }),
       })
@@ -218,6 +217,8 @@ export default function TopicsManagement() {
 
 
   const coreTopics = topics.filter(t => t.category === 'CORE')
+  const additionalTopics = topics.filter(t => t.category === 'ADDITIONAL')
+  
   const runTopicSimplification = async () => {
     setSimplifying(true);
     setSimplificationResults(null);
@@ -252,7 +253,10 @@ export default function TopicsManagement() {
       const response = await fetch('/api/settings/topics/simplify', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ simplifiedTopics: simplificationResults.simplifiedTopics }),
+        body: JSON.stringify({ 
+          simplifiedTopics: simplificationResults.simplifiedTopics,
+          applyToAnalysts: applyToAnalysts
+        }),
       });
 
       if (response.ok) {
@@ -308,49 +312,6 @@ export default function TopicsManagement() {
         </div>
       )}
 
-      {/* Core Topics Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-medium flex items-center gap-2">
-            <Star className="w-5 h-5 text-yellow-500" />
-            Core Topics for {companyName || 'Your Company'}
-          </h3>
-          <Button
-            onClick={() => startCreating('CORE')}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </Button>
-        </div>
-
-        <div className="grid gap-3">
-          {coreTopics.map((topic, index) => (
-            <TopicCard
-              key={topic.id}
-              topic={topic}
-              isFirst={index === 0}
-              isLast={index === coreTopics.length - 1}
-              onEdit={startEditing}
-              onDelete={deleteTopic}
-              onMove={moveTopicOrder}
-            />
-          ))}
-          
-          {editingTopic && editingTopic.category === 'CORE' && (
-            <TopicEditCard
-              topic={editingTopic}
-              isCreating={isCreating}
-              saving={saving}
-              onChange={setEditingTopic}
-              onSave={saveTopic}
-              onCancel={cancelEditing}
-            />
-          )}
-        </div>
-      </div>
-
       {/* Topic Simplification Section */}
       <div className="p-6 border border-dashed border-gray-300 rounded-lg bg-gray-50">
         <div className="flex items-start justify-between">
@@ -405,16 +366,73 @@ export default function TopicsManagement() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-              <Button variant="outline" onClick={() => setSimplificationResults(null)} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={applySimplification} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
-                {saving ? 'Applying...' : 'Apply Simplification'}
-              </Button>
+            <div className="space-y-4 pt-4 border-t border-gray-200">
+              {/* Option to apply deduplication to analysts */}
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="apply-to-analysts"
+                  checked={applyToAnalysts}
+                  onCheckedChange={setApplyToAnalysts}
+                />
+                <Label htmlFor="apply-to-analysts" className="text-sm">
+                  Also remove duplicate topics from existing analysts
+                </Label>
+              </div>
+              
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setSimplificationResults(null)} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button onClick={applySimplification} disabled={saving} className="bg-green-600 hover:bg-green-700 text-white">
+                  {saving ? 'Applying...' : 'Apply Simplification'}
+                </Button>
+              </div>
             </div>
           </div>
         )}
+      </div>
+
+      {/* Core Topics Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium flex items-center gap-2">
+            <Star className="w-5 h-5 text-yellow-500" />
+            Core Topics for {companyName || 'Your Company'}
+          </h3>
+          <Button
+            onClick={() => startCreating('CORE')}
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add
+          </Button>
+        </div>
+
+        <div className="grid gap-3">
+          {coreTopics.map((topic, index) => (
+            <TopicCard
+              key={topic.id}
+              topic={topic}
+              isFirst={index === 0}
+              isLast={index === coreTopics.length - 1}
+              onEdit={startEditing}
+              onDelete={deleteTopic}
+              onMove={moveTopicOrder}
+            />
+          ))}
+          
+          {editingTopic && editingTopic.category === 'CORE' && (
+            <TopicEditCard
+              topic={editingTopic}
+              isCreating={isCreating}
+              saving={saving}
+              onChange={setEditingTopic}
+              onSave={saveTopic}
+              onCancel={cancelEditing}
+            />
+          )}
+        </div>
       </div>
 
       {/* Additional Topics Section */}
@@ -566,19 +584,6 @@ function TopicEditCard({ topic, isCreating, saving, onChange, onSave, onCancel }
           />
         </div>
 
-        <div>
-          <Label htmlFor="topic-description" className="text-sm font-medium">
-            Description
-          </Label>
-          <Textarea
-            id="topic-description"
-            value={topic.description}
-            onChange={(e) => onChange({ ...topic, description: e.target.value })}
-            placeholder="Optional description for this topic"
-            className="mt-1"
-            rows={2}
-          />
-        </div>
 
         <div className="flex items-center gap-4">
           <Badge variant="secondary" className={

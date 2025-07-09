@@ -224,10 +224,8 @@ function DashboardContent() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-gray-600">
-          Welcome to your {industryName || 'HR Tech'} Analyst Portal
-        </p>
+        <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
+
         
         {/* Notification Banner */}
         {notification && (
@@ -265,15 +263,7 @@ function DashboardContent() {
         )}
       </div>
 
-      {/* Dashboard Period Notice */}
-      <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex items-center">
-          <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-          <p className="text-sm text-blue-800">
-            <strong>Dashboard Period:</strong> All metrics and data shown below reflect the past 90 days unless otherwise specified.
-          </p>
-        </div>
-      </div>
+
 
       {/* Band 1: Analysts */}
       <div className="mb-8">
@@ -303,8 +293,8 @@ function DashboardContent() {
               
               {/* Recent Updates section within Total Analysts card */}
               <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  Recent Updates
+                <h4 className="text-sm font-medium text-gray-500 mb-3">
+                  Recent updates (last 90 days)
                 </h4>
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {recentActivity.length === 0 ? (
@@ -313,19 +303,54 @@ function DashboardContent() {
                       <p className="text-xs text-gray-500">No recent updates</p>
                       <p className="text-xs text-gray-400">Updates will appear here as you interact with analysts</p>
                     </div>
-                  ) : (
-                    recentActivity.slice(0, 6).map((activity, index) => {
+                  ) :
+                    recentActivity.slice(0, 4).map((activity, index) => {
+                      // Custom rendering for analyst_updated type
+                      if (activity.type === 'analyst_updated') {
+                        // Try to extract name and company from the message
+                        // Format: "First Last (Company) profile updated" or "First Last profile updated"
+                        const match = activity.message.match(/^(.*?) (\((.*?)\) )?profile updated$/)
+                        if (match) {
+                          const name = match[1]
+                          const company = match[3]
+                          return (
+                            <div key={index} className="flex items-center justify-between py-1 ">
+                              <div className="flex-1 min-w-0 flex items-center space-x-2">
+                         
+                                <p className="text-sm font-medium text-gray-900 flex items-center">
+                                  {name}
+                                  {company && (
+                                    <>
+                                      <span className="mx-1 text-gray-400">•</span>
+                                      <span className="text-xs text-gray-500">{company}</span>
+                                    </>
+                                  )}
+                                  <span className="ml-1 text-xs text-gray-500">profile updated</span>
+                                </p>
+                              </div>
+                              <span className="text-xs text-gray-400 ml-2">
+                                {activity.time}
+                              </span>
+                            </div>
+                          )
+                        }
+                      }
+                      // Default rendering for other types
                       return (
                         <div key={index} className="flex items-center justify-between py-2 border-b border-gray-300">
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 flex items-center space-x-2">
+                            <span className="text-gray-400 text-lg">•</span>
                             <p className="text-sm font-medium text-gray-900">
-                              {activity.time} - {activity.message}
+                              {activity.message}
                             </p>
                           </div>
+                          <span className="text-xs text-gray-400 ml-2">
+                            {activity.time}
+                          </span>
                         </div>
                       )
                     })
-                  )}
+                  }
                 </div>
               </div>
             </div>
@@ -511,7 +536,10 @@ function NewAnalystsWidget({ newAnalysts }: { newAnalysts: NewAnalyst[] }) {
         </div>
         
         <div className="border-t border-gray-200 pt-4">
-          <div className="space-y-3 max-h-64 overflow-y-auto">
+        <h4 className="text-sm font-medium text-gray-500 mb-3">
+                  Recent additions (last 90 days)
+                </h4>
+                <div className="space-y-3 max-h-64 overflow-y-auto">
             {newAnalysts.length === 0 ? (
               <div className="text-center py-4">
                 <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
@@ -519,13 +547,13 @@ function NewAnalystsWidget({ newAnalysts }: { newAnalysts: NewAnalyst[] }) {
               </div>
             ) : (
               newAnalysts.slice(0, 8).map((analyst) => (
-                <div key={analyst.id} className="flex items-center justify-between py-2 border-b border-gray-300">
-                  <div className="flex-1 min-w-0">
+                <div key={analyst.id} className="flex items-center justify-between py-1 ">
+                  <div className="flex-1 min-w-0 flex items-center space-x-2">
                     <p className="text-sm font-medium text-gray-900">
                       {analyst.firstName} {analyst.lastName}
                     </p>
                     {analyst.company && (
-                      <p className="text-xs text-gray-500">{analyst.company}</p>
+                      <span className="text-xs text-gray-500">• {analyst.company}</span>
                     )}
                   </div>
                   <span className="text-xs text-gray-400 ml-2">
@@ -687,7 +715,7 @@ function ActionItemsWidget({
 
   if (actionItems.length === 0) {
     return (
-      <div className={`bg-white ${compact ? 'overflow-hidden shadow rounded-lg' : 'rounded-lg border border-gray-200'} ${compact ? 'p-5' : 'p-6'}`}>
+      <div className={`bg-white ${compact ? 'overflow-hidden shadow rounded-lg' : 'rounded-lg '} ${compact ? 'p-5' : 'p-6'}`}>
         <div className="flex items-center mb-4">
           <ListTodo className="w-5 h-5 text-blue-600 mr-2" />
           <h2 className={`${compact ? 'text-sm font-medium text-gray-500' : 'text-lg font-semibold text-gray-900'}`}>Briefing Follow-ups</h2>

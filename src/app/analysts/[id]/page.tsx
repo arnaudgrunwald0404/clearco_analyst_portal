@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   User, 
   Mail, 
@@ -28,64 +28,43 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-// This would normally come from your database based on the ID
-const mockAnalyst = {
-  id: '1',
-  firstName: 'Sarah',
-  lastName: 'Chen',
-  email: 'sarah.chen@gartner.com',
-  company: 'Gartner',
-  title: 'Vice President Analyst',
-  phone: '+1-555-0123',
-  linkedIn: 'https://linkedin.com/in/sarahchen',
-  twitter: '@sarahchen_hr',
-  website: 'https://gartner.com/sarah-chen',
-  bio: 'Leading HR Technology analyst with 15+ years of experience in the industry. Specializes in talent management, employee experience, and workforce analytics.',
-  profileImageUrl: null,
-  influenceScore: 85,
-  lastContactDate: '2024-10-15T10:00:00Z',
-  nextContactDate: '2024-11-15T10:00:00Z',
-  communicationCadence: 30,
-  relationshipHealth: 'GOOD',
-  coveredTopics: ['HR Technology', 'Talent Management', 'Employee Experience'],
-  recentSocialSummary: 'Recently discussing AI impact on HR, future of work trends, and employee engagement strategies. Active in conversations about hybrid work policies.',
-  socialSummaryUpdatedAt: '2024-10-20T00:00:00Z',
-  keyThemes: ['AI in HR', 'Future of Work', 'Employee Engagement', 'Hybrid Work'],
-  upcomingPublications: [
-    {
-      title: 'The Future of HR Technology 2025',
-      type: 'Research Report',
-      expectedDate: '2024-12-01'
-    },
-    {
-      title: 'AI and the Workplace Webinar',
-      type: 'Webinar',
-      expectedDate: '2024-11-15'
-    }
-  ],
-  recentPublications: [
-    {
-      title: 'Employee Experience Trends Q3 2024',
-      type: 'Blog Post',
-      publishedDate: '2024-10-10',
-      url: 'https://example.com/blog/employee-experience-trends'
-    },
-    {
-      title: 'HR Tech Market Analysis',
-      type: 'Research Report',
-      publishedDate: '2024-09-25',
-      url: 'https://example.com/research/hr-tech-market'
-    }
-  ],
-  speakingEngagements: [
-    {
-      event: 'HR Tech Conference 2024',
-      date: '2024-11-20',
-      topic: 'The AI Revolution in HR'
-    }
-  ],
-  status: 'ACTIVE',
-  influence: 'VERY_HIGH'
+interface SocialHandle {
+  id: string
+  platform: 'LINKEDIN' | 'TWITTER' | 'MEDIUM' | 'BLOG' | 'OTHER'
+  handle: string
+  displayName?: string
+  isActive: boolean
+}
+
+interface Analyst {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  company?: string
+  title?: string
+  phone?: string
+  linkedIn?: string
+  twitter?: string
+  website?: string
+  bio?: string
+  profileImageUrl?: string
+  influenceScore: number
+  lastContactDate?: string
+  nextContactDate?: string
+  communicationCadence?: number
+  relationshipHealth: string
+  recentSocialSummary?: string
+  socialSummaryUpdatedAt?: string
+  keyThemes?: string
+  upcomingPublications?: string
+  recentPublications?: string
+  speakingEngagements?: string
+  awards?: string
+  status: string
+  influence: string
+  socialHandles: SocialHandle[]
+  coveredTopics: { topic: string }[]
 }
 
 const mockBriefings = [
@@ -162,12 +141,36 @@ function formatDate(dateString: string) {
 
 export default function AnalystDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [analyst, setAnalyst] = useState<Analyst | null>(null)
+  const [loading, setLoading] = useState(true)
   const [socialSearchLoading, setSocialSearchLoading] = useState({
     linkedin: false,
     twitter: false
   })
 
+  useEffect(() => {
+    const fetchAnalyst = async () => {
+      try {
+        const response = await fetch(`/api/analysts/${params.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success) {
+            setAnalyst(data.analyst)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching analyst:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAnalyst()
+  }, [params.id])
+
   const searchSocialProfile = async (platform: 'linkedin' | 'twitter') => {
+    if (!analyst) return
+    
     setSocialSearchLoading(prev => ({ ...prev, [platform]: true }))
     
     try {
@@ -176,8 +179,8 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analystId: params.id,
-          analystName: `${mockAnalyst.firstName} ${mockAnalyst.lastName}`,
-          company: mockAnalyst.company,
+          analystName: `${analyst.firstName} ${analyst.lastName}`,
+          company: analyst.company,
           platform
         })
       })
@@ -229,6 +232,105 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
     { id: 'alerts', name: 'Alerts', icon: AlertTriangle }
   ]
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading analyst profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!analyst) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-red-600" />
+          <p className="text-gray-600">Analyst not found</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Helper function to render social profile icons
+  const renderSocialIcons = () => {
+    const socialIcons = []
+
+    // Add LinkedIn icons from socialHandles
+    const linkedinHandles = analyst.socialHandles?.filter(handle => handle.platform === 'LINKEDIN') || []
+    linkedinHandles.forEach((handle, index) => {
+      const url = handle.handle.startsWith('http') ? handle.handle : `https://linkedin.com/in/${handle.handle}`
+      socialIcons.push(
+        <a 
+          key={`linkedin-${index}`}
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 transition-colors"
+          title={`LinkedIn Profile${handle.displayName ? ` - ${handle.displayName}` : ''}`}
+        >
+          <Linkedin className="w-5 h-5" />
+        </a>
+      )
+    })
+
+    // Fallback to legacy linkedIn field if no social handles
+    if (linkedinHandles.length === 0 && analyst.linkedIn) {
+      socialIcons.push(
+        <a 
+          key="linkedin-legacy"
+          href={analyst.linkedIn} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:text-blue-800 transition-colors"
+          title="LinkedIn Profile"
+        >
+          <Linkedin className="w-5 h-5" />
+        </a>
+      )
+    }
+
+    // Add Twitter/X icons from socialHandles
+    const twitterHandles = analyst.socialHandles?.filter(handle => handle.platform === 'TWITTER') || []
+    twitterHandles.forEach((handle, index) => {
+      const url = handle.handle.startsWith('http') 
+        ? handle.handle 
+        : `https://twitter.com/${handle.handle.replace('@', '')}`
+      socialIcons.push(
+        <a 
+          key={`twitter-${index}`}
+          href={url} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-gray-800 hover:text-gray-600 transition-colors"
+          title={`X (Twitter) Profile${handle.displayName ? ` - ${handle.displayName}` : ''}`}
+        >
+          <Twitter className="w-5 h-5" />
+        </a>
+      )
+    })
+
+    // Fallback to legacy twitter field if no social handles
+    if (twitterHandles.length === 0 && analyst.twitter) {
+      socialIcons.push(
+        <a 
+          key="twitter-legacy"
+          href={`https://twitter.com/${analyst.twitter.replace('@', '')}`} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-gray-800 hover:text-gray-600 transition-colors"
+          title="X (Twitter) Profile"
+        >
+          <Twitter className="w-5 h-5" />
+        </a>
+      )
+    }
+
+    return socialIcons
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -237,40 +339,45 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
               <div className="flex-shrink-0">
-                {mockAnalyst.profileImageUrl ? (
+                {analyst.profileImageUrl ? (
                   <img 
                     className="h-20 w-20 rounded-full" 
-                    src={mockAnalyst.profileImageUrl} 
-                    alt={`${mockAnalyst.firstName} ${mockAnalyst.lastName}`} 
+                    src={analyst.profileImageUrl} 
+                    alt={`${analyst.firstName} ${analyst.lastName}`} 
                   />
                 ) : (
                   <div className="h-20 w-20 rounded-full bg-blue-500 flex items-center justify-center">
                     <span className="text-2xl font-medium text-white">
-                      {mockAnalyst.firstName.charAt(0)}{mockAnalyst.lastName.charAt(0)}
+                      {analyst.firstName.charAt(0)}{analyst.lastName.charAt(0)}
                     </span>
                   </div>
                 )}
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  {mockAnalyst.firstName} {mockAnalyst.lastName}
+                  {analyst.firstName} {analyst.lastName}
                 </h1>
-                <p className="text-lg text-gray-600">{mockAnalyst.title}</p>
-                <p className="text-md text-gray-500">{mockAnalyst.company}</p>
+                <p className="text-lg text-gray-600">{analyst.title}</p>
+                <p className="text-md text-gray-500">{analyst.company}</p>
+                
+                {/* Social Profile Icons */}
+                <div className="mt-3 flex items-center space-x-3">
+                  {renderSocialIcons()}
+                </div>
                 <div className="mt-2 flex items-center space-x-4">
                   <span className={cn(
                     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                    getHealthColor(mockAnalyst.relationshipHealth)
+                    getHealthColor(analyst.relationshipHealth)
                   )}>
                     <Heart className="w-3 h-3 mr-1" />
-                    {mockAnalyst.relationshipHealth}
+                    {analyst.relationshipHealth}
                   </span>
                   <span className={cn(
                     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                    getInfluenceColor(mockAnalyst.influenceScore)
+                    getInfluenceColor(analyst.influenceScore)
                   )}>
                     <Star className="w-3 h-3 mr-1" />
-                    Influence: {mockAnalyst.influenceScore}/100
+                    Influence: {analyst.influenceScore}/100
                   </span>
                 </div>
               </div>
@@ -299,31 +406,31 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
           <div className="flex items-center space-x-8">
             <div className="flex items-center text-sm text-gray-600">
               <Mail className="w-4 h-4 mr-2" />
-              <a href={`mailto:${mockAnalyst.email}`} className="hover:text-blue-600">
-                {mockAnalyst.email}
+              <a href={`mailto:${analyst.email}`} className="hover:text-blue-600">
+                {analyst.email}
               </a>
             </div>
-            {mockAnalyst.phone && (
+            {analyst.phone && (
               <div className="flex items-center text-sm text-gray-600">
                 <Phone className="w-4 h-4 mr-2" />
-                <a href={`tel:${mockAnalyst.phone}`} className="hover:text-blue-600">
-                  {mockAnalyst.phone}
+                <a href={`tel:${analyst.phone}`} className="hover:text-blue-600">
+                  {analyst.phone}
                 </a>
               </div>
             )}
-            {mockAnalyst.linkedIn && (
+            {analyst.linkedIn && (
               <div className="flex items-center text-sm text-gray-600">
                 <Linkedin className="w-4 h-4 mr-2" />
-                <a href={mockAnalyst.linkedIn} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
+                <a href={analyst.linkedIn} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
                   LinkedIn
                 </a>
               </div>
             )}
-            {mockAnalyst.twitter && (
+            {analyst.twitter && (
               <div className="flex items-center text-sm text-gray-600">
                 <Twitter className="w-4 h-4 mr-2" />
-                <a href={`https://twitter.com/${mockAnalyst.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
-                  {mockAnalyst.twitter}
+                <a href={`https://twitter.com/${analyst.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
+                  {analyst.twitter}
                 </a>
               </div>
             )}
@@ -366,21 +473,21 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
               {/* Bio */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Biography</h3>
-                <p className="text-gray-700">{mockAnalyst.bio}</p>
+                <p className="text-gray-700">{analyst.bio || 'No biography available.'}</p>
               </div>
 
               {/* Covered Topics */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Covered Topics</h3>
                 <div className="flex flex-wrap gap-2">
-                  {mockAnalyst.coveredTopics.map((topic, index) => (
+                  {analyst.coveredTopics?.map((topic, index) => (
                     <span
                       key={index}
                       className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
                     >
-                      {topic}
+                      {topic.topic}
                     </span>
-                  ))}
+                  )) || <span className="text-gray-500">No topics assigned.</span>}
                 </div>
               </div>
 
@@ -390,15 +497,15 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                 <div className="space-y-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Last Contact:</span>
-                    <span className="text-gray-900">{formatDate(mockAnalyst.lastContactDate)}</span>
+                    <span className="text-gray-900">{analyst.lastContactDate ? formatDate(analyst.lastContactDate) : 'Never'}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Next Scheduled:</span>
-                    <span className="text-gray-900">{formatDate(mockAnalyst.nextContactDate)}</span>
+                    <span className="text-gray-900">{analyst.nextContactDate ? formatDate(analyst.nextContactDate) : 'Not scheduled'}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-500">Cadence:</span>
-                    <span className="text-gray-900">Every {mockAnalyst.communicationCadence} days</span>
+                    <span className="text-gray-900">{analyst.communicationCadence ? `Every ${analyst.communicationCadence} days` : 'Not set'}</span>
                   </div>
                 </div>
               </div>
@@ -487,22 +594,27 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
               <div className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Recent Summary</h4>
-                  <p className="text-sm text-gray-700">{mockAnalyst.recentSocialSummary}</p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Last updated: {formatDate(mockAnalyst.socialSummaryUpdatedAt)}
-                  </p>
+                  <p className="text-sm text-gray-700">{analyst.recentSocialSummary || 'No recent social activity summary available.'}</p>
+                  {analyst.socialSummaryUpdatedAt && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Last updated: {formatDate(analyst.socialSummaryUpdatedAt)}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Key Themes</h4>
                   <div className="flex flex-wrap gap-2">
-                    {mockAnalyst.keyThemes.map((theme, index) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                      >
-                        {theme}
-                      </span>
-                    ))}
+                    {analyst.keyThemes ? 
+                      analyst.keyThemes.split(',').map((theme, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800"
+                        >
+                          {theme.trim()}
+                        </span>
+                      )) : 
+                      <span className="text-sm text-gray-500">No key themes identified.</span>
+                    }
                   </div>
                 </div>
               </div>
@@ -515,43 +627,21 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Upcoming</h4>
                   <div className="space-y-2">
-                    {mockAnalyst.upcomingPublications.map((pub, index) => (
-                      <div key={index} className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-                        <p className="text-sm font-medium text-blue-900">{pub.title}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-blue-700">{pub.type}</span>
-                          <span className="text-xs text-blue-600">{formatDate(pub.expectedDate)}</span>
-                        </div>
-                      </div>
-                    ))}
+                    {analyst.upcomingPublications ? (
+                      <p className="text-sm text-gray-700">{analyst.upcomingPublications}</p>
+                    ) : (
+                      <p className="text-sm text-gray-500">No upcoming publications scheduled.</p>
+                    )}
                   </div>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-900 mb-2">Recent Publications</h4>
                   <div className="space-y-2">
-                    {mockAnalyst.recentPublications.map((pub, index) => (
-                      <div key={index} className="p-3 bg-gray-50 border border-gray-200 rounded-md">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900">{pub.title}</p>
-                            <div className="flex items-center justify-between mt-1">
-                              <span className="text-xs text-gray-600">{pub.type}</span>
-                              <span className="text-xs text-gray-500">{formatDate(pub.publishedDate)}</span>
-                            </div>
-                          </div>
-                          {pub.url && (
-                            <a 
-                              href={pub.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="ml-2 text-blue-600 hover:text-blue-800"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                    {analyst.recentPublications ? (
+                      <p className="text-sm text-gray-700">{analyst.recentPublications}</p>
+                    ) : (
+                      <p className="text-sm text-gray-500">No recent publications available.</p>
+                    )}
                   </div>
                 </div>
               </div>
