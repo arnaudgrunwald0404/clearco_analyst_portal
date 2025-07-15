@@ -121,19 +121,67 @@ export default function TestimonialsPage() {
     return matchesSearch && matchesFilter
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission (create/update testimonial)
-    console.log('Submitting testimonial:', formData)
-    setShowForm(false)
-    setEditingTestimonial(null)
-    setFormData({
-      analystId: '',
-      quote: '',
-      context: '',
-      isPublished: false,
-      displayOrder: 1
-    })
+    
+    try {
+      let response
+      
+      if (editingTestimonial) {
+        // Update existing testimonial
+        response = await fetch(`/api/testimonials/${editingTestimonial}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        })
+      } else {
+        // Create new testimonial
+        response = await fetch('/api/testimonials', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        })
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save testimonial')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        if (editingTestimonial) {
+          // Update existing testimonial in the list
+          setTestimonials(prev => 
+            prev.map(t => 
+              t.id === editingTestimonial ? result.data : t
+            )
+          )
+        } else {
+          // Add new testimonial to the list
+          setTestimonials(prev => [...prev, result.data])
+        }
+        
+        // Close form and reset
+        setShowForm(false)
+        setEditingTestimonial(null)
+        setFormData({
+          analystId: '',
+          quote: '',
+          context: '',
+          isPublished: false,
+          displayOrder: 1
+        })
+      }
+    } catch (error) {
+      console.error('Error saving testimonial:', error)
+      alert(error instanceof Error ? error.message : 'Failed to save testimonial')
+    }
   }
 
   const handleEdit = (testimonial: Testimonial) => {
@@ -148,10 +196,30 @@ export default function TestimonialsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this testimonial?')) {
-      // Handle deletion
-      console.log('Deleting testimonial:', id)
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this testimonial?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/testimonials/${id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete testimonial')
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Remove testimonial from the list
+        setTestimonials(prev => prev.filter(t => t.id !== id))
+      }
+    } catch (error) {
+      console.error('Error deleting testimonial:', error)
+      alert(error instanceof Error ? error.message : 'Failed to delete testimonial')
     }
   }
 
@@ -167,20 +235,19 @@ export default function TestimonialsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Testimonials Management</h1>
-          <p className="mt-2 text-gray-600">
-            Manage analyst testimonials and quotes for the portal
-          </p>
+      <div className="mb-8">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Testimonials Management</h1>
+            <p className="mt-2 text-gray-600">
+              Manage and display analyst testimonials
+            </p>
+          </div>
+          <button onClick={() => setShowForm(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Testimonial
+          </button>
         </div>
-        <Button 
-          onClick={() => setShowForm(true)}
-          className="flex items-center"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Testimonial
-        </Button>
       </div>
 
       {/* Search and Filter Bar */}
@@ -190,7 +257,7 @@ export default function TestimonialsPage() {
           <Input
             type="text"
             placeholder="Search testimonials..."
-            className="pl-10"
+            className="pl-10 bg-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

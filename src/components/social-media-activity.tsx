@@ -139,7 +139,7 @@ export default function SocialMediaActivity() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Recent Social Media Activity</h3>
           <Sparkles className="w-5 h-5 text-blue-500" />
@@ -162,9 +162,9 @@ export default function SocialMediaActivity() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
+    <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <h3 className="text-lg font-semibold text-gray-900">Recent Social Media Activity</h3>
           <Sparkles className="w-5 h-5 text-blue-500" />
@@ -178,7 +178,7 @@ export default function SocialMediaActivity() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-600">{stats.postsToday}</div>
           <div className="text-xs text-gray-600">Today</div>
@@ -186,14 +186,6 @@ export default function SocialMediaActivity() {
         <div className="text-center">
           <div className="text-2xl font-bold text-green-600">{stats.totalPosts}</div>
           <div className="text-xs text-gray-600">This Week</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-purple-600">{stats.avgRelevanceScore}%</div>
-          <div className="text-xs text-gray-600">Avg Relevance</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-orange-600">{stats.topThemes.length}</div>
-          <div className="text-xs text-gray-600">Top Themes</div>
         </div>
       </div>
 

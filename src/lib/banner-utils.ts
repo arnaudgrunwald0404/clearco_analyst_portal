@@ -14,6 +14,7 @@ const BANNER_IMAGES = [
   '_rdWUavWadbVzyHjV-FRp.png',
   'n42VjhWcnVyK4ktZZ0cDv.png',
   'ntSsbKjPpJNYm5ymbcpfn.png',
+  'r8ieHgL2LSFO6wXZjZkiX.png',
   'vRZHfJjXFnfFXcYA0rjYI.png',
   'w2CIPUBNpahDzOv0S_ozq.png'
 ]
@@ -23,8 +24,8 @@ const BANNER_IMAGES = [
  * @returns {string} Random banner image filename
  */
 export function getRandomBannerImage(): string {
-  const randomIndex = Math.floor(Math.random() * BANNER_IMAGES.length)
-  return BANNER_IMAGES[randomIndex]
+  // Hard coded to return the specific banner image
+  return 'r8ieHgL2LSFO6wXZjZkiX.png'
 }
 
 /**

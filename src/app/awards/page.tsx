@@ -179,18 +179,14 @@ export default function AwardsPage() {
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Awards</h1>
-          <p className="mt-2 text-gray-600">
-            Never Miss An Award Again
-          </p>
-        </div>
-        <div className="flex space-x-3">
-          <button onClick={() => setIsBulkUploadOpen(true)} className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
-            <Upload className="w-4 h-4 mr-2" />
-            Bulk Import
-          </button>
+      <div className="mb-8">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Awards</h1>
+            <p className="mt-2 text-gray-600">
+              Manage and track industry awards and recognition
+            </p>
+          </div>
           <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             Add Award
@@ -206,7 +202,7 @@ export default function AwardsPage() {
             <input
               type="text"
               placeholder="Search awards by name, organization, topics, or owner..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

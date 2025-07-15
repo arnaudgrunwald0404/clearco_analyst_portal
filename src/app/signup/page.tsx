@@ -52,9 +52,9 @@ export default function SignUpPage() {
       <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-md">
         <div className="text-center">
           <img src="/logo.png" alt="Logo" className="mx-auto h-12 w-auto" />
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+          <h1 className="mt-6 text-3xl font-bold text-gray-900">
             Sign Up
-          </h2>
+          </h1>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && <div className="text-red-500 text-sm">{error}</div>}

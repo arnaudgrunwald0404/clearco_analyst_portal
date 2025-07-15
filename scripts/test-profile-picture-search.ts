@@ -4,7 +4,7 @@
  * Demo script to test the profile picture search functionality
  * 
  * This script demonstrates how the profile picture search API works
- * and shows the mock results that would be returned for analyst profiles.
+ * and shows the real results that would be returned for analyst profiles.
  * 
  * Usage: npm run test:profile-pictures
  */
@@ -22,45 +22,39 @@ interface ProfilePictureResult {
   height?: number
 }
 
-// Mock the profile picture search functionality
-async function searchProfilePictures(analystName: string, company?: string, title?: string): Promise<ProfilePictureResult[]> {
-  console.log(`🔍 Searching for profile pictures for: ${analystName}`)
+// Test the actual API endpoint
+async function testProfilePictureSearchAPI(analystName: string, company?: string, title?: string): Promise<ProfilePictureResult[]> {
+  console.log(`🔍 Testing API search for: ${analystName}`)
   if (company) console.log(`   Company: ${company}`)
   if (title) console.log(`   Title: ${title}`)
   
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  // Generate mock results similar to the API
-  const results: ProfilePictureResult[] = [
-    {
-      url: `https://via.placeholder.com/200x200/4F46E5/FFFFFF?text=${encodeURIComponent(analystName.split(' ').map(n => n[0]).join(''))}`,
-      source: 'Generated Avatar',
-      title: `${analystName} - Professional Avatar`,
-      confidence: 85,
-      width: 200,
-      height: 200
-    },
-    {
-      url: `https://ui-avatars.com/api/?name=${encodeURIComponent(analystName)}&size=200&background=0ea5e9&color=fff&format=png`,
-      source: 'UI Avatars',
-      title: `${analystName} - Letter Avatar`,
-      confidence: 90,
-      width: 200,
-      height: 200
-    },
-    {
-      url: `https://robohash.org/${encodeURIComponent(analystName)}?size=200x200&set=set1`,
-      source: 'RoboHash',
-      title: `${analystName} - Robot Avatar`,
-      confidence: 75,
-      width: 200,
-      height: 200
+  try {
+    const response = await fetch('http://localhost:3001/api/analysts/search-profile-pictures', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        analystName,
+        company,
+        title
+      })
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      if (result.success && result.results) {
+        return result.results
+      } else {
+        console.error('API returned error:', result.error)
+        return []
+      }
+    } else {
+      console.error('API request failed:', response.status, response.statusText)
+      return []
     }
-  ]
-  
-  // Sort by confidence
-  return results.sort((a, b) => b.confidence - a.confidence)
+  } catch (error) {
+    console.error('Error calling API:', error)
+    return []
+  }
 }
 
 async function updateAnalystProfilePicture(analystId: string, profileImageUrl: string) {
@@ -81,7 +75,7 @@ async function updateAnalystProfilePicture(analystId: string, profileImageUrl: s
 }
 
 async function demonstrateProfilePictureSearch() {
-  console.log('🚀 Starting Profile Picture Search Demo\n')
+  console.log('🚀 Starting Real Profile Picture Search Demo\n')
   
   try {
     // Get a sample analyst from the database
@@ -101,12 +95,17 @@ async function demonstrateProfilePictureSearch() {
     console.log(`   Company: ${analyst.company || 'Not specified'}`)
     console.log(`   Title: ${analyst.title || 'Not specified'}\n`)
     
-    // Search for profile pictures
-    const results = await searchProfilePictures(
+    // Test the actual API search
+    const results = await testProfilePictureSearchAPI(
       `${analyst.firstName} ${analyst.lastName}`,
       analyst.company || undefined,
       analyst.title || undefined
     )
+    
+    if (results.length === 0) {
+      console.log('❌ No results returned from API')
+      return
+    }
     
     console.log(`\n🎯 Found ${results.length} profile picture options:\n`)
     
@@ -126,12 +125,16 @@ async function demonstrateProfilePictureSearch() {
       await updateAnalystProfilePicture(analyst.id, selectedPicture.url)
       
       console.log('\n✨ Demo completed successfully!')
-      console.log('\n📝 To implement in production:')
-      console.log('1. Replace mock search with real image search API (Google Custom Search, Bing, etc.)')
-      console.log('2. Add image validation and safety checks')
-      console.log('3. Implement image caching/storage system')
-      console.log('4. Add user permissions and approval workflow')
-      console.log('5. Consider GDPR compliance for automated profile pictures')
+      console.log('\n📝 API Features:')
+      console.log('✅ Real web search for actual photos')
+      console.log('✅ LinkedIn profile simulation')
+      console.log('✅ Unsplash professional photos')
+      console.log('✅ Pexels stock photos')
+      console.log('✅ Professional avatar fallbacks')
+      console.log('\n🔧 To enable full functionality, add these environment variables:')
+      console.log('- SERPAPI_KEY: For web image search')
+      console.log('- UNSPLASH_ACCESS_KEY: For Unsplash photos')
+      console.log('- PEXELS_API_KEY: For Pexels photos')
     }
     
   } catch (error) {
@@ -142,4 +145,4 @@ async function demonstrateProfilePictureSearch() {
 }
 
 // Run the demo
-demonstrateProfilePictureSearch().catch(console.error)
+demonstrateProfilePictureSearch()

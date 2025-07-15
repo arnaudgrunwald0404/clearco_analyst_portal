@@ -81,3 +81,42 @@ export function formatDateTime(dateString: string): string {
     return 'Invalid date'
   }
 }
+
+export function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  } catch (error) {
+    return 'Invalid date'
+  }
+}
+
+export function getAudienceGroupColor(group: string): string {
+  // Simple hash-based color assignment for consistent colors
+  const colors = [
+    'bg-blue-100 text-blue-800',
+    'bg-green-100 text-green-800',
+    'bg-purple-100 text-purple-800',
+    'bg-pink-100 text-pink-800',
+    'bg-indigo-100 text-indigo-800',
+    'bg-yellow-100 text-yellow-800',
+    'bg-red-100 text-red-800',
+    'bg-orange-100 text-orange-800',
+    'bg-teal-100 text-teal-800',
+    'bg-cyan-100 text-cyan-800'
+  ]
+  
+  // Simple hash function
+  let hash = 0
+  for (let i = 0; i < group.length; i++) {
+    const char = group.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+  
+  return colors[Math.abs(hash) % colors.length]
+}

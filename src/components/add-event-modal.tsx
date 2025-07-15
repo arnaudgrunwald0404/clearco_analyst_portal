@@ -5,7 +5,6 @@ import { Dialog, Transition } from '@headlessui/react'
 import { X, Plus, Minus } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 import { useEventEnums } from '@/hooks/useEventEnums'
-import { useDebugAPI } from './debug-panel'
 
 interface AddEventModalProps {
   isOpen: boolean
@@ -29,7 +28,6 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { addToast } = useToast()
   const { enums, loading: enumsLoading } = useEventEnums()
-  const { logAPICall } = useDebugAPI()
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -80,8 +78,7 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
       const result = await response.json()
       console.log('📥 Response body:', result)
       
-      // Log the API call for debugging
-      logAPICall('/api/events', 'POST', formData, result, null)
+
 
       if (response.ok && result.success) {
         console.log('✅ Event created successfully!')
@@ -95,13 +92,10 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
     } catch (error) {
       console.error('❌ Event creation failed:', error)
       console.error('❌ Error details:', {
-        name: error?.name,
-        message: error?.message,
-        stack: error?.stack
+        name: (error as any)?.name,
+        message: (error as any)?.message,
+        stack: (error as any)?.stack
       })
-      
-      // Log the API call with error
-      logAPICall('/api/events', 'POST', formData, null, error)
       
       addToast({ 
         type: 'error', 

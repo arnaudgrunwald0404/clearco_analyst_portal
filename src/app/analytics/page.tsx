@@ -193,15 +193,17 @@ export default function AnalyticsPage() {
   const [selectedTimeframe, setSelectedTimeframe] = useState('last-3-months')
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="mt-2 text-gray-600">
-            Intelligence and insights for analyst relationship management
-          </p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+        <p className="mt-2 text-gray-600">
+          Intelligence and insights for analyst relationship management
+        </p>
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-3">
           <select
             value={selectedTimeframe}

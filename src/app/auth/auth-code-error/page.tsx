@@ -9,7 +9,7 @@ export default function AuthCodeError() {
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
             <AlertTriangle className="h-6 w-6 text-red-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          <h1 className="text-3xl font-bold text-gray-900">
             Authentication Error
           </h1>
           <p className="text-gray-600 mb-6">

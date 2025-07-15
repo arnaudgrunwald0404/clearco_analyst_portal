@@ -276,7 +276,7 @@ export async function POST(request: NextRequest) {
 
     // Create events using createMany for better performance
     let createdEvents = []
-    let createErrors = []
+    const createErrors = []
     
     try {
       // Use createMany for better performance with large datasets

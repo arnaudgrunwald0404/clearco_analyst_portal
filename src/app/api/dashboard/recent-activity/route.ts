@@ -35,25 +35,27 @@ export async function GET() {
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-    // Fetch recent activities from different sources using Prisma
-    const [
-      recentAnalystUpdates,
-      recentNewsletters,
-      recentBriefings,
-      recentAlerts,
-      recentInteractions,
-      recentCalendarMeetings
-    ] = await Promise.all([
-      // Recent analyst updates
-      prisma.analyst.findMany({
+    // Fetch recent activities from different sources using Prisma with error handling
+    let recentAnalystUpdates: any[] = []
+    let recentNewsletters: any[] = []
+    let recentBriefings: any[] = []
+    let recentAlerts: any[] = []
+    let recentInteractions: any[] = []
+    let recentCalendarMeetings: any[] = []
+
+    try {
+      recentAnalystUpdates = await prisma.analyst.findMany({
         where: { updatedAt: { gte: sevenDaysAgo } },
         select: { firstName: true, lastName: true, company: true, updatedAt: true },
         orderBy: { updatedAt: 'desc' },
         take: 3
-      }),
+      })
+    } catch (error) {
+      console.log('Recent analyst updates query failed:', error)
+    }
 
-      // Recent newsletters sent
-      prisma.newsletter.findMany({
+    try {
+      recentNewsletters = await prisma.newsletter.findMany({
         where: { 
           status: 'SENT',
           sentAt: { gte: sevenDaysAgo }
@@ -67,10 +69,13 @@ export async function GET() {
         },
         orderBy: { sentAt: 'desc' },
         take: 3
-      }),
+      })
+    } catch (error) {
+      console.log('Recent newsletters query failed:', error)
+    }
 
-      // Recent completed briefings
-      prisma.briefing.findMany({
+    try {
+      recentBriefings = await prisma.briefing.findMany({
         where: { 
           status: 'COMPLETED',
           completedAt: { gte: sevenDaysAgo }
@@ -78,10 +83,13 @@ export async function GET() {
         select: { title: true, completedAt: true },
         orderBy: { completedAt: 'desc' },
         take: 3
-      }),
+      })
+    } catch (error) {
+      console.log('Recent briefings query failed:', error)
+    }
 
-      // Recent alerts
-      prisma.alert.findMany({
+    try {
+      recentAlerts = await prisma.alert.findMany({
         where: { createdAt: { gte: sevenDaysAgo } },
         select: {
           title: true,
@@ -93,10 +101,13 @@ export async function GET() {
         },
         orderBy: { createdAt: 'desc' },
         take: 3
-      }),
+      })
+    } catch (error) {
+      console.log('Recent alerts query failed:', error)
+    }
 
-      // Recent interactions
-      prisma.interaction.findMany({
+    try {
+      recentInteractions = await prisma.interaction.findMany({
         where: { date: { gte: sevenDaysAgo } },
         select: {
           type: true,
@@ -108,10 +119,13 @@ export async function GET() {
         },
         orderBy: { date: 'desc' },
         take: 3
-      }),
+      })
+    } catch (error) {
+      console.log('Recent interactions query failed:', error)
+    }
 
-      // Recent calendar meetings
-      prisma.calendarMeeting.findMany({
+    try {
+      recentCalendarMeetings = await prisma.calendarMeeting.findMany({
         where: { 
           isAnalystMeeting: true,
           startTime: { gte: sevenDaysAgo }
@@ -126,7 +140,9 @@ export async function GET() {
         orderBy: { startTime: 'desc' },
         take: 3
       })
-    ])
+    } catch (error) {
+      console.log('Recent calendar meetings query failed:', error)
+    }
 
     const activities: ActivityItem[] = []
 

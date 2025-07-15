@@ -35126,3 +35126,1063 @@ Would search RSS feed: https://www.idc.com/about/rss for terms: "z, z", site:lin
 ✅ Daily publication discovery completed successfully at 2025-07-09T19:30:04.961Z
 [Wed Jul  9 20:30:05 CET 2025] Publication discovery completed successfully
 [Wed Jul  9 20:30:05 CET 2025] ----------------------------------------
+[Tue Jul 15 02:00:01 CEST 2025] Starting publication discovery cron job
+
+> analyst-portal@0.1.0 discover:daily
+> npx tsx src/scripts/daily-publication-discovery.ts
+
+🔍 Starting daily publication discovery job...
+⏰ Started at: 2025-07-15T00:00:04.396Z
+⚠️  GOOGLE_SEARCH_API_KEY not set - Google search will be disabled
+⚠️  BING_SEARCH_API_KEY not set - Bing search will be disabled
+⚠️  No search API keys configured - running in limited mode
+🔍 Using alternative search engines (DuckDuckGo, Direct Web, etc.)
+⚠️  Running in limited mode - consider adding search API keys for better results
+🔍 Starting publication discovery crawl...
+📊 Found 100 active analysts to process
+
+🔍 Processing Jeanne Achille...
+   🔎 Searching for: Jeanne Achille
+🔍 Starting analyst search for: Jeanne Achille
+   📋 Generated 7 search queries
+   🔎 Query: ""Jeanne Achille" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", research, 2025
+   🔎 Query: ""Jeanne Achille" DevonPR analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", devonpr, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", devonpr, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", devonpr, analysis
+   🔎 Query: ""Jeanne Achille" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", report, 2025
+   🔎 Query: ""Jeanne Achille" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", study, findings
+   🔎 Query: ""Jeanne Achille" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", site:gartner.com
+   🔎 Query: ""Jeanne Achille" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", site:forrester.com
+   🔎 Query: ""Jeanne Achille" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeanne, achille", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeanne, achille", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeanne, achille", site:linkedin.com
+✅ Final results for Jeanne Achille: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Nicholas Biron...
+   🔎 Searching for: Nicholas Biron
+🔍 Starting analyst search for: Nicholas Biron
+   📋 Generated 7 search queries
+   🔎 Query: ""Nicholas Biron" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", research, 2025
+   🔎 Query: ""Nicholas Biron" 3sixtyinsights analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", 3sixtyinsights, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", 3sixtyinsights, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", 3sixtyinsights, analysis
+   🔎 Query: ""Nicholas Biron" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", report, 2025
+   🔎 Query: ""Nicholas Biron" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", study, findings
+   🔎 Query: ""Nicholas Biron" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", site:gartner.com
+   🔎 Query: ""Nicholas Biron" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", site:forrester.com
+   🔎 Query: ""Nicholas Biron" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "nicholas, biron", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "nicholas, biron", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "nicholas, biron", site:linkedin.com
+✅ Final results for Nicholas Biron: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Gary Bragar...
+   🔎 Searching for: Gary Bragar
+🔍 Starting analyst search for: Gary Bragar
+   📋 Generated 8 search queries
+   🔎 Query: ""Gary Bragar" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", research, 2025
+   🔎 Query: ""Gary Bragar" NelsonHall analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", nelsonhall, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", nelsonhall, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", nelsonhall, analysis
+   🔎 Query: ""Gary Bragar" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", report, 2025
+   🔎 Query: ""Gary Bragar" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", study, findings
+   🔎 Query: ""Gary Bragar" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", site:gartner.com
+   🔎 Query: ""Gary Bragar" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", site:forrester.com
+   🔎 Query: ""Gary Bragar" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", site:linkedin.com
+   🔎 Query: ""Gary Bragar" "HR Technology and Services""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "gary, bragar", "hr, technology, and, services"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "gary, bragar", "hr, technology, and, services"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "gary, bragar", "hr, technology, and, services"
+✅ Final results for Gary Bragar: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Mark Brandau...
+   🔎 Searching for: Mark Brandau
+🔍 Starting analyst search for: Mark Brandau
+   📋 Generated 8 search queries
+   🔎 Query: ""Mark Brandau" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", research, 2025
+   🔎 Query: ""Mark Brandau" Forrester analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", forrester, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", forrester, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", forrester, analysis
+   🔎 Query: ""Mark Brandau" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", report, 2025
+   🔎 Query: ""Mark Brandau" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", study, findings
+   🔎 Query: ""Mark Brandau" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", site:gartner.com
+   🔎 Query: ""Mark Brandau" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", site:forrester.com
+   🔎 Query: ""Mark Brandau" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", site:linkedin.com
+   🔎 Query: ""Mark Brandau" "HR Technology and Services""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mark, brandau", "hr, technology, and, services"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mark, brandau", "hr, technology, and, services"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mark, brandau", "hr, technology, and, services"
+✅ Final results for Mark Brandau: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Cara Brennan...
+   🔎 Searching for: Cara Brennan
+🔍 Starting analyst search for: Cara Brennan
+   📋 Generated 7 search queries
+   🔎 Query: ""Cara Brennan" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", research, 2025
+   🔎 Query: ""Cara Brennan" PTP analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", ptp, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", ptp, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", ptp, analysis
+   🔎 Query: ""Cara Brennan" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", report, 2025
+   🔎 Query: ""Cara Brennan" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", study, findings
+   🔎 Query: ""Cara Brennan" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", site:gartner.com
+   🔎 Query: ""Cara Brennan" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", site:forrester.com
+   🔎 Query: ""Cara Brennan" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "cara, brennan", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "cara, brennan", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "cara, brennan", site:linkedin.com
+✅ Final results for Cara Brennan: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Megan Buttita...
+   🔎 Searching for: Megan Buttita
+🔍 Starting analyst search for: Megan Buttita
+   📋 Generated 7 search queries
+   🔎 Query: ""Megan Buttita" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", research, 2025
+   🔎 Query: ""Megan Buttita" IDC analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", idc, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", idc, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", idc, analysis
+   🔎 Query: ""Megan Buttita" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", report, 2025
+   🔎 Query: ""Megan Buttita" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", study, findings
+   🔎 Query: ""Megan Buttita" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", site:gartner.com
+   🔎 Query: ""Megan Buttita" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", site:forrester.com
+   🔎 Query: ""Megan Buttita" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "megan, buttita", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "megan, buttita", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "megan, buttita", site:linkedin.com
+✅ Final results for Megan Buttita: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Yvette Cameron...
+   🔎 Searching for: Yvette Cameron
+🔍 Starting analyst search for: Yvette Cameron
+   📋 Generated 8 search queries
+   🔎 Query: ""Yvette Cameron" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", research, 2025
+   🔎 Query: ""Yvette Cameron" NextGen Insights analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", nextgen, insights, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", nextgen, insights, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", nextgen, insights, analysis
+   🔎 Query: ""Yvette Cameron" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", report, 2025
+   🔎 Query: ""Yvette Cameron" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", study, findings
+   🔎 Query: ""Yvette Cameron" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", site:gartner.com
+   🔎 Query: ""Yvette Cameron" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", site:forrester.com
+   🔎 Query: ""Yvette Cameron" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", site:linkedin.com
+   🔎 Query: ""Yvette Cameron" "Learning and Performance""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "yvette, cameron", "learning, and, performance"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "yvette, cameron", "learning, and, performance"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "yvette, cameron", "learning, and, performance"
+✅ Final results for Yvette Cameron: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Zachary Chertok...
+   🔎 Searching for: Zachary Chertok
+🔍 Starting analyst search for: Zachary Chertok
+   📋 Generated 8 search queries
+   🔎 Query: ""Zachary Chertok" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", research, 2025
+   🔎 Query: ""Zachary Chertok" IDC analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", idc, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", idc, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", idc, analysis
+   🔎 Query: ""Zachary Chertok" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", report, 2025
+   🔎 Query: ""Zachary Chertok" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", study, findings
+   🔎 Query: ""Zachary Chertok" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", site:gartner.com
+   🔎 Query: ""Zachary Chertok" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", site:forrester.com
+   🔎 Query: ""Zachary Chertok" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", site:linkedin.com
+   🔎 Query: ""Zachary Chertok" "Employee Wellness and Benefits""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "zachary, chertok", "employee, wellness, and, benefits"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "zachary, chertok", "employee, wellness, and, benefits"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "zachary, chertok", "employee, wellness, and, benefits"
+✅ Final results for Zachary Chertok: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Emi Chiba...
+   🔎 Searching for: Emi Chiba
+🔍 Starting analyst search for: Emi Chiba
+   📋 Generated 7 search queries
+   🔎 Query: ""Emi Chiba" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", research, 2025
+   🔎 Query: ""Emi Chiba" Gartner analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", gartner, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", gartner, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", gartner, analysis
+   🔎 Query: ""Emi Chiba" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", report, 2025
+   🔎 Query: ""Emi Chiba" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", study, findings
+   🔎 Query: ""Emi Chiba" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", site:gartner.com
+   🔎 Query: ""Emi Chiba" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", site:forrester.com
+   🔎 Query: ""Emi Chiba" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "emi, chiba", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "emi, chiba", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "emi, chiba", site:linkedin.com
+✅ Final results for Emi Chiba: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Elizabeth Clarke...
+   🔎 Searching for: Elizabeth Clarke
+🔍 Starting analyst search for: Elizabeth Clarke
+   📋 Generated 7 search queries
+   🔎 Query: ""Elizabeth Clarke" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", research, 2025
+   🔎 Query: ""Elizabeth Clarke" Human Resource Executive analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", human, resource, executive, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", human, resource, executive, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", human, resource, executive, analysis
+   🔎 Query: ""Elizabeth Clarke" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", report, 2025
+   🔎 Query: ""Elizabeth Clarke" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", study, findings
+   🔎 Query: ""Elizabeth Clarke" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", site:gartner.com
+   🔎 Query: ""Elizabeth Clarke" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", site:forrester.com
+   🔎 Query: ""Elizabeth Clarke" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "elizabeth, clarke", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "elizabeth, clarke", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "elizabeth, clarke", site:linkedin.com
+✅ Final results for Elizabeth Clarke: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Jen Colletta...
+   🔎 Searching for: Jen Colletta
+🔍 Starting analyst search for: Jen Colletta
+   📋 Generated 7 search queries
+   🔎 Query: ""Jen Colletta" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", research, 2025
+   🔎 Query: ""Jen Colletta" Human Resource Executive analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", human, resource, executive, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", human, resource, executive, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", human, resource, executive, analysis
+   🔎 Query: ""Jen Colletta" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", report, 2025
+   🔎 Query: ""Jen Colletta" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", study, findings
+   🔎 Query: ""Jen Colletta" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", site:gartner.com
+   🔎 Query: ""Jen Colletta" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", site:forrester.com
+   🔎 Query: ""Jen Colletta" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jen, colletta", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jen, colletta", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jen, colletta", site:linkedin.com
+✅ Final results for Jen Colletta: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Mike Cook...
+   🔎 Searching for: Mike Cook
+🔍 Starting analyst search for: Mike Cook
+   📋 Generated 7 search queries
+   🔎 Query: ""Mike Cook" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", research, 2025
+   🔎 Query: ""Mike Cook" Brandon Hall analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", brandon, hall, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", brandon, hall, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", brandon, hall, analysis
+   🔎 Query: ""Mike Cook" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", report, 2025
+   🔎 Query: ""Mike Cook" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", study, findings
+   🔎 Query: ""Mike Cook" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", site:gartner.com
+   🔎 Query: ""Mike Cook" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", site:forrester.com
+   🔎 Query: ""Mike Cook" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "mike, cook", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "mike, cook", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "mike, cook", site:linkedin.com
+✅ Final results for Mike Cook: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Chip Cutter...
+   🔎 Searching for: Chip Cutter
+🔍 Starting analyst search for: Chip Cutter
+   📋 Generated 7 search queries
+   🔎 Query: ""Chip Cutter" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", research, 2025
+   🔎 Query: ""Chip Cutter" WSJ analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", wsj, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", wsj, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", wsj, analysis
+   🔎 Query: ""Chip Cutter" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", report, 2025
+   🔎 Query: ""Chip Cutter" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", study, findings
+   🔎 Query: ""Chip Cutter" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", site:gartner.com
+   🔎 Query: ""Chip Cutter" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", site:forrester.com
+   🔎 Query: ""Chip Cutter" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "chip, cutter", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "chip, cutter", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "chip, cutter", site:linkedin.com
+✅ Final results for Chip Cutter: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing James Davis...
+   🔎 Searching for: James Davis
+🔍 Starting analyst search for: James Davis
+   📋 Generated 7 search queries
+   🔎 Query: ""James Davis" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", research, 2025
+   🔎 Query: ""James Davis" BLR analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", blr, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", blr, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", blr, analysis
+   🔎 Query: ""James Davis" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", report, 2025
+   🔎 Query: ""James Davis" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", study, findings
+   🔎 Query: ""James Davis" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", site:gartner.com
+   🔎 Query: ""James Davis" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", site:forrester.com
+   🔎 Query: ""James Davis" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "james, davis", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "james, davis", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "james, davis", site:linkedin.com
+✅ Final results for James Davis: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Teggart Dylan...
+   🔎 Searching for: Teggart Dylan
+🔍 Starting analyst search for: Teggart Dylan
+   📋 Generated 7 search queries
+   🔎 Query: ""Teggart Dylan" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", research, 2025
+   🔎 Query: ""Teggart Dylan"  analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", , analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", , analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", , analysis
+   🔎 Query: ""Teggart Dylan" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", report, 2025
+   🔎 Query: ""Teggart Dylan" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", study, findings
+   🔎 Query: ""Teggart Dylan" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", site:gartner.com
+   🔎 Query: ""Teggart Dylan" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", site:forrester.com
+   🔎 Query: ""Teggart Dylan" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "teggart, dylan", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "teggart, dylan", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "teggart, dylan", site:linkedin.com
+✅ Final results for Teggart Dylan: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing David Essex...
+   🔎 Searching for: David Essex
+🔍 Starting analyst search for: David Essex
+   📋 Generated 7 search queries
+   🔎 Query: ""David Essex" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", research, 2025
+   🔎 Query: ""David Essex" TechTarget analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", techtarget, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", techtarget, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", techtarget, analysis
+   🔎 Query: ""David Essex" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", report, 2025
+   🔎 Query: ""David Essex" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", study, findings
+   🔎 Query: ""David Essex" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", site:gartner.com
+   🔎 Query: ""David Essex" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", site:forrester.com
+   🔎 Query: ""David Essex" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "david, essex", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "david, essex", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "david, essex", site:linkedin.com
+✅ Final results for David Essex: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Ben Eubanks...
+   🔎 Searching for: Ben Eubanks
+🔍 Starting analyst search for: Ben Eubanks
+   📋 Generated 8 search queries
+   🔎 Query: ""Ben Eubanks" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", research, 2025
+   🔎 Query: ""Ben Eubanks" Lighthouse Research analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", lighthouse, research, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", lighthouse, research, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", lighthouse, research, analysis
+   🔎 Query: ""Ben Eubanks" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", report, 2025
+   🔎 Query: ""Ben Eubanks" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", study, findings
+   🔎 Query: ""Ben Eubanks" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", site:gartner.com
+   🔎 Query: ""Ben Eubanks" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", site:forrester.com
+   🔎 Query: ""Ben Eubanks" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", site:linkedin.com
+   🔎 Query: ""Ben Eubanks" "Artificial Intelligence in HR""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ben, eubanks", "artificial, intelligence, in, hr"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ben, eubanks", "artificial, intelligence, in, hr"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ben, eubanks", "artificial, intelligence, in, hr"
+✅ Final results for Ben Eubanks: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Jeff Freyermuth...
+   🔎 Searching for: Jeff Freyermuth
+🔍 Starting analyst search for: Jeff Freyermuth
+   📋 Generated 8 search queries
+   🔎 Query: ""Jeff Freyermuth" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", research, 2025
+   🔎 Query: ""Jeff Freyermuth" Forrester analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", forrester, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", forrester, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", forrester, analysis
+   🔎 Query: ""Jeff Freyermuth" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", report, 2025
+   🔎 Query: ""Jeff Freyermuth" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", study, findings
+   🔎 Query: ""Jeff Freyermuth" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", site:gartner.com
+   🔎 Query: ""Jeff Freyermuth" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", site:forrester.com
+   🔎 Query: ""Jeff Freyermuth" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", site:linkedin.com
+   🔎 Query: ""Jeff Freyermuth" "learning management systems""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jeff, freyermuth", "learning, management, systems"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jeff, freyermuth", "learning, management, systems"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jeff, freyermuth", "learning, management, systems"
+✅ Final results for Jeff Freyermuth: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Laura Gardiner...
+   🔎 Searching for: Laura Gardiner
+🔍 Starting analyst search for: Laura Gardiner
+   📋 Generated 8 search queries
+   🔎 Query: ""Laura Gardiner" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", research, 2025
+   🔎 Query: ""Laura Gardiner" Gartner analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", gartner, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", gartner, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", gartner, analysis
+   🔎 Query: ""Laura Gardiner" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", report, 2025
+   🔎 Query: ""Laura Gardiner" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", study, findings
+   🔎 Query: ""Laura Gardiner" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", site:gartner.com
+   🔎 Query: ""Laura Gardiner" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", site:forrester.com
+   🔎 Query: ""Laura Gardiner" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", site:linkedin.com
+   🔎 Query: ""Laura Gardiner" "Compensation Management""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "laura, gardiner", "compensation, management"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "laura, gardiner", "compensation, management"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "laura, gardiner", "compensation, management"
+✅ Final results for Laura Gardiner: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Stacia Garr...
+   🔎 Searching for: Stacia Garr
+🔍 Starting analyst search for: Stacia Garr
+   📋 Generated 7 search queries
+   🔎 Query: ""Stacia Garr" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", research, 2025
+   🔎 Query: ""Stacia Garr" RedThread Research analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", redthread, research, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", redthread, research, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", redthread, research, analysis
+   🔎 Query: ""Stacia Garr" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", report, 2025
+   🔎 Query: ""Stacia Garr" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", study, findings
+   🔎 Query: ""Stacia Garr" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", site:gartner.com
+   🔎 Query: ""Stacia Garr" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", site:forrester.com
+   🔎 Query: ""Stacia Garr" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacia, garr", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacia, garr", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacia, garr", site:linkedin.com
+✅ Final results for Stacia Garr: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Franz Gilbert...
+   🔎 Searching for: Franz Gilbert
+🔍 Starting analyst search for: Franz Gilbert
+   📋 Generated 8 search queries
+   🔎 Query: ""Franz Gilbert" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", research, 2025
+   🔎 Query: ""Franz Gilbert" Deloitte analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", deloitte, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", deloitte, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", deloitte, analysis
+   🔎 Query: ""Franz Gilbert" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", report, 2025
+   🔎 Query: ""Franz Gilbert" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", study, findings
+   🔎 Query: ""Franz Gilbert" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", site:gartner.com
+   🔎 Query: ""Franz Gilbert" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", site:forrester.com
+   🔎 Query: ""Franz Gilbert" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", site:linkedin.com
+   🔎 Query: ""Franz Gilbert" "HR Technology and Services""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "franz, gilbert", "hr, technology, and, services"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "franz, gilbert", "hr, technology, and, services"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "franz, gilbert", "hr, technology, and, services"
+✅ Final results for Franz Gilbert: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Steve Goldberg...
+   🔎 Searching for: Steve Goldberg
+🔍 Starting analyst search for: Steve Goldberg
+   📋 Generated 8 search queries
+   🔎 Query: ""Steve Goldberg" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", research, 2025
+   🔎 Query: ""Steve Goldberg" Ventana Research analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", ventana, research, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", ventana, research, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", ventana, research, analysis
+   🔎 Query: ""Steve Goldberg" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", report, 2025
+   🔎 Query: ""Steve Goldberg" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", study, findings
+   🔎 Query: ""Steve Goldberg" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", site:gartner.com
+   🔎 Query: ""Steve Goldberg" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", site:forrester.com
+   🔎 Query: ""Steve Goldberg" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", site:linkedin.com
+   🔎 Query: ""Steve Goldberg" "HR Technology and Services""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "steve, goldberg", "hr, technology, and, services"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "steve, goldberg", "hr, technology, and, services"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "steve, goldberg", "hr, technology, and, services"
+✅ Final results for Steve Goldberg: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Jonathan Goodman...
+   🔎 Searching for: Jonathan Goodman
+🔍 Starting analyst search for: Jonathan Goodman
+   📋 Generated 8 search queries
+   🔎 Query: ""Jonathan Goodman" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", research, 2025
+   🔎 Query: ""Jonathan Goodman" Starr analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", starr, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", starr, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", starr, analysis
+   🔎 Query: ""Jonathan Goodman" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", report, 2025
+   🔎 Query: ""Jonathan Goodman" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", study, findings
+   🔎 Query: ""Jonathan Goodman" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", site:gartner.com
+   🔎 Query: ""Jonathan Goodman" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", site:forrester.com
+   🔎 Query: ""Jonathan Goodman" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", site:linkedin.com
+   🔎 Query: ""Jonathan Goodman" "Investment and Venture Capital in HR Tech""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "jonathan, goodman", "investment, and, venture, capital, in, hr, tech"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "jonathan, goodman", "investment, and, venture, capital, in, hr, tech"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "jonathan, goodman", "investment, and, venture, capital, in, hr, tech"
+✅ Final results for Jonathan Goodman: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Ron Hanscome...
+   🔎 Searching for: Ron Hanscome
+🔍 Starting analyst search for: Ron Hanscome
+   📋 Generated 8 search queries
+   🔎 Query: ""Ron Hanscome" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", research, 2025
+   🔎 Query: ""Ron Hanscome" Gartner analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", gartner, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", gartner, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", gartner, analysis
+   🔎 Query: ""Ron Hanscome" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", report, 2025
+   🔎 Query: ""Ron Hanscome" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", study, findings
+   🔎 Query: ""Ron Hanscome" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", site:gartner.com
+   🔎 Query: ""Ron Hanscome" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", site:forrester.com
+   🔎 Query: ""Ron Hanscome" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", site:linkedin.com
+   🔎 Query: ""Ron Hanscome" "HR Technology and Services""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "ron, hanscome", "hr, technology, and, services"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "ron, hanscome", "hr, technology, and, services"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "ron, hanscome", "hr, technology, and, services"
+✅ Final results for Ron Hanscome: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Stacey Harris...
+   🔎 Searching for: Stacey Harris
+🔍 Starting analyst search for: Stacey Harris
+   📋 Generated 7 search queries
+   🔎 Query: ""Stacey Harris" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", research, 2025
+   🔎 Query: ""Stacey Harris" Sapient Insights analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", sapient, insights, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", sapient, insights, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", sapient, insights, analysis
+   🔎 Query: ""Stacey Harris" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", report, 2025
+   🔎 Query: ""Stacey Harris" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", study, findings
+   🔎 Query: ""Stacey Harris" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", site:gartner.com
+   🔎 Query: ""Stacey Harris" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", site:forrester.com
+   🔎 Query: ""Stacey Harris" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "stacey, harris", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "stacey, harris", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "stacey, harris", site:linkedin.com
+✅ Final results for Stacey Harris: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Lance Haun...
+   🔎 Searching for: Lance Haun
+🔍 Starting analyst search for: Lance Haun
+   📋 Generated 8 search queries
+   🔎 Query: ""Lance Haun" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", research, 2025
+   🔎 Query: ""Lance Haun" Starr analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", starr, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", starr, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", starr, analysis
+   🔎 Query: ""Lance Haun" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", report, 2025
+   🔎 Query: ""Lance Haun" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", study, findings
+   🔎 Query: ""Lance Haun" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", site:gartner.com
+   🔎 Query: ""Lance Haun" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", site:forrester.com
+   🔎 Query: ""Lance Haun" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", site:linkedin.com
+   🔎 Query: ""Lance Haun" "employee experience""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "lance, haun", "employee, experience"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "lance, haun", "employee, experience"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "lance, haun", "employee, experience"
+✅ Final results for Lance Haun: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Dani Johnson...
+   🔎 Searching for: Dani Johnson
+🔍 Starting analyst search for: Dani Johnson
+   📋 Generated 8 search queries
+   🔎 Query: ""Dani Johnson" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", research, 2025
+   🔎 Query: ""Dani Johnson" RedThread Research analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", redthread, research, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", redthread, research, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", redthread, research, analysis
+   🔎 Query: ""Dani Johnson" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", report, 2025
+   🔎 Query: ""Dani Johnson" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", study, findings
+   🔎 Query: ""Dani Johnson" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", site:gartner.com
+   🔎 Query: ""Dani Johnson" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", site:forrester.com
+   🔎 Query: ""Dani Johnson" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", site:linkedin.com
+   🔎 Query: ""Dani Johnson" "Talent Sourcing and Skills Strategy""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "dani, johnson", "talent, sourcing, and, skills, strategy"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "dani, johnson", "talent, sourcing, and, skills, strategy"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "dani, johnson", "talent, sourcing, and, skills, strategy"
+✅ Final results for Dani Johnson: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Harsh Kundulli...
+   🔎 Searching for: Harsh Kundulli
+🔍 Starting analyst search for: Harsh Kundulli
+   📋 Generated 8 search queries
+   🔎 Query: ""Harsh Kundulli" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", research, 2025
+   🔎 Query: ""Harsh Kundulli" Gartner analysis"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", gartner, analysis
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", gartner, analysis
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", gartner, analysis
+   🔎 Query: ""Harsh Kundulli" report 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", report, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", report, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", report, 2025
+   🔎 Query: ""Harsh Kundulli" study findings"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", study, findings
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", study, findings
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", study, findings
+   🔎 Query: ""Harsh Kundulli" site:gartner.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", site:gartner.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", site:gartner.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", site:gartner.com
+   🔎 Query: ""Harsh Kundulli" site:forrester.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", site:forrester.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", site:forrester.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", site:forrester.com
+   🔎 Query: ""Harsh Kundulli" site:linkedin.com"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", site:linkedin.com
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", site:linkedin.com
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", site:linkedin.com
+   🔎 Query: ""Harsh Kundulli" "Enterprise HR Technology and ERP Systems""
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "harsh, kundulli", "enterprise, hr, technology, and, erp, systems"
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "harsh, kundulli", "enterprise, hr, technology, and, erp, systems"
+Would search RSS feed: https://www.idc.com/about/rss for terms: "harsh, kundulli", "enterprise, hr, technology, and, erp, systems"
+✅ Final results for Harsh Kundulli: 0 publications
+   📄 Found 0 potential publications
+
+🔍 Processing Bill Kutik...
+   🔎 Searching for: Bill Kutik
+🔍 Starting analyst search for: Bill Kutik
+   📋 Generated 7 search queries
+   🔎 Query: ""Bill Kutik" research 2025"
+Would search RSS feed: https://www.gartner.com/en/newsroom/rss for terms: "bill, kutik", research, 2025
+Would search RSS feed: https://www.forrester.com/rss/research for terms: "bill, kutik", research, 2025
+Would search RSS feed: https://www.idc.com/about/rss for terms: "bill, kutik", research, 2025
+   🔎 Query: ""Bill Kutik" HRE analysis"

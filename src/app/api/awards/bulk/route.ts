@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     // Create awards using createMany for better performance
     let createdAwards = []
-    let createErrors = []
+    const createErrors = []
     
     try {
       // Use createMany for better performance with large datasets

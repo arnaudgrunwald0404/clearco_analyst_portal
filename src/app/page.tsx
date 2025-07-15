@@ -6,6 +6,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
 import SocialMediaActivity from '@/components/social-media-activity'
 import { cn } from '@/lib/utils'
+import { getRandomBannerImagePath } from '@/lib/banner-utils'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
 interface DashboardMetrics {
   totalAnalysts: number
@@ -91,6 +93,8 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true)
   const [actionItemsLoading, setActionItemsLoading] = useState(true)
   const [industryName, setIndustryName] = useState('')
+  const [bannerImage, setBannerImage] = useState<string>('')
+  const [bannerError, setBannerError] = useState<boolean>(false)
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -142,6 +146,16 @@ function DashboardContent() {
   }
 
   useEffect(() => {
+    // Set banner image for admin dashboard
+    const adminBanner = sessionStorage.getItem('adminBannerImage')
+    if (!adminBanner) {
+      const newBanner = getRandomBannerImagePath()
+      sessionStorage.setItem('adminBannerImage', newBanner)
+      setBannerImage(newBanner)
+    } else {
+      setBannerImage(adminBanner)
+    }
+
     // Check for URL parameters for notifications
     const success = searchParams.get('success')
     const error = searchParams.get('error')
@@ -167,6 +181,22 @@ function DashboardContent() {
     fetchDashboardData()
     fetchIndustryName()
   }, [searchParams])
+
+  // Test if banner image loads successfully
+  useEffect(() => {
+    if (bannerImage) {
+      const img = new Image()
+      img.onload = () => {
+        setBannerError(false)
+        console.log('Banner image loaded successfully:', bannerImage)
+      }
+      img.onerror = () => {
+        setBannerError(true)
+        console.error('Banner image failed to load:', bannerImage)
+      }
+      img.src = bannerImage
+    }
+  }, [bannerImage])
 
   const handleCompleteActionItem = async (itemId: string, completedBy?: string) => {
     // Get the user's display name for completed by field
@@ -221,270 +251,234 @@ function DashboardContent() {
     )
   }
 
+  // Create banner style with image or gradient fallback
+  const bannerStyle = bannerImage && !bannerError
+    ? { 
+        backgroundImage: `url(${bannerImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }
+    : { 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
+    <div>
+      {/* Dashboard Content */}
+      <div className="p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
 
-        
-        {/* Notification Banner */}
-        {notification && (
-          <div className={`mt-4 p-4 rounded-lg border flex items-center justify-between ${
-            notification.type === 'success' 
-              ? 'bg-green-50 border-green-200 text-green-800' 
-              : 'bg-red-50 border-red-200 text-red-800'
-          }`}>
-            <div className="flex items-center gap-2">
-              {notification.type === 'success' ? (
-                <CheckCircle className="h-5 w-5" />
-              ) : (
-                <AlertTriangle className="h-5 w-5" />
-              )}
-              <span className="font-medium">{notification.message}</span>
-            </div>
-            <button
-              onClick={() => setNotification(null)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-        
-        {metrics && metrics.activeAlerts > 0 && (
-          <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
-            <div className="flex items-center">
-              <AlertTriangle className="w-4 h-4 text-orange-600 mr-2" />
-              <p className="text-sm text-orange-800">
-                You have {metrics.activeAlerts} active alert{metrics.activeAlerts !== 1 ? 's' : ''} requiring attention
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
-
-
-
-      {/* Band 1: Analysts */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <Users className="h-5 w-5 text-blue-600 mr-2" />
-          Analysts
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Total Analysts with Recent Updates */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center mb-4">
-                <div className="flex-shrink-0">
-                  <Users className="h-6 w-6 text-blue-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Analysts
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {metrics?.totalAnalysts || 0}
-                    </dd>
-                  </dl>
-                </div>
+          {/* Notification Banner */}
+          {notification && (
+            <div className={`mt-4 p-4 rounded-lg border flex items-center justify-between ${
+              notification.type === 'success' 
+                ? 'bg-green-50 border-green-200 text-green-800' 
+                : 'bg-red-50 border-red-200 text-red-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                {notification.type === 'success' ? (
+                  <CheckCircle className="h-5 w-5" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5" />
+                )}
+                <span className="font-medium">{notification.message}</span>
               </div>
-              
-              {/* Recent Updates section within Total Analysts card */}
-              <div className="border-t border-gray-200 pt-4">
-                <h4 className="text-sm font-medium text-gray-500 mb-3">
-                  Recent updates (last 90 days)
-                </h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-                  {recentActivity.length === 0 ? (
-                    <div className="text-center py-4">
-                      <Activity className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-xs text-gray-500">No recent updates</p>
-                      <p className="text-xs text-gray-400">Updates will appear here as you interact with analysts</p>
-                    </div>
-                  ) :
-                    recentActivity.slice(0, 4).map((activity, index) => {
-                      // Custom rendering for analyst_updated type
+              <button
+                onClick={() => setNotification(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Band 1: Analysts */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <Users className="h-5 w-5 text-blue-600 mr-2" />
+            Analysts
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Total Analysts */}
+            <Card
+  
+              title={
+                recentActivity.length === 0 
+                  ? "No recent updates in the last 90 days"
+                  : `Recent updates (last 90 days):\n${recentActivity.slice(0, 8).map(activity => {
                       if (activity.type === 'analyst_updated') {
-                        // Try to extract name and company from the message
-                        // Format: "First Last (Company) profile updated" or "First Last profile updated"
                         const match = activity.message.match(/^(.*?) (\((.*?)\) )?profile updated$/)
                         if (match) {
                           const name = match[1]
                           const company = match[3]
-                          return (
-                            <div key={index} className="flex items-center justify-between py-1 ">
-                              <div className="flex-1 min-w-0 flex items-center space-x-2">
-                         
-                                <p className="text-sm font-medium text-gray-900 flex items-center">
-                                  {name}
-                                  {company && (
-                                    <>
-                                      <span className="mx-1 text-gray-400">•</span>
-                                      <span className="text-xs text-gray-500">{company}</span>
-                                    </>
-                                  )}
-                                  <span className="ml-1 text-xs text-gray-500">profile updated</span>
-                                </p>
-                              </div>
-                              <span className="text-xs text-gray-400 ml-2">
-                                {activity.time}
-                              </span>
-                            </div>
-                          )
+                          return `${name}${company ? ` • ${company}` : ''} profile updated (${activity.time})`
                         }
                       }
-                      // Default rendering for other types
-                      return (
-                        <div key={index} className="flex items-center justify-between py-2 border-b border-gray-300">
-                          <div className="flex-1 min-w-0 flex items-center space-x-2">
-                            <span className="text-gray-400 text-lg">•</span>
-                            <p className="text-sm font-medium text-gray-900">
-                              {activity.message}
-                            </p>
-                          </div>
-                          <span className="text-xs text-gray-400 ml-2">
-                            {activity.time}
-                          </span>
-                        </div>
-                      )
-                    })
-                  }
+                      return `${activity.message} (${activity.time})`
+                    }).join('\n')}${recentActivity.length > 8 ? `\n+${recentActivity.length - 8} more` : ''}`
+              }
+            >
+              <CardContent className="p-5">
+                <div className="flex items-center mb-0">
+                  <div className="flex-shrink-0">
+                    <Users className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Total Analysts
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.totalAnalysts || 0}
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
+              </CardContent>
+            </Card>
 
-          {/* Newly Added Analysts */}
-          <NewAnalystsWidget newAnalysts={metrics?.newAnalysts || []} />
-        </div>
-      </div>
-
-      {/* Band 2: Coverage */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-          Coverage
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Row 1 */}
-          {/* Engagement % */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <TrendingUp className="h-6 w-6 text-green-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Engagement %
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {metrics?.engagementRate ? `${metrics.engagementRate}%` : '0%'}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Briefings */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Calendar className="h-6 w-6 text-indigo-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Briefings
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {metrics?.briefingsPast90Days || 0}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Briefing Follow-ups - spans 2 rows */}
-          <div className="bg-white overflow-hidden shadow rounded-lg lg:row-span-2">
-            <ActionItemsWidget
-              actionItems={actionItems}
-              loading={actionItemsLoading}
-              onComplete={handleCompleteActionItem}
-              tall={true}
-            />
-          </div>
-
-          {/* Row 2 */}
-          {/* Active Alerts */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <AlertTriangle className="h-6 w-6 text-orange-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Active Alerts
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {metrics?.activeAlerts || 0}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Newsletters Sent */}
-          <div className="bg-white overflow-hidden shadow rounded-lg">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <Mail className="h-6 w-6 text-green-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      Newsletters Sent
-                    </dt>
-                    <dd className="text-2xl font-semibold text-gray-900">
-                      {metrics?.newslettersSentPast90Days || 0}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
+            {/* Newly Added Analysts */}
+            <Card >
+              <CardContent className="p-5">
+                <NewAnalystsWidget newAnalysts={metrics?.newAnalysts || []} />
+              </CardContent>
+            </Card>
           </div>
         </div>
-      </div>
 
-      {/* Band 3: Listening */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-          <MessageSquare className="h-5 w-5 text-purple-600 mr-2" />
-          Listening
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Social Media Activity */}
-          <div className="bg-white shadow rounded-lg">
-            <Suspense fallback={<div className="p-6">Loading social media activity...</div>}>
-              <SocialMediaActivity />
-            </Suspense>
+        {/* Band 2: Coverage */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
+            Coverage
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Engagement % */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <TrendingUp className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Engagement %
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.engagementRate ? `${metrics.engagementRate}%` : '0%'}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Briefings */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Calendar className="h-6 w-6 text-indigo-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Briefings
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsPast90Days || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Briefing Follow-ups - spans 2 rows */}
+            <Card className="lg:row-span-2">
+              <CardContent className="p-5">
+                <ActionItemsWidget
+                  actionItems={actionItems}
+                  loading={actionItemsLoading}
+                  onComplete={handleCompleteActionItem}
+                  tall={true}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Active Alerts */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <AlertTriangle className="h-6 w-6 text-orange-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Active Alerts
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.activeAlerts || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Newsletters Sent */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Mail className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Newsletters Sent
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.newslettersSentPast90Days || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        </div>
 
-          {/* Publications (Content Items) */}
-          <ContentItemsWidget contentItems={metrics?.recentContentItems || []} title="Publications" />
+        {/* Band 3: Listening */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            <MessageSquare className="h-5 w-5 text-purple-600 mr-2" />
+            Listening
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Social Media Activity */}
+            <Card>
+              <CardContent className="p-6">
+                <Suspense fallback={<div className="p-6">Loading social media activity...</div>}>
+                  <SocialMediaActivity />
+                </Suspense>
+              </CardContent>
+            </Card>
+
+            {/* Publications (Content Items) */}
+            <Card>
+              <CardContent className="p-6">
+                <ContentItemsWidget contentItems={metrics?.recentContentItems || []} title="Publications" />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-
     </div>
   )
 }
@@ -520,56 +514,29 @@ function NewAnalystsWidget({ newAnalysts }: { newAnalysts: NewAnalyst[] }) {
     })
   }
 
+  // Create tooltip content
+  const tooltipContent = newAnalysts.length === 0 
+    ? "No new analysts added in the last 90 days"
+    : `Recent additions (last 90 days):\n${newAnalysts.slice(0, 8).map(analyst => 
+        `${analyst.firstName} ${analyst.lastName}${analyst.company ? ` • ${analyst.company}` : ''} (${formatDate(analyst.createdAt)})`
+      ).join('\n')}${newAnalysts.length > 8 ? `\n+${newAnalysts.length - 8} more` : ''}`
+
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <UserCheck className="h-6 w-6 text-green-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-gray-500">Newly Added Analysts</h3>
-              <p className="text-2xl font-semibold text-gray-900">{newAnalysts.length}</p>
-            </div>
+    <div 
+      className="cursor-help hover:shadow-md transition-shadow"
+      title={tooltipContent}
+      tabIndex={0}
+      role="button"
+      aria-label="Show newly added analysts"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <UserCheck className="h-6 w-6 text-green-400" />
           </div>
-        </div>
-        
-        <div className="border-t border-gray-200 pt-4">
-        <h4 className="text-sm font-medium text-gray-500 mb-3">
-                  Recent additions (last 90 days)
-                </h4>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
-            {newAnalysts.length === 0 ? (
-              <div className="text-center py-4">
-                <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500 text-sm">No new analysts added</p>
-              </div>
-            ) : (
-              newAnalysts.slice(0, 8).map((analyst) => (
-                <div key={analyst.id} className="flex items-center justify-between py-1 ">
-                  <div className="flex-1 min-w-0 flex items-center space-x-2">
-                    <p className="text-sm font-medium text-gray-900">
-                      {analyst.firstName} {analyst.lastName}
-                    </p>
-                    {analyst.company && (
-                      <span className="text-xs text-gray-500">• {analyst.company}</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-gray-400 ml-2">
-                    {formatDate(analyst.createdAt)}
-                  </span>
-                </div>
-              ))
-            )}
-            
-            {newAnalysts.length > 8 && (
-              <div className="text-center pt-2">
-                <p className="text-xs text-gray-500">
-                  +{newAnalysts.length - 8} more
-                </p>
-              </div>
-            )}
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-gray-500">Newly Added Analysts</h3>
+            <p className="text-2xl font-semibold text-gray-900">{newAnalysts.length}</p>
           </div>
         </div>
       </div>
@@ -614,58 +581,55 @@ function ContentItemsWidget({ contentItems, title = "Content Items Added" }: { c
   }
 
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <FileText className="h-6 w-6 text-purple-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-              <p className="text-2xl font-semibold text-gray-900">{contentItems.length}</p>
-            </div>
+    <div>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center">
+          <div className="flex-shrink-0">
+            <FileText className="h-6 w-6 text-purple-400" />
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-gray-500">{title}</h3>
+            <p className="text-2xl font-semibold text-gray-900">{contentItems.length}</p>
           </div>
         </div>
-        
-        <div className="space-y-3 max-h-80 overflow-y-auto">
-          {contentItems.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No content items added</p>
-              <p className="text-xs text-gray-400">Content will appear here when added</p>
-            </div>
-          ) : (
-            contentItems.map((item) => (
-              <div key={item.id} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex-shrink-0 mt-0.5">
-                  {getTypeIcon(item.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {item.title}
-                      </p>
-                      <div className="flex items-center mt-1 space-x-2">
-                        <span className="text-xs text-gray-500 capitalize">
-                          {item.type}
-                        </span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-400">
-                          {formatDate(item.createdAt)}
-                        </span>
-                      </div>
+      </div>
+      <div className="space-y-3 max-h-80 overflow-y-auto">
+        {contentItems.length === 0 ? (
+          <div className="text-center py-8">
+            <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No content items added</p>
+            <p className="text-xs text-gray-400">Content will appear here when added</p>
+          </div>
+        ) : (
+          contentItems.map((item) => (
+            <div key={item.id} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="flex-shrink-0 mt-0.5">
+                {getTypeIcon(item.type)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.title}
+                    </p>
+                    <div className="flex items-center mt-1 space-x-2">
+                      <span className="text-xs text-gray-500 capitalize">
+                        {item.type}
+                      </span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-400">
+                        {formatDate(item.createdAt)}
+                      </span>
                     </div>
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
                   </div>
+                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                    {item.status}
+                  </span>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )
@@ -700,7 +664,7 @@ function ActionItemsWidget({
   if (loading) {
     return (
       <div className={`bg-white ${compact ? 'overflow-hidden shadow rounded-lg' : 'rounded-lg border border-gray-200'} ${compact ? 'p-5' : 'p-6'}`}>
-        <div className="flex items-center mb-4">
+        <div className="flex items-center">
           <ListTodo className="w-5 h-5 text-blue-600 mr-2" />
           <h2 className={`${compact ? 'text-sm font-medium text-gray-500' : 'text-lg font-semibold text-gray-900'}`}>Briefing Follow-ups</h2>
         </div>

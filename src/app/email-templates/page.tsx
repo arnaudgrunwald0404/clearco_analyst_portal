@@ -247,18 +247,13 @@ export default function EmailTemplatesPage() {
   }
 
   return (
-    <Container size="xl" className="py-8">
+    <div className="p-8">
       {/* Header */}
       <div className="mb-8">
-        <Title 
-          order={1} 
-          className="font-atkinson-hyperlegible text-3xl font-bold text-gray-900 mb-2"
-        >
-          Email Templates
-        </Title>
-        <Text className="text-gray-600 font-public-sans">
+        <h1 className="text-3xl font-bold text-gray-900">Email Templates</h1>
+        <p className="mt-2 text-gray-600">
           Create, edit, and manage responsive HTML email templates for your marketing campaigns.
-        </Text>
+        </p>
       </div>
 
       {/* Error Alert */}
@@ -274,22 +269,20 @@ export default function EmailTemplatesPage() {
       )}
 
       {/* Action Bar */}
-      <Card className="mb-6">
-        <Group justify="space-between">
-          <Group>
-            <Button 
-              leftSection={<Plus size={16} />}
-              onClick={() => setCreateModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Create Template
-            </Button>
-            <Badge variant="light" color="blue">
-              {templates.length} template{templates.length !== 1 ? 's' : ''}
-            </Badge>
-          </Group>
-        </Group>
-      </Card>
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-3">
+          <Button 
+            leftSection={<Plus size={16} />}
+            onClick={() => setCreateModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            Create Template
+          </Button>
+          <Badge variant="light" color="blue">
+            {templates.length} template{templates.length !== 1 ? 's' : ''}
+          </Badge>
+        </div>
+      </div>
 
       {/* Templates Grid */}
       {templates.length === 0 ? (
@@ -455,6 +448,6 @@ export default function EmailTemplatesPage() {
           onUpdate={handleTemplateUpdate}
         />
       )}
-    </Container>
+    </div>
   )
 } 
