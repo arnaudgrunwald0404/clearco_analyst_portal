@@ -1,5 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
+
+export async function GET() {
+  try {
+    console.log('🏆 [Awards API] Fetching awards...')
+    
+    const supabase = await createClient()
+
+    const { data: awards, error } = await supabase
+      .from('"Award"')
+      .select('*')
+      .order('submissionDate', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching awards:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch awards' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🏆 [Awards API] Found ${awards?.length || 0} awards`)
+
+    return NextResponse.json({
+      success: true,
+      data: awards || []
+    })
+
+  } catch (error) {
+    console.error('Error in awards GET:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,22 +67,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = await createClient()
+
     // Create the award
-    const award = await prisma.award.create({
-      data: {
-        name,
-        link: link || null,
-        organization,
-        productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
-        priority: priority || 'MEDIUM',
-        submissionDate: new Date(submissionDate),
-        publicationDate: new Date(publicationDate),
-        owner: owner || null,
-        status: status || 'EVALUATING',
-        cost: cost || null,
-        notes: notes || null
-      }
-    })
+    const awardData = {
+      id: generateId(),
+      name,
+      link: link || null,
+      organization,
+      productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
+      priority: priority || 'MEDIUM',
+      submissionDate: new Date(submissionDate).toISOString(),
+      publicationDate: new Date(publicationDate).toISOString(),
+      owner: owner || null,
+      status: status || 'EVALUATING',
+      cost: cost || null,
+      notes: notes || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    const { data: award, error } = await supabase
+      .from('"Award"')
+      .insert(awardData)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating award:', error)
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to create award' 
+        },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🏆 [Awards API] Award created: ${award.name}`)
 
     return NextResponse.json({
       success: true,
@@ -49,31 +112,9 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Error creating award:', error)
+    console.error('Error in awards POST:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create award' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const awards = await prisma.award.findMany({
-      orderBy: {
-        publicationDate: 'desc'
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: awards
-    })
-
-  } catch (error) {
-    console.error('Error fetching awards:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch awards from database' },
+      { error: 'Failed to create award' },
       { status: 500 }
     )
   }

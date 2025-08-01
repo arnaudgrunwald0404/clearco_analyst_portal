@@ -1,5 +1,111 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/supabase'
+
+type Analyst = Database['public']['Tables']['analysts']['Row']
+type AnalystInsert = Database['public']['Tables']['analysts']['Insert']
+
+// Simple CUID-like ID generator
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
+
+// In-memory cache for basic analyst queries  
+let cache: {
+  data: any[] | null
+  timestamp: number
+  duration: number
+} = {
+  data: null,
+  timestamp: 0, // Reset timestamp to force cache rebuild
+  duration: 5 * 60 * 1000 // 5 minutes
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const topics = searchParams.getAll('topic')
+    const status = searchParams.get('status')
+    const type = searchParams.get('type')
+    const influence = searchParams.get('influence')
+
+    const supabase = await createClient()
+
+    // Check cache for basic queries
+    const now = Date.now()
+    const useCache = !topics.length && !status && !type && !influence
+    
+    if (useCache && cache.data && (now - cache.timestamp) < cache.duration) {
+      console.log('📋 Returning cached analysts data')
+      return NextResponse.json({
+        success: true,
+        data: cache.data
+      })
+    }
+
+    // Build query
+    let query = supabase
+      .from('analysts')
+      .select('*')
+      .order('lastName', { ascending: true })
+
+    // Apply filters
+    if (status) {
+      query = query.eq('status', status.toUpperCase())
+    }
+    if (type) {
+      query = query.eq('type', type)
+    }
+    if (influence) {
+      query = query.eq('influence', influence.toUpperCase())
+    }
+
+    const { data: analysts, error } = await query
+
+    if (error) {
+      console.error('Error fetching analysts:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch analysts' },
+        { status: 500 }
+      )
+    }
+
+    let filteredAnalysts = analysts || []
+
+    // Filter by topics if provided (this would need a separate table join in a real implementation)
+    if (topics.length > 0) {
+      // For now, we'll filter by topics in keyThemes field
+      // In a full migration, you'd join with analyst_covered_topics table
+      filteredAnalysts = filteredAnalysts.filter(analyst => 
+        topics.some(topic => 
+          analyst.keyThemes?.toLowerCase().includes(topic.toLowerCase())
+        )
+      )
+    }
+
+    // Update cache for basic queries
+    if (useCache) {
+      cache.data = filteredAnalysts
+      cache.timestamp = now
+      console.log(`📋 Cached ${filteredAnalysts.length} analysts`)
+    }
+
+    console.log(`📊 Found ${filteredAnalysts.length} analysts`)
+    return NextResponse.json({
+      success: true,
+      data: filteredAnalysts
+    })
+
+  } catch (error) {
+    console.error('Error in analysts GET:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,14 +121,16 @@ export async function POST(request: NextRequest) {
       twitter,
       website,
       bio,
-      type,
+      profileImageUrl,
+      type = 'Analyst',
       eligibleNewsletters,
-      coveredTopics,
-      influence,
-      status
+      influenceScore = 50,
+      influence = 'MEDIUM',
+      status = 'ACTIVE',
+      relationshipHealth = 'GOOD',
+      notes
     } = body
 
-    // Validate required fields
     if (!firstName || !lastName || !email) {
       return NextResponse.json(
         { error: 'First name, last name, and email are required' },
@@ -30,86 +138,77 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if analyst with email already exists
-    const existingAnalyst = await prisma.analyst.findUnique({
-      where: { email }
-    })
+    const supabase = await createClient()
+
+    // Check for existing analyst with same email
+    const { data: existingAnalyst } = await supabase
+      .from('analysts')
+      .select('id')
+      .eq('email', email)
+      .single()
 
     if (existingAnalyst) {
       return NextResponse.json(
-        { error: 'An analyst with this email already exists' },
+        { error: 'Analyst with this email already exists' },
         { status: 409 }
       )
     }
 
-    // Create the analyst with covered topics in a single transaction
-    const analyst = await prisma.analyst.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        company: company || null,
-        title: title || null,
-        phone: phone || null,
-        linkedIn: linkedIn || null,
-        twitter: twitter || null,
-        website: website || null,
-        bio: bio || null,
-        type: type || 'Analyst',
-        eligibleNewsletters: eligibleNewsletters || null,
-        influence: influence || 'MEDIUM',
-        status: status || 'ACTIVE',
-        coveredTopics: coveredTopics && coveredTopics.length > 0 ? {
-          create: coveredTopics.map(topic => ({
-            topic
-          }))
-        } : undefined
-      },
-      include: {
-        coveredTopics: true
-      }
-    })
+    const analystData: AnalystInsert = {
+      id: generateId(),
+      firstName,
+      lastName,
+      email,
+      company,
+      title,
+      phone,
+      linkedIn,
+      twitter,
+      website,
+      bio,
+      profileImageUrl,
+      type,
+      eligibleNewsletters,
+      influenceScore,
+      influence,
+      status,
+      relationshipHealth,
+      notes
+    }
 
+    const { data: newAnalyst, error: insertError } = await supabase
+      .from('analysts')
+      .insert(analystData)
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Error creating analyst:', insertError)
+      return NextResponse.json(
+        { error: 'Failed to create analyst' },
+        { status: 500 }
+      )
+    }
+
+    // Clear cache
+    cache.data = null
+
+    console.log(`✅ Created analyst: ${newAnalyst.firstName} ${newAnalyst.lastName}`)
+    
     return NextResponse.json({
       success: true,
-      data: analyst
-    })
+      message: 'Analyst created successfully',
+      data: newAnalyst
+    }, { status: 201 })
 
   } catch (error) {
     console.error('Error creating analyst:', error)
     return NextResponse.json(
-      { error: 'Failed to create analyst' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = request.nextUrl
-    const includeArchived = searchParams.get('includeArchived') === 'true'
-    
-    const analysts = await prisma.analyst.findMany({
-      where: includeArchived ? undefined : {
-        status: { not: 'ARCHIVED' }
+      { 
+        success: false,
+        error: 'Failed to create analyst',
+        details: error instanceof Error ? error.message : String(error)
       },
-      include: {
-        coveredTopics: true
-      },
-      orderBy: {
-        lastName: 'asc'
-      }
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: analysts
-    })
-
-  } catch (error) {
-    console.error('Error fetching analysts:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch analysts from database' },
       { status: 500 }
     )
   }

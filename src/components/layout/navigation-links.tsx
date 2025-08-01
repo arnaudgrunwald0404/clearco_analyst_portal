@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { mainNavigation, analystPortalItem, type NavigationItem } from './navigation-config'
-import { AnalystImpersonationModal } from '../analyst-impersonation-modal'
+import { AnalystImpersonationModal } from '../modals/analyst-impersonation-modal'
 
 export function NavigationLinks() {
   const pathname = usePathname()
@@ -24,22 +24,33 @@ export function NavigationLinks() {
     router.push('/portal')
   }
 
-  const renderNavigationItem = (item: NavigationItem, isActive: boolean) => (
-    <li key={item.name}>
-      <Link
-        href={item.href}
-        className={cn(
-          'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors',
-          isActive
-            ? 'bg-blue-100 text-blue-700'
-            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-        )}
-      >
-        <item.icon className="w-5 h-5 mr-3" />
-        {item.name}
-      </Link>
-    </li>
-  )
+  const renderNavigationItem = (item: NavigationItem) => {
+    const isActive = pathname === item.href
+    const isBriefingsDue = item.name === 'Briefings due'
+    
+    return (
+      <li key={item.name} className={isBriefingsDue ? '-mt-2' : ''}>
+        <Link
+          href={item.href}
+          className={cn(
+            'flex items-center text-sm font-medium rounded-lg transition-colors',
+            isBriefingsDue 
+              ? 'px-4 py-2 ml-8' // Indented sub-item styling
+              : 'px-4 py-3', // Regular item styling
+            isActive
+              ? 'bg-blue-100 text-blue-700'
+              : isBriefingsDue 
+              ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Lighter text for sub-item
+              : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+          )}
+        >
+          {/* Only show icon for main items, not for sub-items */}
+          {!isBriefingsDue && <item.icon className="w-5 h-5 mr-3" />}
+          {item.name}
+        </Link>
+      </li>
+    )
+  }
 
   return (
     <>
@@ -47,8 +58,7 @@ export function NavigationLinks() {
         {/* Main Navigation */}
         <ul className="space-y-2">
           {mainNavigation.map((item) => {
-            const isActive = pathname === item.href
-            return renderNavigationItem(item, isActive)
+            return renderNavigationItem(item)
           })}
         </ul>
 

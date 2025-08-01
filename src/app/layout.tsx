@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import { ToastProvider } from "@/components/ui/toast";
 import { MantineProvider } from '@mantine/core';
@@ -26,9 +27,11 @@ export default function RootLayout({
         <MantineProvider withCssVariables>
           <ToastProvider>
             <AuthProvider>
-              <LayoutWrapper>
-                {children}
-              </LayoutWrapper>
+              <SettingsProvider>
+                <LayoutWrapper>
+                  {children}
+                </LayoutWrapper>
+              </SettingsProvider>
             </AuthProvider>
           </ToastProvider>
         </MantineProvider>

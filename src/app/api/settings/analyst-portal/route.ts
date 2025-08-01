@@ -1,22 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
 
-const prisma = new PrismaClient()
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
 
 export async function GET() {
   try {
+    const supabase = await createClient()
+    
     // Get the first (and only) analyst portal settings record
-    let settings = await prisma.analystPortalSettings.findFirst()
+    const { data: settings, error } = await supabase
+      .from('analyst_portal_settings')
+      .select('*')
+      .limit(1)
+      .single()
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching analyst portal settings:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch analyst portal settings' },
+        { status: 500 }
+      )
+    }
     
     // If no settings exist, create default ones
     if (!settings) {
-      settings = await prisma.analystPortalSettings.create({
-        data: {
-          welcomeQuote: '',
-          quoteAuthor: '',
-          authorImageUrl: ''
-        }
-      })
+      const defaultSettings = {
+        id: generateId(),
+        welcomeQuote: '',
+        quoteAuthor: '',
+        authorImageUrl: '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const { data: newSettings, error: createError } = await supabase
+        .from('analyst_portal_settings')
+        .insert(defaultSettings)
+        .select()
+        .single()
+      
+      if (createError) {
+        console.error('Error creating default analyst portal settings:', createError)
+        return NextResponse.json(
+          { error: 'Failed to create default analyst portal settings' },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json(newSettings)
     }
     
     return NextResponse.json(settings)
@@ -34,64 +69,77 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { welcomeQuote, quoteAuthor, authorImageUrl } = body
     
-    // Validate required fields
-    if (!welcomeQuote || !quoteAuthor) {
-      return NextResponse.json(
-        { error: 'Welcome quote and author are required' },
-        { status: 400 }
-      )
-    }
+    const supabase = await createClient()
     
-    // Validate URL format if provided
-    if (authorImageUrl && authorImageUrl.trim()) {
-      try {
-        new URL(authorImageUrl)
-      } catch {
-        return NextResponse.json(
-          { error: 'Please enter a valid author image URL' },
-          { status: 400 }
-        )
-      }
-    }
+    // Get existing settings or create if none exist
+    const { data: existingSettings } = await supabase
+      .from('analyst_portal_settings')
+      .select('id')
+      .limit(1)
+      .single()
     
-    // Check if settings already exist
-    const existingSettings = await prisma.analystPortalSettings.findFirst()
-    
-    const updateData = {
-      welcomeQuote: welcomeQuote.trim(),
-      quoteAuthor: quoteAuthor.trim(),
-      authorImageUrl: authorImageUrl?.trim() || ''
-    }
-    
-    let settings
     if (existingSettings) {
       // Update existing settings
-      settings = await prisma.analystPortalSettings.update({
-        where: { id: existingSettings.id },
-        data: updateData
+      const { data: updatedSettings, error: updateError } = await supabase
+        .from('analyst_portal_settings')
+        .update({
+          welcomeQuote: welcomeQuote || '',
+          quoteAuthor: quoteAuthor || '',
+          authorImageUrl: authorImageUrl || '',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', existingSettings.id)
+        .select()
+        .single()
+      
+      if (updateError) {
+        console.error('Error updating analyst portal settings:', updateError)
+        return NextResponse.json(
+          { error: 'Failed to update analyst portal settings' },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Analyst portal settings updated successfully',
+        data: updatedSettings
       })
     } else {
       // Create new settings
-      settings = await prisma.analystPortalSettings.create({
-        data: updateData
+      const newSettings = {
+        id: generateId(),
+        welcomeQuote: welcomeQuote || '',
+        quoteAuthor: quoteAuthor || '',
+        authorImageUrl: authorImageUrl || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      
+      const { data: createdSettings, error: createError } = await supabase
+        .from('analyst_portal_settings')
+        .insert(newSettings)
+        .select()
+        .single()
+      
+      if (createError) {
+        console.error('Error creating analyst portal settings:', createError)
+        return NextResponse.json(
+          { error: 'Failed to create analyst portal settings' },
+          { status: 500 }
+        )
+      }
+      
+      return NextResponse.json({
+        success: true,
+        message: 'Analyst portal settings created successfully',
+        data: createdSettings
       })
     }
-    
-    console.log('✅ Analyst portal settings updated successfully:', settings)
-    
-    return NextResponse.json(settings)
   } catch (error) {
-    console.error('❌ Detailed error updating analyst portal settings:')
-    console.error('Error type:', typeof error)
-    console.error('Error message:', error instanceof Error ? error.message : String(error))
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    console.error('Full error object:', error)
-    
+    console.error('Error updating analyst portal settings:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to update analyst portal settings',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Failed to update analyst portal settings' },
       { status: 500 }
     )
   }

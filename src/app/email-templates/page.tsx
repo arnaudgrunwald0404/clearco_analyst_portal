@@ -34,7 +34,7 @@ import {
   Users,
   Mail
 } from 'lucide-react'
-import EmailTemplateEditor from '@/components/email-template-editor'
+import EmailTemplateEditor from '@/components/forms/email-template-editor'
 import { cn } from '@/lib/utils'
 
 interface EmailTemplate {

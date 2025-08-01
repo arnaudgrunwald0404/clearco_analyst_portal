@@ -1,5 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+import type { Database } from '@/types/supabase'
+
+type ActionItem = Database['public']['Tables']['action_items']['Row']
+type ActionItemInsert = Database['public']['Tables']['action_items']['Insert']
+
+// Simple CUID-like ID generator
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,57 +19,68 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get('priority')
     const assignedTo = searchParams.get('assignedTo')
 
-    // Build where clause
-    const where: any = {}
-    
+    const supabase = await createClient()
+
+    // Build query
+    let query = supabase
+      .from('action_items')
+      .select(`
+        *,
+        briefings:briefingId (
+          id,
+          title,
+          scheduledAt,
+          briefing_analysts (
+            analysts:analystId (
+              firstName,
+              lastName,
+              company
+            )
+          )
+        )
+      `)
+
+    // Apply filters
     if (status === 'pending') {
-      where.isCompleted = false
+      query = query.in('status', ['PENDING', 'IN_PROGRESS'])
     } else if (status === 'completed') {
-      where.isCompleted = true
+      query = query.eq('status', 'COMPLETED')
     }
     
     if (priority) {
-      where.priority = priority
+      query = query.eq('priority', priority.toUpperCase())
     }
     
     if (assignedTo) {
-      where.assignedTo = assignedTo
+      query = query.eq('assignedTo', assignedTo)
     }
 
-    const actionItems = await prisma.actionItem.findMany({
-      where,
-      include: {
-        briefing: {
-          include: {
-            analysts: {
-              include: {
-                analyst: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    company: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      orderBy: [
-        { isCompleted: 'asc' },
-        { priority: 'desc' },
-        { dueDate: 'asc' },
-        { createdAt: 'desc' }
-      ]
-    })
+    // Order by: incomplete first, then by priority (high first), then by due date, then by created date
+    query = query.order('status', { ascending: true }) // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+    query = query.order('priority', { ascending: false }) // URGENT, HIGH, MEDIUM, LOW
+    query = query.order('dueDate', { ascending: true })
+    query = query.order('createdAt', { ascending: false })
 
-    const processedItems = actionItems.map(item => ({
+    const { data: actionItems, error } = await query
+
+    if (error) {
+      console.error('Error fetching action items:', error)
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch action items' },
+        { status: 500 }
+      )
+    }
+
+    // Process the data to match the expected format
+    const processedItems = actionItems?.map(item => ({
       ...item,
-      briefing: {
-        ...item.briefing,
-        primaryAnalyst: item.briefing?.analysts?.[0]?.analyst || null
-      }
-    }))
+      // Map old Prisma fields to new structure
+      isCompleted: item.status === 'COMPLETED',
+      briefing: item.briefings ? {
+        ...item.briefings,
+        primaryAnalyst: item.briefings.briefing_analysts?.[0]?.analysts || null
+      } : null
+    })) || []
 
     return NextResponse.json({
       success: true,
@@ -78,63 +100,58 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const {
-      briefingId,
+      title,
       description,
-      assignedTo,
-      assignedBy,
-      dueDate,
       priority = 'MEDIUM',
-      category,
-      notes
+      dueDate,
+      assignedTo,
+      analystId,
+      briefingId,
+      tags
     } = body
 
-    if (!briefingId || !description) {
+    // Validate required fields
+    if (!title) {
       return NextResponse.json(
-        { success: false, error: 'Briefing ID and description are required' },
+        { success: false, error: 'Title is required' },
         { status: 400 }
       )
     }
 
-    // Create the action item
-    const actionItem = await prisma.actionItem.create({
-      data: {
-        briefingId,
-        description,
-        assignedTo,
-        assignedBy,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        priority,
-        category,
-        notes
-      },
-      include: {
-        briefing: {
-          include: {
-            analysts: {
-              include: {
-                analyst: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    company: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    })
+    const supabase = await createClient()
+
+    const newActionItem = {
+      id: generateId(),
+      title,
+      description: description || null,
+      status: 'PENDING' as const,
+      priority: priority.toUpperCase() as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+      dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+      assignedTo: assignedTo || null,
+      analystId: analystId || null,
+      briefingId: briefingId || null,
+      tags: tags || null
+    }
+
+    const { data: actionItem, error } = await supabase
+      .from('action_items')
+      .insert(newActionItem)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error creating action item:', error)
+      return NextResponse.json(
+        { success: false, error: 'Failed to create action item' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Action item created successfully:', actionItem.id)
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...actionItem,
-        briefing: {
-          ...actionItem.briefing,
-          primaryAnalyst: actionItem.briefing?.analysts?.[0]?.analyst || null
-        }
-      }
+      data: actionItem
     })
 
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import { parseDate } from '@/lib/date-utils'
 
 export async function POST(request: NextRequest) {
@@ -14,22 +14,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = await createClient()
+
     // Validate each award
     const validAwards = []
     const errors = []
     const existingNames = new Set()
 
     // Check for existing award names in the database
-    const existingAwards = await prisma.award.findMany({
-      where: {
-        name: {
-          in: awards.map(a => a.name).filter(Boolean)
-        }
-      },
-      select: { name: true }
-    })
+    const { data: existingAwards, error: existingError } = await supabase
+      .from('awards')
+      .select('name')
+      .in('name', awards.map(a => a.name).filter(Boolean))
 
-    existingAwards.forEach(a => existingNames.add(a.name))
+    if (existingError) {
+      console.error('Error checking existing awards:', existingError)
+      return NextResponse.json(
+        { error: 'Failed to check existing awards' },
+        { status: 500 }
+      )
+    }
+
+    existingAwards?.forEach(a => existingNames.add(a.name))
 
     for (let i = 0; i < awards.length; i++) {
       const award = awards[i]
@@ -120,55 +126,38 @@ export async function POST(request: NextRequest) {
         organization: awardData.organization,
         productTopics: processedTopics ? JSON.stringify(processedTopics) : null,
         priority: (awardData.priority || 'MEDIUM').toUpperCase(),
-        submissionDate: parseDate(awardData.submissionDate)!,
-        publicationDate: parseDate(awardData.publicationDate)!,
+        submissionDate: parseDate(awardData.submissionDate)!.toISOString(),
+        publicationDate: parseDate(awardData.publicationDate)!.toISOString(),
         owner: awardData.owner || null,
         status: (awardData.status || 'EVALUATING').toUpperCase(),
         cost: awardData.cost || null,
-        notes: awardData.notes || null
+        notes: awardData.notes || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     })
 
-    // Create awards using createMany for better performance
+    // Create awards
     let createdAwards = []
     const createErrors = []
     
-    try {
-      // Use createMany for better performance with large datasets
-      if (awardsToCreate.length > 0) {
-        const result = await prisma.award.createMany({
-          data: awardsToCreate,
-          skipDuplicates: true
-        })
+    for (const awardData of awardsToCreate) {
+      try {
+        const { data: award, error: createError } = await supabase
+          .from('awards')
+          .insert(awardData)
+          .select()
+          .single()
         
-        // Fetch the created awards to return them
-        const awardNames = awardsToCreate.map(a => a.name)
-        createdAwards = await prisma.award.findMany({
-          where: {
-            name: { in: awardNames },
-            createdAt: {
-              gte: new Date(Date.now() - 60000) // Awards created in the last minute
-            }
-          },
-          orderBy: { createdAt: 'desc' }
-        })
-        
-        console.log(`Successfully created ${result.count} awards out of ${awardsToCreate.length} provided`)
-      }
-    } catch (bulkError) {
-      console.error('Bulk creation failed, falling back to individual creation:', bulkError)
-      
-      // Fallback: Create awards one by one
-      for (const awardData of awardsToCreate) {
-        try {
-          const award = await prisma.award.create({
-            data: awardData
-          })
+        if (createError) {
+          console.error(`Failed to create award "${awardData.name}":`, createError)
+          createErrors.push(`Failed to create award "${awardData.name}": ${createError.message}`)
+        } else {
           createdAwards.push(award)
-        } catch (individualError) {
-          console.error(`Failed to create award "${awardData.name}":`, individualError)
-          createErrors.push(`Failed to create award "${awardData.name}": ${individualError.message}`)
         }
+      } catch (individualError) {
+        console.error(`Failed to create award "${awardData.name}":`, individualError)
+        createErrors.push(`Failed to create award "${awardData.name}": ${individualError.message}`)
       }
     }
 

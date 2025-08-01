@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { Sidebar } from './sidebar'
 import Header from '@/components/ui/Header';
+import { SettingsLoader } from '@/components/SettingsLoader';
 
 interface LayoutWrapperProps {
   children: React.ReactNode
@@ -18,26 +19,28 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   // Analyst portal pages have their own layout
   const isAnalystPortal = pathname.startsWith('/portal')
 
-  // Public pages (login, auth) - no sidebar
+  // Public pages (login, auth) - no sidebar, no settings loading
   if (isPublicPage) {
     return <>{children}</>
   }
 
-  // Analyst portal pages - no sidebar (they have their own layout)
+  // Analyst portal pages - no sidebar (they have their own layout), no settings loading
   if (isAnalystPortal) {
     return <>{children}</>
   }
 
-  // All other pages - show sidebar (no auth required)
+  // All other pages - show sidebar with settings loading
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className="flex-1 overflow-y-auto">
-          {children}
-        </main>
+    <SettingsLoader>
+      <div className="flex h-screen bg-gray-100">
+        <Sidebar />
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header />
+          <main className="flex-1 overflow-y-auto">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SettingsLoader>
   )
 }

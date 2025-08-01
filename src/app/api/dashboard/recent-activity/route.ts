@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
-}
+// Cache duration in seconds
+const CACHE_DURATION = 300; // 5 minutes
+let activityCache: any = null;
+let cacheTimestamp: number = 0;
 
 interface ActivityItem {
   type: string
@@ -24,7 +22,7 @@ function formatTimeAgo(date: Date): string {
   const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60))
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
   
-  if (diffInMinutes < 60) return `${diffInMinutes} min)`
+  if (diffInMinutes < 60) return `${diffInMinutes} min ago`
   if (diffInHours < 24) return `${diffInHours} hours ago`
   if (diffInDays === 1) return '1 day ago'
   return `${diffInDays} days ago`
@@ -32,118 +30,79 @@ function formatTimeAgo(date: Date): string {
 
 export async function GET() {
   try {
+    const now = Date.now();
+    
+    // Return cached data if still valid
+    if (activityCache && (now - cacheTimestamp) < (CACHE_DURATION * 1000)) {
+      return NextResponse.json({
+        ...activityCache,
+        cached: true,
+        cacheAge: Math.floor((now - cacheTimestamp) / 1000)
+      });
+    }
+
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    const sevenDaysAgoISO = sevenDaysAgo.toISOString()
 
-    // Fetch recent activities from different sources using Prisma with error handling
+    const supabase = await createClient()
+
+    // Fetch recent activities from different sources using Supabase with error handling
     let recentAnalystUpdates: any[] = []
-    let recentNewsletters: any[] = []
     let recentBriefings: any[] = []
-    let recentAlerts: any[] = []
-    let recentInteractions: any[] = []
     let recentCalendarMeetings: any[] = []
 
+    // Recent analyst updates
     try {
-      recentAnalystUpdates = await prisma.analyst.findMany({
-        where: { updatedAt: { gte: sevenDaysAgo } },
-        select: { firstName: true, lastName: true, company: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 3
-      })
+      const { data: analysts, error } = await supabase
+        .from('analysts')
+        .select('firstName, lastName, company, updatedAt')
+        .gte('updatedAt', sevenDaysAgoISO)
+        .order('updatedAt', { ascending: false })
+        .limit(3)
+
+      if (!error && analysts) {
+        recentAnalystUpdates = analysts
+      }
     } catch (error) {
       console.log('Recent analyst updates query failed:', error)
     }
 
+    // Recent completed briefings
     try {
-      recentNewsletters = await prisma.newsletter.findMany({
-        where: { 
-          status: 'SENT',
-          sentAt: { gte: sevenDaysAgo }
-        },
-        select: {
-          title: true,
-          sentAt: true,
-          subscriptions: {
-            select: { id: true }
-          }
-        },
-        orderBy: { sentAt: 'desc' },
-        take: 3
-      })
-    } catch (error) {
-      console.log('Recent newsletters query failed:', error)
-    }
+      const { data: briefings, error } = await supabase
+        .from('briefings')
+        .select('title, completedAt')
+        .eq('status', 'COMPLETED')
+        .gte('completedAt', sevenDaysAgoISO)
+        .not('completedAt', 'is', null)
+        .order('completedAt', { ascending: false })
+        .limit(3)
 
-    try {
-      recentBriefings = await prisma.briefing.findMany({
-        where: { 
-          status: 'COMPLETED',
-          completedAt: { gte: sevenDaysAgo }
-        },
-        select: { title: true, completedAt: true },
-        orderBy: { completedAt: 'desc' },
-        take: 3
-      })
+      if (!error && briefings) {
+        recentBriefings = briefings
+      }
     } catch (error) {
       console.log('Recent briefings query failed:', error)
     }
 
+    // Recent calendar meetings
     try {
-      recentAlerts = await prisma.alert.findMany({
-        where: { createdAt: { gte: sevenDaysAgo } },
-        select: {
-          title: true,
-          type: true,
-          createdAt: true,
-          analyst: {
-            select: { firstName: true, lastName: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 3
-      })
-    } catch (error) {
-      console.log('Recent alerts query failed:', error)
-    }
+      const { data: meetings, error } = await supabase
+        .from('calendar_meetings')
+        .select('title, startTime, endTime')
+        .gte('startTime', sevenDaysAgoISO)
+        .order('startTime', { ascending: false })
+        .limit(3)
 
-    try {
-      recentInteractions = await prisma.interaction.findMany({
-        where: { date: { gte: sevenDaysAgo } },
-        select: {
-          type: true,
-          subject: true,
-          date: true,
-          analyst: {
-            select: { firstName: true, lastName: true, company: true }
-          }
-        },
-        orderBy: { date: 'desc' },
-        take: 3
-      })
-    } catch (error) {
-      console.log('Recent interactions query failed:', error)
-    }
-
-    try {
-      recentCalendarMeetings = await prisma.calendarMeeting.findMany({
-        where: { 
-          isAnalystMeeting: true,
-          startTime: { gte: sevenDaysAgo }
-        },
-        select: {
-          title: true,
-          startTime: true,
-          analyst: {
-            select: { firstName: true, lastName: true, company: true }
-          }
-        },
-        orderBy: { startTime: 'desc' },
-        take: 3
-      })
+      if (!error && meetings) {
+        recentCalendarMeetings = meetings
+      }
     } catch (error) {
       console.log('Recent calendar meetings query failed:', error)
     }
 
+    // Convert data to activity items
     const activities: ActivityItem[] = []
 
     // Add analyst updates
@@ -153,86 +112,53 @@ export async function GET() {
         message: `${analyst.firstName} ${analyst.lastName}${analyst.company ? ` (${analyst.company})` : ''} profile updated`,
         time: formatTimeAgo(new Date(analyst.updatedAt)),
         icon: 'Users',
-        color: 'text-blue-600',
+        color: 'blue',
         timestamp: new Date(analyst.updatedAt)
       })
     })
 
-    // Add newsletter sends
-    recentNewsletters.forEach(newsletter => {
-      if (newsletter.sentAt) {
-        activities.push({
-          type: 'newsletter_sent',
-          message: `"${newsletter.title}" newsletter sent to ${newsletter.subscriptions?.length || 0} analysts`,
-          time: formatTimeAgo(new Date(newsletter.sentAt)),
-          icon: 'Mail',
-          color: 'text-green-600',
-          timestamp: new Date(newsletter.sentAt)
-        })
-      }
-    })
-
     // Add completed briefings
     recentBriefings.forEach(briefing => {
-      if (briefing.completedAt) {
-        activities.push({
-          type: 'briefing_completed',
-          message: `Briefing completed: "${briefing.title}"`,
-          time: formatTimeAgo(new Date(briefing.completedAt)),
-          icon: 'Calendar',
-          color: 'text-purple-600',
-          timestamp: new Date(briefing.completedAt)
-        })
-      }
-    })
-
-    // Add alert triggers
-    recentAlerts.forEach(alert => {
-      const alertTypeLabel = alert.type.toLowerCase().replace('_', ' ')
       activities.push({
-        type: 'alert_triggered',
-        message: `${alertTypeLabel} alert: ${alert.title}`,
-        time: formatTimeAgo(new Date(alert.createdAt)),
-        icon: 'AlertTriangle',
-        color: 'text-orange-600',
-        timestamp: new Date(alert.createdAt)
-      })
-    })
-
-    // Add interactions
-    recentInteractions.forEach(interaction => {
-      const typeLabel = interaction.type.toLowerCase()
-      activities.push({
-        type: 'interaction_logged',
-        message: `${typeLabel} with ${interaction.analyst.firstName} ${interaction.analyst.lastName}: "${interaction.subject}"`,
-        time: formatTimeAgo(new Date(interaction.date)),
-        icon: 'MessageSquare',
-        color: 'text-indigo-600',
-        timestamp: new Date(interaction.date)
+        type: 'briefing_completed',
+        message: `Briefing "${briefing.title}" completed`,
+        time: formatTimeAgo(new Date(briefing.completedAt)),
+        icon: 'Calendar',
+        color: 'green',
+        timestamp: new Date(briefing.completedAt)
       })
     })
 
     // Add calendar meetings
     recentCalendarMeetings.forEach(meeting => {
-      if (meeting.analyst) {
-        activities.push({
-          type: 'meeting_held',
-          message: `Meeting with ${meeting.analyst.firstName} ${meeting.analyst.lastName}: "${meeting.title}"`,
-          time: formatTimeAgo(new Date(meeting.startTime)),
-          icon: 'Video',
-          color: 'text-teal-600',
-          timestamp: new Date(meeting.startTime)
-        })
-      }
+      activities.push({
+        type: 'calendar_meeting',
+        message: `Calendar meeting: ${meeting.title}`,
+        time: formatTimeAgo(new Date(meeting.startTime)),
+        icon: 'Video',
+        color: 'purple',
+        timestamp: new Date(meeting.startTime)
+      })
     })
 
-    // Sort all activities by timestamp (most recent first) and take top 10
-    const sortedActivities = activities
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, 10)
-      .map(({ timestamp, ...activity }) => activity) // Remove timestamp from response
+    // Sort activities by timestamp (most recent first)
+    activities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 
-    return NextResponse.json(sortedActivities)
+    // Take only top 10 activities
+    const recentActivities = activities.slice(0, 10)
+
+    // Cache the results
+    activityCache = recentActivities;
+    cacheTimestamp = now;
+
+    console.log(`📈 Recent activity loaded: ${recentActivities.length} items (fresh)`);
+
+    return NextResponse.json({
+      data: recentActivities,
+      cached: false,
+      cacheAge: 0
+    });
+
   } catch (error) {
     console.error('Error fetching recent activity:', error)
     return NextResponse.json(

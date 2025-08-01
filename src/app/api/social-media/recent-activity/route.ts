@@ -1,173 +1,126 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+// In-memory cache
+let cache: {
+  data: any | null
+  timestamp: number
+  duration: number
+} = {
+  data: null,
+  timestamp: 0,
+  duration: 5 * 60 * 1000 // 5 minutes
+}
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Social media activity API called')
-    
+
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '10')
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+
+    // Check cache first
+    const now = Date.now()
+    if (cache.data && (now - cache.timestamp) < cache.duration) {
+      console.log('📋 Returning cached social activity data')
+      return NextResponse.json({
+        success: true,
+        ...cache.data,
+        cached: true,
+        cacheAge: Math.floor((now - cache.timestamp) / 1000)
+      })
+    }
+
+    const supabase = await createClient()
 
     console.log('📊 Querying social posts...')
 
-    // Get recent posts with analysis
-    const recentPosts = await prisma.socialPost.findMany({
-      where: { 
-        isRelevant: true,
-        postedAt: { gte: sevenDaysAgo }
-      },
-      include: {
-        analyst: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            company: true,
-            title: true
-          }
-        }
-      },
-      orderBy: { postedAt: 'desc' },
-      take: limit
-    })
-
-    console.log(`📋 Found ${recentPosts.length} recent social posts`)
-
-    // Calculate stats using Prisma
-    const [
-      postsToday,
-      totalPostsThisWeek,
-      engagementStats,
-      themePosts
-    ] = await Promise.all([
-      // Posts today
-      prisma.socialPost.count({
-        where: {
-          isRelevant: true,
-          postedAt: { gte: today }
-        }
-      }),
-
-      // Posts this week
-      prisma.socialPost.count({
-        where: {
-          isRelevant: true,
-          postedAt: { gte: sevenDaysAgo }
-        }
-      }),
-
-      // Average engagements
-      prisma.socialPost.findMany({
-        where: {
-          isRelevant: true,
-          postedAt: { gte: sevenDaysAgo }
-        },
-        select: { engagements: true }
-      }),
-
-      // Top themes
-      prisma.socialPost.findMany({
-        where: {
-          isRelevant: true,
-          postedAt: { gte: sevenDaysAgo },
-          themes: { not: null }
-        },
-        select: { themes: true }
-      })
-    ])
-
-    console.log(`📊 Stats calculated: ${postsToday} today, ${totalPostsThisWeek} this week`)
-
-    // Calculate average engagements
-    const avgEngagements = engagementStats.length > 0
-      ? engagementStats.reduce((sum, post) => sum + (post.engagements || 0), 0) / engagementStats.length
-      : 0
-
-    // Process themes
-    const themeCount: Record<string, number> = {}
-    themePosts.forEach(post => {
-      try {
-        let themes = post.themes
-        if (typeof themes === 'string') {
-          themes = JSON.parse(themes)
-        }
-        if (Array.isArray(themes)) {
-          themes.forEach((theme: string) => {
-            themeCount[theme] = (themeCount[theme] || 0) + 1
-          })
-        }
-      } catch (error) {
-        // Skip invalid JSON themes
-        console.warn('Invalid themes JSON:', post.themes)
-      }
-    })
-
-    const topThemes = Object.entries(themeCount)
-      .map(([theme, count]) => ({ theme, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-
-    // Format posts for response
-    const formattedPosts = recentPosts.map(post => {
-      let themes = []
-      try {
-        if (typeof post.themes === 'string') {
-          themes = JSON.parse(post.themes || '[]')
-        } else if (Array.isArray(post.themes)) {
-          themes = post.themes
-        }
-      } catch (error) {
-        console.warn('Invalid themes JSON for post:', post.id)
-        themes = []
-      }
-
-      return {
-        id: post.id,
-        analystId: post.analystId,
-        platform: post.platform,
-        content: post.content,
-        url: post.url,
-        postedAt: post.postedAt,
-        engagements: post.engagements || 0,
-        relevanceScore: 85, // Mock relevance score since it's not in the schema
+    // Get recent social posts with analyst information
+    // Using the specific foreign key relationship to avoid ambiguity
+    const { data: socialPosts, error: postsError } = await supabase
+      .from('social_posts')
+      .select(`
+        id,
+        content,
+        platform,
+        url,
+        engagements,
+        postedAt,
+        isRelevant,
+        sentiment,
         themes,
-        sentiment: post.sentiment || 'NEUTRAL',
-        mentionsCompany: post.content?.toLowerCase().includes('clearcompany') || post.content?.toLowerCase().includes('hr tech') || false,
-        analyst: post.analyst
-      }
-    })
+        createdAt,
+        analysts!fk_social_posts_analyst(
+          id,
+          firstName,
+          lastName,
+          email,
+          company,
+          profileImageUrl
+        )
+      `)
+      .eq('isRelevant', true)
+      .order('postedAt', { ascending: false })
+      .limit(limit)
 
-    const stats = {
-      totalPosts: totalPostsThisWeek,
-      postsToday: postsToday,
-      avgRelevanceScore: Math.round(avgEngagements), // Using avg engagements as proxy
-      topThemes
+    if (postsError) {
+      console.error('Error fetching social posts:', postsError)
+      return NextResponse.json(
+        { error: 'Failed to fetch social posts' },
+        { status: 500 }
+      )
     }
 
-    console.log('✅ Social media activity API completed successfully')
+    console.log(`📋 Found ${socialPosts?.length || 0} recent social posts`)
+
+    // Calculate summary statistics
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+    // Get posts from today
+    const { count: todayCount } = await supabase
+      .from('social_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('isRelevant', true)
+      .gte('postedAt', today.toISOString())
+
+    // Get posts from this week
+    const { count: weekCount } = await supabase
+      .from('social_posts')
+      .select('*', { count: 'exact', head: true })
+      .eq('isRelevant', true)
+      .gte('postedAt', weekAgo.toISOString())
+
+    const summary = {
+      todayPosts: todayCount || 0,
+      weekPosts: weekCount || 0,
+      totalRecentPosts: socialPosts?.length || 0
+    }
+
+    const result = {
+      posts: socialPosts || [],
+      summary
+    }
+
+    // Cache the result
+    cache.data = result
+    cache.timestamp = now
+
+    console.log(`📊 Social activity summary: ${summary.todayPosts} today, ${summary.weekPosts} this week`)
 
     return NextResponse.json({
       success: true,
-      posts: formattedPosts,
-      stats
+      ...result,
+      cached: false,
+      cacheAge: 0
     })
 
   } catch (error) {
-    console.error('❌ Error fetching recent social media activity:', error)
-    
-    // Return a valid response even on error
-    return NextResponse.json({
-      success: true,
-      posts: [],
-      stats: {
-        totalPosts: 0,
-        postsToday: 0,
-        avgRelevanceScore: 0,
-        topThemes: []
-      }
-    })
+    console.error('Error in social media activity API:', error)
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

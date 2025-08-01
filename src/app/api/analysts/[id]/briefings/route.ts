@@ -1,56 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
+    const supabase = await createClient()
 
-    // Fetch briefing history ordered by most recent first
-    const briefings = await prisma.briefing.findMany({
-      where: {
-        analysts: {
-          some: {
-            analystId: id
-          }
-        }
-      },
-      include: {
-        analysts: {
-          include: {
-            analyst: {
-              select: {
-                firstName: true,
-                lastName: true,
-                email: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        scheduledAt: 'desc'
-      },
-      take: 20 // Limit to most recent 20 briefings
-    })
+    // Fetch briefing history via briefing_analysts table
+    const { data: briefingAnalysts, error } = await supabase
+      .from('briefing_analysts')
+      .select(`
+        briefings!inner(
+          id,
+          title,
+          description,
+          scheduledAt,
+          duration,
+          status,
+          location,
+          meetingUrl,
+          agenda,
+          notes,
+          followUpItems,
+          recordingUrl,
+          isRecurring,
+          recurringPattern,
+          reminderSent,
+          createdAt,
+          updatedAt
+        )
+      `)
+      .eq('analystId', id)
+      .order('briefings(scheduledAt)', { ascending: false })
+      .limit(20)
 
-    // Parse JSON fields for better frontend consumption
-    const processedBriefings = briefings.map(briefing => ({
-      ...briefing,
-      agenda: briefing.agenda ? JSON.parse(briefing.agenda) : [],
-      outcomes: briefing.outcomes ? JSON.parse(briefing.outcomes) : [],
-      followUpActions: briefing.followUpActions ? JSON.parse(briefing.followUpActions) : []
-    }))
+    if (error) {
+      console.error('Error fetching analyst briefings:', error)
+      return NextResponse.json(
+        { success: false, error: 'Failed to fetch briefings' },
+        { status: 500 }
+      )
+    }
+
+    // Extract and process briefings
+    const briefings = (briefingAnalysts || []).map(ba => ba.briefings).filter(Boolean)
+
+    console.log(`📋 Found ${briefings.length} briefings for analyst ${id}`)
 
     return NextResponse.json({
       success: true,
-      data: processedBriefings
+      data: briefings
     })
 
   } catch (error) {
-    console.error('Error fetching briefings:', error)
+    console.error('Error fetching analyst briefings:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to fetch briefings' },
       { status: 500 }

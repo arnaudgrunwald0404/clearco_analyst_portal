@@ -8,13 +8,15 @@ import {
   MessageSquare,
   Calendar,
   Award,
-  CalendarDays
+  CalendarDays,
+  Clock
 } from 'lucide-react'
 
 export interface NavigationItem {
   name: string
   href: string
   icon: any
+  subItems?: NavigationItem[]
 }
 
 // Main navigation items (excluding Analyst Portal)
@@ -22,6 +24,7 @@ export const mainNavigation: NavigationItem[] = [
   { name: 'Overview', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
   { name: 'Briefings', href: '/briefings', icon: Calendar },
+  { name: 'Briefings due', href: '/briefings/due', icon: Clock },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
   { name: 'Awards', href: '/awards', icon: Award },

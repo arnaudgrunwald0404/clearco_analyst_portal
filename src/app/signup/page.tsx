@@ -14,14 +14,14 @@ export default function SignUpPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }))
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
@@ -51,7 +51,7 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-10 bg-white rounded-xl shadow-md">
         <div className="text-center">
-          <img src="/logo.png" alt="Logo" className="mx-auto h-12 w-auto" />
+          <img src="/clearco-logo.png" alt="Logo" className="mx-auto h-12 w-auto" />
           <h1 className="mt-6 text-3xl font-bold text-gray-900">
             Sign Up
           </h1>

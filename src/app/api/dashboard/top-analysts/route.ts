@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
-function formatLastContact(date: Date | null): string {
+function formatLastContact(date: Date | string | null): string {
   if (!date) return 'Never'
   
+  const contactDate = new Date(date)
   const now = new Date()
-  const diffInMs = now.getTime() - date.getTime()
+  const diffInMs = now.getTime() - contactDate.getTime()
   const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
   
   if (diffInDays === 0) return 'Today'
@@ -19,39 +20,53 @@ function formatLastContact(date: Date | null): string {
 
 export async function GET() {
   try {
-    // Get top analysts with their interactions and calendar meetings
-    const analysts = await prisma.analyst.findMany({
-      where: { status: 'ACTIVE' },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        company: true,
-        influenceScore: true,
-        relationshipHealth: true,
-        lastContactDate: true,
-        interactions: {
-          select: { date: true },
-          orderBy: { date: 'desc' },
-          take: 1
-        },
-        calendarMeetings: {
-          select: { endTime: true },
-          orderBy: { endTime: 'desc' },
-          take: 1
-        }
-      },
-      orderBy: { influenceScore: 'desc' },
-      take: 5
-    })
+    console.log('📊 [Dashboard] Fetching top analysts...')
+    
+    const supabase = await createClient()
 
-    const topAnalysts = analysts.map(analyst => {
-      // Find the most recent contact date from various sources
+    // Get top analysts ordered by influence
+    const { data: analysts, error } = await supabase
+      .from('analysts')
+      .select('id, firstName, lastName, company, influence, relationshipHealth, lastContactDate, updatedAt')
+      .eq('status', 'ACTIVE')
+      .order('influence', { ascending: false })
+      .limit(5)
+
+    if (error) {
+      console.error('Error fetching top analysts:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch top analysts' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`📊 [Dashboard] Found ${analysts?.length || 0} top analysts`)
+
+    // Get recent calendar meetings for these analysts
+    const analystIds = (analysts || []).map(a => a.id)
+    
+    let recentMeetings: any[] = []
+    if (analystIds.length > 0) {
+      const { data: meetings } = await supabase
+        .from('calendar_meetings')
+        .select('analystId, endTime')
+        .in('analystId', analystIds)
+        .order('endTime', { ascending: false })
+      
+      recentMeetings = meetings || []
+    }
+
+    const topAnalysts = (analysts || []).map(analyst => {
+      // Find the most recent contact date from available sources
+      const recentMeeting = recentMeetings
+        .filter(m => m.analystId === analyst.id)
+        .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime())[0]
+
       const contactDates = [
         analyst.lastContactDate,
-        analyst.interactions?.[0]?.date,
-        analyst.calendarMeetings?.[0]?.endTime
-      ].filter(Boolean) as Date[]
+        recentMeeting?.endTime,
+        analyst.updatedAt
+      ].filter(Boolean)
 
       const lastContact = contactDates.length > 0 
         ? new Date(Math.max(...contactDates.map(d => new Date(d).getTime())))
@@ -61,15 +76,21 @@ export async function GET() {
         id: analyst.id,
         name: `${analyst.firstName} ${analyst.lastName}`,
         company: analyst.company || 'Unknown',
-        influence: analyst.influenceScore,
+        influence: analyst.influence || 'MEDIUM',
         lastContact: formatLastContact(lastContact),
-        health: analyst.relationshipHealth
+        health: analyst.relationshipHealth || 'NEUTRAL'
       }
     })
 
-    return NextResponse.json(topAnalysts)
+    console.log(`📊 [Dashboard] Processed ${topAnalysts.length} top analysts`)
+
+    return NextResponse.json({
+      success: true,
+      data: topAnalysts
+    })
+    
   } catch (error) {
-    console.error('Error fetching top analysts:', error)
+    console.error('Error in top analysts dashboard:', error)
     return NextResponse.json(
       { error: 'Failed to fetch top analysts' },
       { status: 500 }

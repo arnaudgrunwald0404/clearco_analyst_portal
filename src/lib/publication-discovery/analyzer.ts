@@ -10,6 +10,7 @@ import {
   RELEVANT_TOPICS, 
   THRESHOLDS 
 } from './config'
+import { calculateCharacterSimilarity } from '../utils/similarity'
 
 export class PublicationAnalyzer {
   /**
@@ -369,7 +370,7 @@ export class PublicationAnalyzer {
       }
 
       // Title similarity
-      const titleSimilarity = this.calculateSimilarity(
+      const titleSimilarity = calculateCharacterSimilarity(
         existing.title.toLowerCase(),
         newPublication.title.toLowerCase()
       )
@@ -389,25 +390,5 @@ export class PublicationAnalyzer {
     return false
   }
 
-  /**
-   * Calculates similarity between two strings using simple character comparison
-   */
-  private calculateSimilarity(str1: string, str2: string): number {
-    const len1 = str1.length
-    const len2 = str2.length
-    const maxLen = Math.max(len1, len2)
-    
-    if (maxLen === 0) return 1
-    
-    let matches = 0
-    const minLen = Math.min(len1, len2)
-    
-    for (let i = 0; i < minLen; i++) {
-      if (str1[i] === str2[i]) {
-        matches++
-      }
-    }
-    
-    return matches / maxLen
-  }
+
 }

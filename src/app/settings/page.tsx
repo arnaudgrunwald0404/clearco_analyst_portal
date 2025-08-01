@@ -1,16 +1,19 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { Settings, TrendingUp, Tags, Calendar, Users, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Calendar, RefreshCw, Settings, Tags, Users, Clock, AlertCircle, CheckCircle } from 'lucide-react'
-import SidebarNav from './SidebarNav';
-import GeneralSection from './GeneralSection';
-import TopicsSection from './TopicsSection';
-import AnalystPortalSection from './AnalystPortalSection';
-import CalendarSection from './CalendarSection';
+import SidebarNav from './SidebarNav'
+import GeneralSection from './GeneralSection'
+import TopicsSection from './TopicsSection'
+import AnalystPortalSection from './AnalystPortalSection'
+import CalendarSection from './CalendarSection'
+import InfluenceTiersSection from './InfluenceTiersSection'
+import { FloatingHelpText } from '@/components/ui/floating-help-text'
+import { useHelpText } from '@/hooks/useHelpText'
 
 interface CalendarConnection {
   id: string
@@ -38,19 +41,13 @@ function SettingsPageContent() {
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
-  const [showNamingDialog, setShowNamingDialog] = useState(false)
-  const [pendingConnection, setPendingConnection] = useState<{
-    id: string
-    email: string
-    calendarName: string
-  } | null>(null)
-  const [newConnectionTitle, setNewConnectionTitle] = useState('')
-  const [notification, setNotification] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
   const [syncProgress, setSyncProgress] = useState<Map<string, SyncProgress>>(new Map())
   const [eventSources, setEventSources] = useState<Map<string, EventSource>>(new Map())
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [showNamingDialog, setShowNamingDialog] = useState(false)
+  const [pendingConnection, setPendingConnection] = useState<{ id: string; email: string; calendarName: string } | null>(null)
+  const [newConnectionTitle, setNewConnectionTitle] = useState('')
+  const { currentHelp, targetElement, showHelp, hideHelp } = useHelpText()
 
   useEffect(() => {
     fetchCalendarConnections()
@@ -117,67 +114,27 @@ function SettingsPageContent() {
   }, [])
 
   const fetchCalendarConnections = async () => {
-    console.log('\n' + '='.repeat(80))
-    console.log('🔄 [FRONTEND] Fetching calendar connections...')
-    console.log('🕐 [FRONTEND] Timestamp:', new Date().toISOString())
-    console.log('🌐 [FRONTEND] URL:', '/api/settings/calendar-connections')
-    
     try {
-      console.log('📡 [FRONTEND] Making fetch request...')
       const response = await fetch('/api/settings/calendar-connections')
       
-      console.log('📊 [FRONTEND] Response received:')
-      console.log('  - Status:', response.status)
-      console.log('  - Status Text:', response.statusText)
-      console.log('  - Headers:', Object.fromEntries(response.headers))
-      console.log('  - OK:', response.ok)
-      
       if (response.ok) {
-        const contentType = response.headers.get('content-type')
-        console.log('📋 [FRONTEND] Content-Type:', contentType)
-        
-        if (contentType && contentType.includes('application/json')) {
-          console.log('✅ [FRONTEND] Response is JSON, parsing...')
-          const connections = await response.json()
-          console.log('📊 [FRONTEND] Parsed connections:', connections)
-          console.log('📈 [FRONTEND] Connection count:', connections.length)
-          setCalendarConnections(connections)
-          console.log('✅ [FRONTEND] Calendar connections set successfully')
+        const result = await response.json()
+        if (result.success && result.data) {
+          setCalendarConnections(result.data)
         } else {
-          console.error('❌ [FRONTEND] Expected JSON but received:', contentType)
-          const responseText = await response.text()
-          console.error('📝 [FRONTEND] Response body:', responseText)
-          throw new Error('Invalid response format')
+          setCalendarConnections([])
         }
       } else {
-        console.error('❌ [FRONTEND] Failed to fetch calendar connections:')
-        console.error('  - Status:', response.status)
-        console.error('  - Status Text:', response.statusText)
-        
-        // Try to get response body for more details
-        try {
-          const responseText = await response.text()
-          console.error('📝 [FRONTEND] Error response body:', responseText)
-        } catch (bodyError) {
-          console.error('❌ [FRONTEND] Could not read error response body:', bodyError)
-        }
-        
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
     } catch (error) {
-      console.error('❌ [FRONTEND] Failed to fetch calendar connections:')
-      console.error('📝 [FRONTEND] Error details:', error)
-      console.error('🏷️ [FRONTEND] Error name:', (error as Error)?.name)
-      console.error('💬 [FRONTEND] Error message:', (error as Error)?.message)
-      console.error('📚 [FRONTEND] Error stack:', (error as Error)?.stack)
-      
+      console.error('Failed to fetch calendar connections:', error)
       setNotification({
         type: 'error',
         message: 'Failed to load calendar connections'
       })
     } finally {
       setLoading(false)
-      console.log('🔚 [FRONTEND] fetchCalendarConnections completed')
     }
   }
 
@@ -196,9 +153,13 @@ function SettingsPageContent() {
       if (response.ok) {
         const contentType = response.headers.get('content-type')
         if (contentType && contentType.includes('application/json')) {
-          const { authUrl } = await response.json()
-          // Redirect to Google OAuth
-          window.location.href = authUrl
+          const result = await response.json()
+          if (result.success && result.data?.authUrl) {
+            // Redirect to Google OAuth
+            window.location.href = result.data.authUrl
+          } else {
+            throw new Error('Invalid response format from server')
+          }
         } else {
           console.error('Expected JSON but received:', contentType)
           throw new Error('Invalid response format from server')
@@ -347,7 +308,7 @@ function SettingsPageContent() {
     
     if (progress?.isRunning) {
       return { 
-        icon: Clock, 
+        icon: RefreshCw, 
         text: `Syncing... (${progress.relevantMeetingsCount} meetings found)`, 
         color: 'text-blue-600',
         progress: progress
@@ -355,18 +316,18 @@ function SettingsPageContent() {
     }
     
     if (!connection.isActive) {
-      return { icon: AlertCircle, text: 'Inactive', color: 'text-gray-500' }
+      return { icon: RefreshCw, text: 'Inactive', color: 'text-gray-500' }
     }
     
     if (connection.lastSyncAt) {
       const lastSync = new Date(connection.lastSyncAt)
       const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60)
       if (hoursSinceSync < 24) {
-        return { icon: CheckCircle, text: 'Connected', color: 'text-green-600' }
+        return { icon: RefreshCw, text: 'Connected', color: 'text-green-600' }
       }
     }
     
-    return { icon: Clock, text: 'Ready to sync', color: 'text-yellow-600' }
+    return { icon: RefreshCw, text: 'Ready to sync', color: 'text-yellow-600' }
   }
 
   const formatLastSync = (lastSyncAt: string | null) => {
@@ -494,6 +455,7 @@ function SettingsPageContent() {
   // Define menu sections
   const menuSections = [
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'influence-tiers', label: 'Analyst Tiers', icon: TrendingUp },
     { id: 'topics', label: 'Topics', icon: Tags },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
@@ -501,65 +463,80 @@ function SettingsPageContent() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
+      <div className="mb-12">
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-3 text-gray-600">
           Manage your account settings and integrations
         </p>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex gap-12">
         <SidebarNav activeSection={activeSection} setActiveSection={setActiveSection} menuSections={menuSections} />
-        <div className="flex-1">
-          {activeSection === 'general' && <GeneralSection />}
+        <div className="w-6/12 space-y-8">
+          {activeSection === 'general' && <GeneralSection showHelp={showHelp} hideHelp={hideHelp} />}
           {activeSection === 'topics' && <TopicsSection />}
           {activeSection === 'analyst-portal' && <AnalystPortalSection />}
-          {activeSection === 'calendar' && <CalendarSection />}
-
-          {/* Naming Dialog */}
-          {showNamingDialog && pendingConnection && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-                <h3 className="text-lg font-medium mb-4">Name Your Calendar Connection</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Connected: <strong>{pendingConnection.email}</strong>
-                </p>
-                
-                <div className="mb-4">
-                  <Label htmlFor="connection-name" className="text-sm font-medium text-gray-700">
-                    Display Name (optional)
-                  </Label>
-                  <Input
-                    id="connection-name"
-                    placeholder="e.g., Chief Product Officer, Marketing Director"
-                    value={newConnectionTitle}
-                    onChange={(e) => setNewConnectionTitle(e.target.value)}
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Default: {pendingConnection.calendarName}
-                  </p>
-                </div>
-                
-                <div className="flex gap-3 justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={handleSkipNaming}
-                  >
-                    Use Default Name
-                  </Button>
-                  <Button
-                    onClick={handleSaveConnectionName}
-                    disabled={!newConnectionTitle.trim()}
-                  >
-                    Save Custom Name
-                  </Button>
-                </div>
-              </div>
-            </div>
+          {activeSection === 'calendar' && (
+            <CalendarSection
+              calendarConnections={calendarConnections}
+              loading={loading}
+              adding={adding}
+              syncProgress={syncProgress}
+              onAddConnection={handleAddConnection}
+              onToggleConnection={handleToggleConnection}
+              onDeleteConnection={handleDeleteConnection}
+              onStartSync={startCalendarSync}
+            />
           )}
+          {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
         </div>
       </div>
+
+      {/* Floating Help Text */}
+      <FloatingHelpText helpText={currentHelp} targetElement={targetElement} />
+
+        {/* Naming Dialog */}
+        {showNamingDialog && pendingConnection && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-medium mb-4">Name Your Calendar Connection</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Connected: <strong>{pendingConnection.email}</strong>
+              </p>
+              
+              <div className="mb-4">
+                <Label htmlFor="connection-name" className="text-sm font-medium text-gray-700">
+                  Display Name (optional)
+                </Label>
+                <Input
+                  id="connection-name"
+                  placeholder="e.g., Chief Product Officer, Marketing Director"
+                  value={newConnectionTitle}
+                  onChange={(e) => setNewConnectionTitle(e.target.value)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Default: {pendingConnection.calendarName}
+                </p>
+              </div>
+              
+              <div className="flex gap-3 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleSkipNaming}
+                >
+                  Use Default Name
+                </Button>
+                <Button
+                  onClick={handleSaveConnectionName}
+                  disabled={!newConnectionTitle.trim()}
+                >
+                  Save Custom Name
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   )
 }

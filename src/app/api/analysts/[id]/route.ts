@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
 
-const prisma = new PrismaClient()
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id: analystId } = await params
+    const supabase = await createClient()
 
     // Check if analyst exists and is not already archived
-    const existingAnalyst = await prisma.analyst.findUnique({
-      where: { id: analystId },
-      select: { id: true, firstName: true, lastName: true, status: true }
-    })
+    const { data: existingAnalyst, error: fetchError } = await supabase
+      .from('analysts')
+      .select('id, firstName, lastName, status')
+      .eq('id', analystId)
+      .single()
 
-    if (!existingAnalyst) {
+    if (fetchError || !existingAnalyst) {
       return NextResponse.json({
         success: false,
         error: 'Analyst not found'
@@ -31,14 +35,22 @@ export async function DELETE(
     }
 
     // Soft delete by updating status to ARCHIVED
-    const updatedAnalyst = await prisma.analyst.update({
-      where: { id: analystId },
-      data: {
+    const { data: updatedAnalyst, error: updateError } = await supabase
+      .from('analysts')
+      .update({
         status: 'ARCHIVED',
-        updatedAt: new Date()
-      },
-      select: { id: true, firstName: true, lastName: true, status: true }
-    })
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', analystId)
+      .select('id, firstName, lastName, status')
+      .single()
+
+    if (updateError || !updatedAnalyst) {
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to archive analyst'
+      }, { status: 500 })
+    }
 
     // Log the deletion activity
     console.log(`Analyst ${analystId} (${existingAnalyst.firstName} ${existingAnalyst.lastName}) archived at ${new Date().toISOString()}`)
@@ -57,79 +69,108 @@ export async function DELETE(
     console.error('Error archiving analyst:', error)
     return NextResponse.json({
       success: false,
-      error: 'Internal server error'
+      error: 'Failed to archive analyst'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id: analystId } = await params
+    const supabase = await createClient()
 
-    const analyst = await prisma.analyst.findUnique({
-      where: { id: analystId },
-      include: {
-        coveredTopics: true,
-        socialHandles: {
-          where: { isActive: true },
-          orderBy: { platform: 'asc' }
-        },
-        interactions: {
-          orderBy: { createdAt: 'desc' },
-          take: 10
-        },
-        briefings: {
-          orderBy: { scheduledAt: 'desc' },
-          take: 5
-        },
-        socialPosts: {
-          orderBy: { postedAt: 'desc' },
-          take: 10
-        }
-      }
-    })
+    // Get analyst details
+    const { data: analyst, error: analystError } = await supabase
+      .from('analysts')
+      .select('*')
+      .eq('id', analystId)
+      .single()
 
-    if (!analyst) {
+    if (analystError || !analyst) {
       return NextResponse.json({
         success: false,
         error: 'Analyst not found'
       }, { status: 404 })
     }
 
+    // Get analyst's social posts
+    const { data: socialPosts } = await supabase
+      .from('social_posts')
+      .select('*')
+      .eq('analystId', analystId)
+      .order('postedAt', { ascending: false })
+      .limit(10)
+
+    // Get analyst's briefings via briefing_analysts table
+    const { data: briefingAnalysts } = await supabase
+      .from('briefing_analysts')
+      .select(`
+        briefings(
+          id,
+          title,
+          status,
+          scheduledAt,
+          completedAt
+        )
+      `)
+      .eq('analystId', analystId)
+      .order('briefings(scheduledAt)', { ascending: false })
+      .limit(10)
+
+    const briefings = briefingAnalysts?.map(ba => ba.briefings).filter(Boolean) || []
+
+    // Get related topics
+    const { data: coveredTopics } = await supabase
+      .from('covered_topics')
+      .select('topic')
+      .eq('analystId', analystId)
+
+    const topics = coveredTopics?.map(ct => ct.topic) || []
+
+    console.log(`📋 Found analyst ${analyst.firstName} ${analyst.lastName} with ${socialPosts?.length || 0} posts, ${briefings.length} briefings, ${topics.length} topics`)
+
     return NextResponse.json({
       success: true,
-      analyst
+      data: {
+        ...analyst,
+        socialPosts: socialPosts || [],
+        briefings: briefings,
+        topics: topics,
+        metrics: {
+          totalBriefings: briefings.length,
+          totalSocialPosts: socialPosts?.length || 0,
+          totalTopics: topics.length
+        }
+      }
     })
 
   } catch (error) {
     console.error('Error fetching analyst:', error)
     return NextResponse.json({
       success: false,
-      error: 'Internal server error'
+      error: 'Failed to fetch analyst'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id: analystId } = await params
     const body = await request.json()
+    const supabase = await createClient()
 
     // Check if analyst exists
-    const existingAnalyst = await prisma.analyst.findUnique({
-      where: { id: analystId },
-      select: { id: true }
-    })
+    const { data: existingAnalyst } = await supabase
+      .from('analysts')
+      .select('id, firstName, lastName')
+      .eq('id', analystId)
+      .single()
 
     if (!existingAnalyst) {
       return NextResponse.json({
@@ -138,93 +179,75 @@ export async function PATCH(
       }, { status: 404 })
     }
 
-    // Extract the fields that can be updated
-    const {
-      status,
-      influence,
-      relationshipHealth,
-      email,
-      phone,
-      linkedIn,
-      twitter,
-      website,
-      coveredTopics,
-      ...otherFields
-    } = body
-
-    // Prepare the update data
+    // Prepare update data
     const updateData: any = {
-      updatedAt: new Date()
+      updatedAt: new Date().toISOString()
     }
 
-    // Only include fields that are provided
-    if (status !== undefined) updateData.status = status
-    if (influence !== undefined) updateData.influence = influence
-    if (relationshipHealth !== undefined) updateData.relationshipHealth = relationshipHealth
-    if (email !== undefined) updateData.email = email
-    if (phone !== undefined) updateData.phone = phone
-    if (linkedIn !== undefined) updateData.linkedIn = linkedIn
-    if (twitter !== undefined) updateData.twitter = twitter
-    if (website !== undefined) updateData.website = website
+    // Map the allowed fields
+    const allowedFields = [
+      'firstName', 'lastName', 'email', 'company', 'title', 'bio',
+      'profileImageUrl', 'influence', 'relationshipHealth', 'status',
+      'lastContactDate', 'keyThemes'
+    ]
 
-    // Handle covered topics separately if provided
-    let topicsTransaction = []
-    if (coveredTopics !== undefined) {
-      // Delete existing topics and create new ones
-      topicsTransaction = [
-        prisma.analystCoveredTopic.deleteMany({
-          where: { analystId }
-        }),
-        ...coveredTopics.map((topic: string) => 
-          prisma.analystCoveredTopic.create({
-            data: {
-              analystId,
-              topic
-            }
-          })
-        )
-      ]
-    }
-
-    // Execute the update
-    if (topicsTransaction.length > 0) {
-      // Use transaction for topics update
-      await prisma.$transaction([
-        prisma.analyst.update({
-          where: { id: analystId },
-          data: updateData
-        }),
-        ...topicsTransaction
-      ])
-    } else {
-      // Simple update without topics
-      await prisma.analyst.update({
-        where: { id: analystId },
-        data: updateData
-      })
-    }
-
-    // Fetch the updated analyst with related data
-    const updatedAnalyst = await prisma.analyst.findUnique({
-      where: { id: analystId },
-      include: {
-        coveredTopics: true
+    allowedFields.forEach(field => {
+      if (body[field] !== undefined) {
+        updateData[field] = body[field]
       }
     })
+
+    // Update the analyst
+    const { data: updatedAnalyst, error: updateError } = await supabase
+      .from('analysts')
+      .update(updateData)
+      .eq('id', analystId)
+      .select()
+      .single()
+
+    if (updateError || !updatedAnalyst) {
+      console.error('Error updating analyst:', updateError)
+      return NextResponse.json({
+        success: false,
+        error: 'Failed to update analyst'
+      }, { status: 500 })
+    }
+
+    // Handle topics updates if provided
+    if (body.topics && Array.isArray(body.topics)) {
+      // Delete existing topics
+      await supabase
+        .from('covered_topics')
+        .delete()
+        .eq('analystId', analystId)
+
+      // Insert new topics
+      if (body.topics.length > 0) {
+        const topicData = body.topics.map((topic: string) => ({
+          analystId,
+          topic,
+          createdAt: new Date().toISOString()
+        }))
+
+        await supabase
+          .from('covered_topics')
+          .insert(topicData)
+      }
+    }
+
+    console.log(`📝 Updated analyst ${updatedAnalyst.firstName} ${updatedAnalyst.lastName}`)
 
     return NextResponse.json({
       success: true,
       message: 'Analyst updated successfully',
-      analyst: updatedAnalyst
+      data: updatedAnalyst
     })
 
   } catch (error) {
     console.error('Error updating analyst:', error)
     return NextResponse.json({
       success: false,
-      error: 'Internal server error'
+      error: 'Failed to update analyst'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }

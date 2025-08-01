@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+interface RouteParams {
+  params: { id: string }
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    const template = await prisma.emailTemplate.findUnique({
-      where: { id: params.id }
-    })
+    const supabase = await createClient()
 
-    if (!template) {
+    const { data: template, error } = await supabase
+      .from('EmailTemplate')
+      .select('*')
+      .eq('id', params.id)
+      .single()
+
+    if (error || !template) {
       return NextResponse.json(
         { error: 'Email template not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(template)
+    return NextResponse.json({
+      success: true,
+      data: template
+    })
+
   } catch (error) {
     console.error('Error fetching email template:', error)
     return NextResponse.json(
@@ -29,7 +41,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
     const { name, description, html } = await request.json()
@@ -41,17 +53,36 @@ export async function PUT(
       )
     }
 
-    const template = await prisma.emailTemplate.update({
-      where: { id: params.id },
-      data: {
-        name,
-        description,
-        html,
-        updatedAt: new Date()
-      }
+    const supabase = await createClient()
+
+    const updateData = {
+      name,
+      description: description || '',
+      html,
+      updatedAt: new Date().toISOString()
+    }
+
+    const { data: template, error } = await supabase
+      .from('EmailTemplate')
+      .update(updateData)
+      .eq('id', params.id)
+      .select()
+      .single()
+
+    if (error || !template) {
+      return NextResponse.json(
+        { error: 'Failed to update email template or template not found' },
+        { status: error?.code === '23503' ? 404 : 500 }
+      )
+    }
+
+    console.log(`📧 Updated email template: ${template.name}`)
+
+    return NextResponse.json({
+      success: true,
+      data: template
     })
 
-    return NextResponse.json(template)
   } catch (error) {
     console.error('Error updating email template:', error)
     return NextResponse.json(
@@ -63,14 +94,31 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
-    await prisma.emailTemplate.delete({
-      where: { id: params.id }
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('EmailTemplate')
+      .delete()
+      .eq('id', params.id)
+
+    if (error) {
+      console.error('Error deleting email template:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete email template' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗑️ Deleted email template: ${params.id}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Email template deleted successfully'
     })
 
-    return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting email template:', error)
     return NextResponse.json(

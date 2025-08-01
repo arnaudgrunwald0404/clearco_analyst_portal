@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Upload } from 'lucide-react'
 import { cn, getPriorityColor } from '@/lib/utils'
-import AwardDrawer from '@/components/award-drawer'
-import AddAwardModal from '@/components/add-award-modal'
-import AwardActionsMenu from '@/components/award-actions-menu'
-import BulkUploadModal from '@/components/bulk-upload-modal'
+import AwardDrawer from '@/components/drawers/award-drawer'
+import AddAwardModal from '@/components/modals/add-award-modal'
+import AwardActionsMenu from '@/components/actions/award-actions-menu'
+import BulkUploadModal from '@/components/modals/bulk-upload-modal'
 import { useToast } from '@/components/ui/toast'
 
 interface Award {

@@ -5,7 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function getInfluenceColor(influence: string): string {
+export function getInfluenceColor(influence: string | undefined | null): string {
+  if (!influence) return 'bg-gray-100 text-gray-800'
+  
   switch (influence) {
     case 'VERY_HIGH':
       return 'bg-red-100 text-red-800'
@@ -20,7 +22,9 @@ export function getInfluenceColor(influence: string): string {
   }
 }
 
-export function getStatusColor(status: string): string {
+export function getStatusColor(status: string | undefined | null): string {
+  if (!status) return 'bg-gray-100 text-gray-800'
+  
   switch (status) {
     case 'ACTIVE':
       return 'bg-green-100 text-green-800'
@@ -35,7 +39,9 @@ export function getStatusColor(status: string): string {
   }
 }
 
-export function getRelationshipHealthColor(health: string): string {
+export function getRelationshipHealthColor(health: string | undefined | null): string {
+  if (!health) return 'bg-gray-100 text-gray-800'
+  
   switch (health) {
     case 'EXCELLENT':
       return 'bg-green-100 text-green-800'
@@ -52,7 +58,9 @@ export function getRelationshipHealthColor(health: string): string {
   }
 }
 
-export function getPriorityColor(priority: string): string {
+export function getPriorityColor(priority: string | undefined | null): string {
+  if (!priority) return 'bg-gray-100 text-gray-800'
+  
   switch (priority) {
     case 'CRITICAL':
       return 'bg-red-100 text-red-800'

@@ -320,7 +320,7 @@ export default function PortalBriefingsPage() {
 
       {/* Briefing Drawer */}
       {selectedBriefing && (
-        <div className="fixed right-0 top-0 h-full w-96 bg-white shadow-xl border-l border-gray-200 z-50">
+        <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
           <BriefingDrawer
             briefing={selectedBriefing}
             activeTab={drawerTab}

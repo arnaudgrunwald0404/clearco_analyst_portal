@@ -1,4 +1,5 @@
 import { RawSearchResult, SearchQuery } from './types'
+import { calculateTitleSimilarity, removeDuplicateResults } from '../utils/similarity'
 
 /**
  * Alternative search engines that don't require API keys
@@ -52,16 +53,16 @@ export class DuckDuckGoSearchEngine {
       }
       
       return this.transformDuckDuckGoResults(data, query)
-    } catch (error) {
-      clearTimeout(timeoutId)
-      
-      if (error.name === 'AbortError') {
-        console.log('DuckDuckGo search timeout')
-      } else {
-        console.log('DuckDuckGo search error (non-critical):', error.message)
+          } catch (error) {
+        clearTimeout(timeoutId)
+        
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('DuckDuckGo search timeout')
+        } else {
+          console.log('DuckDuckGo search error (non-critical):', error instanceof Error ? error.message : String(error))
+        }
+        return []
       }
-      return []
-    }
   }
 
   private async enforceRateLimit(): Promise<void> {
@@ -131,7 +132,7 @@ export class DirectWebSearchEngine {
         // Add delay between domain searches
         await new Promise(resolve => setTimeout(resolve, 3000))
       } catch (error) {
-        console.error(`Error searching ${domain}:`, error)
+        console.error(`Error searching ${domain}:`, error instanceof Error ? error.message : String(error))
         continue
       }
     }
@@ -249,7 +250,7 @@ export class AlternativeComprehensiveSearchEngine {
     }
 
     // Remove duplicates and limit results
-    const uniqueResults = this.removeDuplicates(allResults)
+    const uniqueResults = removeDuplicateResults(allResults)
     
     if (verbose || uniqueResults.length > 0) {
       console.log(`   ✅ Total unique results: ${uniqueResults.length}`)
@@ -281,7 +282,7 @@ export class AlternativeComprehensiveSearchEngine {
       }
     }
 
-    const uniqueResults = this.removeDuplicates(allResults)
+    const uniqueResults = removeDuplicateResults(allResults)
     console.log(`✅ Final results for ${searchQuery.analystName}: ${uniqueResults.length} publications`)
     
     return uniqueResults
@@ -316,44 +317,5 @@ export class AlternativeComprehensiveSearchEngine {
     return queries.slice(0, 8) // Limit to prevent too many requests
   }
 
-  private removeDuplicates(results: RawSearchResult[]): RawSearchResult[] {
-    const seen = new Set<string>()
-    const unique: RawSearchResult[] = []
 
-    for (const result of results) {
-      // Check for exact URL duplicates
-      if (seen.has(result.url)) {
-        continue
-      }
-
-      // Check for title similarity
-      const isDuplicate = unique.some(existing => {
-        const titleSimilarity = this.calculateTitleSimilarity(
-          existing.title.toLowerCase(),
-          result.title.toLowerCase()
-        )
-        return titleSimilarity > 0.8
-      })
-
-      if (!isDuplicate) {
-        seen.add(result.url)
-        unique.push(result)
-      }
-    }
-
-    return unique
-  }
-
-  private calculateTitleSimilarity(title1: string, title2: string): number {
-    const words1 = title1.split(/\s+/)
-    const words2 = title2.split(/\s+/)
-    
-    const commonWords = words1.filter(word => 
-      words2.includes(word) && word.length > 3
-    ).length
-    
-    const totalWords = Math.max(words1.length, words2.length)
-    
-    return totalWords > 0 ? commonWords / totalWords : 0
-  }
 }

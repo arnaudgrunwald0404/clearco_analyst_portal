@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader } from 'lucide-react'
+import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Check, ChevronDown } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
-import AnalystDrawer from '@/components/analyst-drawer'
-import AddAnalystModal from '@/components/add-analyst-modal'
-import AnalystActionsMenu from '@/components/analyst-actions-menu'
+import AnalystDrawer from '@/components/drawers/analyst-drawer'
+import AddAnalystModal from '@/components/modals/add-analyst-modal'
+import AnalystActionsMenu from '@/components/actions/analyst-actions-menu'
 import { useToast } from '@/components/ui/toast'
 
 interface Analyst {
@@ -17,12 +17,13 @@ interface Analyst {
   title?: string
   influence: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
   status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
-  coveredTopics: Array<{ topic: string }>
-  linkedIn?: string
-  twitter?: string
+  type: 'Analyst' | 'Press' | 'Investor' | 'Practitioner' | 'Influencer'
+  keyThemes?: string
+  linkedinUrl?: string
+  twitterHandle?: string
   phone?: string
   bio?: string
-  website?: string
+  personalWebsite?: string
   profileImageUrl?: string
   createdAt: string
   updatedAt: string
@@ -30,8 +31,9 @@ interface Analyst {
 
 export default function AnalystsPage() {
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('ALL')
+  const [filterStatus, setFilterStatus] = useState('ACTIVE')
   const [filterInfluence, setFilterInfluence] = useState('ALL')
+  const [filterType, setFilterType] = useState('ALL')
   const [filterTopics, setFilterTopics] = useState<string[]>([])
   const [sortField, setSortField] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
@@ -42,6 +44,12 @@ export default function AnalystsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { addToast } = useToast()
+
+  // Multi-select state
+  const [selectedAnalysts, setSelectedAnalysts] = useState<Set<string>>(new Set())
+  const [showBulkActions, setShowBulkActions] = useState(false)
+  const [bulkActionDropdownOpen, setBulkActionDropdownOpen] = useState(false)
+  const [influenceDropdownOpen, setInfluenceDropdownOpen] = useState(false)
 
   // Fetch analysts from database
   const fetchAnalysts = async () => {
@@ -56,12 +64,13 @@ export default function AnalystsPage() {
       
       const result = await response.json()
       if (result.success) {
-        setAnalysts(result.data)
+        setAnalysts(Array.isArray(result.data) ? result.data : [])
       } else {
         throw new Error(result.error || 'Failed to fetch analysts')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
+      setAnalysts([]) // Ensure analysts is always an array even on error
       addToast({ type: 'error', message: 'Failed to load analysts' })
     } finally {
       setLoading(false)
@@ -71,6 +80,38 @@ export default function AnalystsPage() {
   // Load analysts on component mount
   useEffect(() => {
     fetchAnalysts()
+  }, [])
+
+  // Handle clicking outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.bulk-actions-dropdown')) {
+        setBulkActionDropdownOpen(false)
+        setInfluenceDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  // Handle clicking outside dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('.bulk-actions-dropdown')) {
+        setBulkActionDropdownOpen(false)
+        setInfluenceDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
   }, [])
 
   const handleRowClick = (analyst: Analyst) => {
@@ -83,10 +124,7 @@ export default function AnalystsPage() {
     fetchAnalysts()
   }
 
-  const handleEditAnalyst = (analyst: Analyst) => {
-    // TODO: Open edit modal with analyst data
-    console.log('Edit analyst:', analyst)
-  }
+
 
   const handleViewAnalyst = (analyst: Analyst) => {
     setSelectedAnalyst(analyst)
@@ -96,16 +134,21 @@ export default function AnalystsPage() {
   // Get all unique topics for the filter dropdown
   const allTopics = useMemo(() => {
     const topics = new Set<string>()
-    analysts.forEach(analyst => {
-      analyst.coveredTopics.forEach(topicObj => topics.add(topicObj.topic))
-    })
+    if (analysts && Array.isArray(analysts)) {
+      analysts.forEach(analyst => {
+        if (analyst.keyThemes) {
+          analyst.keyThemes.split(',').forEach(topic => topics.add(topic.trim()))
+        }
+      })
+    }
     return Array.from(topics).sort()
   }, [analysts])
 
   // Get topic counts for display in filters
   const getTopicCount = useCallback((topic: string) => {
+    if (!analysts || !Array.isArray(analysts)) return 0
     return analysts.filter(analyst => 
-      analyst.coveredTopics.some(topicObj => topicObj.topic === topic)
+      analyst.keyThemes && analyst.keyThemes.split(',').some(t => t.trim() === topic)
     ).length
   }, [analysts])
 
@@ -132,8 +175,95 @@ export default function AnalystsPage() {
     setFilterTopics([])
   }
 
+  // Multi-select helper functions
+  const toggleAnalystSelection = (analystId: string) => {
+    const newSelected = new Set(selectedAnalysts)
+    if (newSelected.has(analystId)) {
+      newSelected.delete(analystId)
+    } else {
+      newSelected.add(analystId)
+    }
+    setSelectedAnalysts(newSelected)
+    setShowBulkActions(newSelected.size > 0)
+  }
+
+  const toggleAllAnalysts = () => {
+    if (!filteredAndSortedAnalysts || !Array.isArray(filteredAndSortedAnalysts)) return
+    
+    if (selectedAnalysts.size === filteredAndSortedAnalysts.length) {
+      setSelectedAnalysts(new Set())
+      setShowBulkActions(false)
+    } else {
+      const allIds = new Set(filteredAndSortedAnalysts.map(a => a.id))
+      setSelectedAnalysts(allIds)
+      setShowBulkActions(true)
+    }
+  }
+
+  const clearSelection = () => {
+    setSelectedAnalysts(new Set())
+    setShowBulkActions(false)
+    setBulkActionDropdownOpen(false)
+    setInfluenceDropdownOpen(false)
+  }
+
+  const handleBulkArchive = async () => {
+    if (selectedAnalysts.size === 0) return
+
+    try {
+      const response = await fetch('/api/analysts/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystIds: Array.from(selectedAnalysts),
+          action: 'archive'
+        })
+      })
+
+      if (response.ok) {
+        addToast({ type: 'success', message: `Archived ${selectedAnalysts.size} analyst(s)` })
+        clearSelection()
+        fetchAnalysts() // Refresh the list
+      } else {
+        throw new Error('Failed to archive analysts')
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to archive analysts' })
+    }
+  }
+
+  const handleBulkChangeInfluence = async (influence: string) => {
+    if (selectedAnalysts.size === 0) return
+
+    try {
+      const response = await fetch('/api/analysts/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystIds: Array.from(selectedAnalysts),
+          action: 'changeInfluence',
+          influence
+        })
+      })
+
+      if (response.ok) {
+        addToast({ type: 'success', message: `Updated influence for ${selectedAnalysts.size} analyst(s)` })
+        clearSelection()
+        fetchAnalysts() // Refresh the list
+      } else {
+        throw new Error('Failed to update influence')
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to update influence' })
+    }
+  }
+
   // Enhanced filtering and sorting
   const filteredAndSortedAnalysts = useMemo(() => {
+    if (!analysts || !Array.isArray(analysts)) {
+      return []
+    }
+    
     const filtered = analysts.filter(analyst => {
       // Filter out archived analysts by default (unless specifically viewing archived)
       const isArchived = analyst.status === 'ARCHIVED'
@@ -150,10 +280,12 @@ export default function AnalystsPage() {
       
       const matchesInfluence = filterInfluence === 'ALL' || analyst.influence === filterInfluence
       
-      const matchesTopics = filterTopics.length === 0 || 
-        filterTopics.some(topic => analyst.coveredTopics.some(topicObj => topicObj.topic === topic))
+      const matchesType = filterType === 'ALL' || analyst.type === filterType
       
-      return matchesSearch && matchesStatus && matchesInfluence && matchesTopics
+      const matchesTopics = filterTopics.length === 0 || 
+        (analyst.keyThemes && analyst.keyThemes.split(',').some(t => filterTopics.some(topic => t.trim() === topic)))
+      
+      return matchesSearch && matchesStatus && matchesInfluence && matchesType && matchesTopics
     })
 
     // Apply sorting
@@ -193,7 +325,7 @@ export default function AnalystsPage() {
     }
 
     return filtered
-  }, [analysts, searchTerm, filterStatus, filterInfluence, filterTopics, sortField, sortDirection])
+  }, [analysts, searchTerm, filterStatus, filterInfluence, filterType, filterTopics, sortField, sortDirection])
 
   // Get sort icon for column headers
   const getSortIcon = (field: string) => {
@@ -210,10 +342,88 @@ export default function AnalystsPage() {
       <div className="mb-8">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Analysts</h1>
-            <p className="mt-1 text-gray-600">
-              Manage your industry analyst relationships
-            </p>
+            {showBulkActions ? (
+              <div className="flex items-center space-x-4">
+                <div className="relative bulk-actions-dropdown">
+                  <button
+                    onClick={() => setBulkActionDropdownOpen(!bulkActionDropdownOpen)}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Actions
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </button>
+                  
+                  {/* Bulk Actions Dropdown */}
+                  {bulkActionDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="py-1">
+                        <button
+                          onClick={handleBulkArchive}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Archive
+                        </button>
+                        
+                        {/* Change Influence with sub-dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setInfluenceDropdownOpen(!influenceDropdownOpen)}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                          >
+                            Change Influence
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          
+                          {influenceDropdownOpen && (
+                            <div className="absolute left-full top-0 ml-1 w-32 bg-white border border-gray-200 rounded-lg shadow-lg">
+                              <div className="py-1">
+                                <button
+                                  onClick={() => handleBulkChangeInfluence('VERY_HIGH')}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  Very High
+                                </button>
+                                <button
+                                  onClick={() => handleBulkChangeInfluence('HIGH')}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  High
+                                </button>
+                                <button
+                                  onClick={() => handleBulkChangeInfluence('MEDIUM')}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  Medium
+                                </button>
+                                <button
+                                  onClick={() => handleBulkChangeInfluence('LOW')}
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                >
+                                  Low
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={clearSelection}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Clear selection ({selectedAnalysts.size})
+                </button>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900">Analysts</h1>
+                <p className="mt-1 text-gray-600">
+                  Manage your industry analyst relationships
+                </p>
+              </>
+            )}
           </div>
           <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
@@ -239,6 +449,20 @@ export default function AnalystsPage() {
           
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
+            
+            {/* Type Filter */}
+            <select
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <option value="ALL">All Types</option>
+              <option value="Analyst">Analyst</option>
+              <option value="Press">Press</option>
+              <option value="Investor">Investor</option>
+              <option value="Practitioner">Practitioner</option>
+              <option value="Influencer">Influencer</option>
+            </select>
             
             {/* Status Filter */}
             <select
@@ -270,7 +494,7 @@ export default function AnalystsPage() {
         {/* Topic Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-gray-700">Topics:</span>
-          {allTopics.map(topic => {
+          {allTopics && Array.isArray(allTopics) && allTopics.map(topic => {
             const count = getTopicCount(topic)
             return (
               <button
@@ -303,9 +527,9 @@ export default function AnalystsPage() {
         </div>
         
         {/* Active Filters Summary */}
-        {(filterTopics.length > 0 || filterStatus !== 'ALL' || filterInfluence !== 'ALL') && (
+        {(filterTopics.length > 0 || filterStatus !== 'ALL' || filterInfluence !== 'ALL' || filterType !== 'ALL') && (
           <div className="text-sm text-gray-600">
-            Showing {filteredAndSortedAnalysts.length} of {analysts.length} analysts
+            Showing {filteredAndSortedAnalysts.length} of {analysts?.length || 0} analysts
             {filterTopics.length > 0 && (
               <span> covering: {filterTopics.join(', ')}</span>
             )}
@@ -347,9 +571,18 @@ export default function AnalystsPage() {
         <div className="bg-white shadow rounded-lg">
           <div className="overflow-x-auto">
             {/* Grid Header */}
-            <div className="grid grid-cols-12 gap-4 bg-gray-50 px-6 py-3 border-b border-gray-200 font-medium text-xs text-gray-500 uppercase tracking-wider">
+            <div className="grid grid-cols-13 gap-4 bg-gray-50 px-6 py-3 border-b border-gray-200 font-medium text-xs text-gray-500 uppercase tracking-wider">
+              {/* Checkbox column */}
+              <div className="col-span-1 flex items-center">
+                <input
+                  type="checkbox"
+                  checked={selectedAnalysts.size === filteredAndSortedAnalysts.length && filteredAndSortedAnalysts.length > 0}
+                  onChange={toggleAllAnalysts}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+              </div>
               <div 
-                className="col-span-3 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
+                className="col-span-2 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                 onClick={() => handleSort('name')}
               >
                 <span>Analyst</span>
@@ -389,10 +622,20 @@ export default function AnalystsPage() {
             
             {/* Grid Body */}
             <div className="divide-y divide-gray-200">
-              {filteredAndSortedAnalysts.map((analyst) => (
-                <div key={analyst.id} className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(analyst)}>
-                  {/* Analyst - 2/12 */}
-                  <div className="col-span-3">
+              {filteredAndSortedAnalysts && Array.isArray(filteredAndSortedAnalysts) && filteredAndSortedAnalysts.map((analyst) => (
+                <div key={analyst.id} className="grid grid-cols-13 gap-4 px-6 py-4 hover:bg-gray-50">
+                  {/* Checkbox column */}
+                  <div className="col-span-1 flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedAnalysts.has(analyst.id)}
+                      onChange={() => toggleAnalystSelection(analyst.id)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                  </div>
+                  
+                  {/* Analyst - 2/13 */}
+                  <div className="col-span-2 cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         {analyst.profileImageUrl ? (
@@ -427,28 +670,28 @@ export default function AnalystsPage() {
                     </div>
                   </div>
                   
-                  {/* Company & Title - 2/12 */}
-                  <div className="col-span-2">
+                  {/* Company & Title - 2/13 */}
+                  <div className="col-span-2 cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="text-sm text-gray-900 truncate">{analyst.company}</div>
                     <div className="text-sm text-gray-500 truncate">{analyst.title}</div>
                   </div>
                   
-                  {/* Covered Topics - 3/12 (25% width) */}
-                  <div className="col-span-4">
+                  {/* Covered Topics - 4/13 */}
+                  <div className="col-span-4 cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="flex flex-wrap gap-1">
-                      {analyst.coveredTopics.map((topicObj, index) => (
+                      {analyst.keyThemes && analyst.keyThemes.split(',').map((topic, index) => (
                         <span
                           key={index}
                           className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
                         >
-                          {topicObj.topic}
+                          {topic.trim()}
                         </span>
                       ))}
                     </div>
                   </div>
                   
-                  {/* Influence - 1/12 */}
-                  <div className="col-span-1">
+                  {/* Influence - 1/13 */}
+                  <div className="col-span-1 cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <span className={cn(
                       'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
                       getInfluenceColor(analyst.influence)
@@ -458,8 +701,8 @@ export default function AnalystsPage() {
                   </div>
                   
                   
-                  {/* Last Briefing - 2/12 */}
-                  <div className="col-span-1 text-center">
+                  {/* Last Briefing - 1/13 */}
+                  <div className="col-span-1 text-center cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="text-sm text-gray-900 ">
                       {new Date(analyst.updatedAt).toLocaleDateString('en-US', {
                         year: 'numeric',
@@ -469,13 +712,12 @@ export default function AnalystsPage() {
                     </div>     
                   </div>
                   
-                  {/* Actions - 1/12 */}
+                  {/* Actions - 1/13 */}
                   <div className="col-span-1 text-center" onClick={(e) => e.stopPropagation()}>
                     <AnalystActionsMenu
                       analystId={analyst.id}
                       analystName={`${analyst.firstName || ''} ${analyst.lastName || ''}`.trim()}
                       onDelete={handleAnalystDeleted}
-                      onEdit={() => handleEditAnalyst(analyst)}
                       onView={() => handleViewAnalyst(analyst)}
                     />
                   </div>
@@ -483,8 +725,8 @@ export default function AnalystsPage() {
               ))}
               
               {filteredAndSortedAnalysts.length === 0 && (
-                <div className="grid grid-cols-12 gap-4 px-6 py-12">
-                  <div className="col-span-12 text-center text-gray-500">
+                <div className="grid grid-cols-13 gap-4 px-6 py-12">
+                  <div className="col-span-13 text-center text-gray-500">
                     No analysts found matching your criteria.
                   </div>
                 </div>
@@ -504,7 +746,7 @@ export default function AnalystsPage() {
           }}
           analyst={{
             ...selectedAnalyst,
-            expertise: selectedAnalyst.coveredTopics.map(t => t.topic),
+            expertise: selectedAnalyst.keyThemes?.split(',').map(t => t.trim()) || [],
             influenceScore: 0,
             lastContactDate: selectedAnalyst.updatedAt,
             nextContactDate: '',

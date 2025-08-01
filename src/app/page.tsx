@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSettings } from '@/contexts/SettingsContext'
 import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
-import SocialMediaActivity from '@/components/social-media-activity'
+import SocialMediaActivity from '@/components/features/social-media-activity'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -87,12 +88,12 @@ const iconMap: { [key: string]: any } = {
 function DashboardContent() {
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
+  const { settings } = useSettings()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
   const [loading, setLoading] = useState(true)
   const [actionItemsLoading, setActionItemsLoading] = useState(true)
-  const [industryName, setIndustryName] = useState('')
   const [bannerImage, setBannerImage] = useState<string>('')
   const [bannerError, setBannerError] = useState<boolean>(false)
   const [notification, setNotification] = useState<{
@@ -102,48 +103,76 @@ function DashboardContent() {
 
   const fetchDashboardData = async () => {
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const [metricsRes, activityRes, actionItemsRes] = await Promise.all([
-        fetch('/api/dashboard/metrics'),
-        fetch('/api/dashboard/recent-activity'),
-        fetch('/api/action-items?status=pending')
-      ])
+        fetch('/api/dashboard/metrics', { signal: controller.signal }),
+        fetch('/api/dashboard/recent-activity', { signal: controller.signal }),
+        fetch('/api/action-items?status=pending', { signal: controller.signal })
+      ]);
 
+      clearTimeout(timeoutId);
+
+      // Process responses with better error handling
+      const promises = [];
+      
       if (metricsRes.ok) {
-        const metricsData = await metricsRes.json()
-        setMetrics(metricsData)
+        promises.push(
+          metricsRes.json().then(data => {
+            // Handle both old object format and new object format with cache metadata
+            const metricsData = data.data || data;
+            setMetrics(metricsData);
+            console.log('📊 Dashboard metrics loaded:', data.cached ? '(cached)' : '(fresh)');
+          })
+        );
+      } else {
+        console.error('Failed to fetch metrics:', metricsRes.status);
       }
 
       if (activityRes.ok) {
-        const activityData = await activityRes.json()
-        setRecentActivity(activityData)
+        promises.push(
+          activityRes.json().then(data => {
+            // Handle both old array format and new object format with cache metadata
+            const activityData = Array.isArray(data) ? data : (data.data || data);
+            setRecentActivity(activityData);
+            console.log('📈 Recent activity loaded:', data.cached ? '(cached)' : '(fresh)');
+          })
+        );
+      } else {
+        console.error('Failed to fetch activity:', activityRes.status);
       }
 
       if (actionItemsRes.ok) {
-        const actionItemsData = await actionItemsRes.json()
-        if (actionItemsData.success) {
-          setActionItems(actionItemsData.data)
-        }
+        promises.push(
+          actionItemsRes.json().then(data => {
+            if (data.success) {
+              setActionItems(data.data);
+              console.log('✅ Action items loaded');
+            }
+          })
+        );
+      } else {
+        console.error('Failed to fetch action items:', actionItemsRes.status);
       }
+
+      // Wait for all data processing to complete
+      await Promise.all(promises);
+      
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Request timeout - dashboard data fetch took too long');
+      } else {
+        console.error('Error fetching dashboard data:', error);
+      }
     } finally {
-      setLoading(false)
-      setActionItemsLoading(false)
+      setLoading(false);
+      setActionItemsLoading(false);
     }
   }
 
-  const fetchIndustryName = async () => {
-    try {
-      const response = await fetch('/api/settings/general')
-      const data = await response.json()
-      if (data.industryName) {
-        setIndustryName(data.industryName)
-      }
-    } catch (error) {
-      console.error('Error fetching industry name:', error)
-      // Default will be used
-    }
-  }
+
 
   useEffect(() => {
     // Set banner image for admin dashboard
@@ -179,7 +208,6 @@ function DashboardContent() {
     }
 
     fetchDashboardData()
-    fetchIndustryName()
   }, [searchParams])
 
   // Test if banner image loads successfully
@@ -306,7 +334,7 @@ function DashboardContent() {
             <Card
   
               title={
-                recentActivity.length === 0 
+                !Array.isArray(recentActivity) || recentActivity.length === 0 
                   ? "No recent updates in the last 90 days"
                   : `Recent updates (last 90 days):\n${recentActivity.slice(0, 8).map(activity => {
                       if (activity.type === 'analyst_updated') {
@@ -567,7 +595,9 @@ function ContentItemsWidget({ contentItems, title = "Content Items Added" }: { c
     }
   }
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined | null) => {
+    if (!status) return 'bg-gray-100 text-gray-800'
+    
     switch (status.toLowerCase()) {
       case 'published':
         return 'bg-green-100 text-green-800'
@@ -761,8 +791,8 @@ function ActionItemsWidget({
                     {/* Briefing info */}
                     <div className="flex items-center text-xs text-gray-500 mt-1">
                       <span className="truncate">
-                        {item.briefing.title}
-                        {item.briefing.primaryAnalyst && (
+                        {item.briefing?.title || 'No briefing title'}
+                        {item.briefing?.primaryAnalyst && (
                           <span className="ml-1">
                             • {item.briefing.primaryAnalyst.firstName} {item.briefing.primaryAnalyst.lastName}
                           </span>

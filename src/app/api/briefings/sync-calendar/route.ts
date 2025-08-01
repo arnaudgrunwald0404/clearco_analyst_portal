@@ -1,108 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   try {
-    // Find calendar meetings that are analyst meetings but don't have briefings yet
-    const calendarMeetings = await prisma.calendarMeeting.findMany({
-      where: {
-        isAnalystMeeting: true,
-        briefings: {
-          none: {}
-        },
-        startTime: {
-          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-        }
-      },
-      include: {
-        analyst: true
-      }
-    })
-
-    const createdBriefings = []
-
-    for (const meeting of calendarMeetings) {
-      try {
-        // Parse attendees to find analysts
-        const attendees = meeting.attendees ? JSON.parse(meeting.attendees) : []
-        const analystEmails = attendees.filter((email: string) => 
-          email && typeof email === 'string'
-        )
-
-        // Find analysts based on attendee emails
-        const analysts = await prisma.analyst.findMany({
-          where: {
-            email: {
-              in: analystEmails
-            }
-          }
-        })
-
-        // If we found analysts (or have the primary analyst from the meeting), create a briefing
-        if (analysts.length > 0 || meeting.analyst) {
-          const allAnalysts = meeting.analyst ? 
-            [meeting.analyst, ...analysts.filter(a => a.id !== meeting.analystId)] : 
-            analysts
-
-          const briefing = await prisma.briefing.create({
-            data: {
-              title: meeting.title,
-              description: meeting.description,
-              scheduledAt: meeting.startTime,
-              status: meeting.endTime < new Date() ? 'COMPLETED' : 'SCHEDULED',
-              completedAt: meeting.endTime < new Date() ? meeting.endTime : null,
-              calendarMeetingId: meeting.id,
-              attendeeEmails: JSON.stringify(attendees),
-              duration: Math.round((meeting.endTime.getTime() - meeting.startTime.getTime()) / (1000 * 60)),
-              analysts: {
-                create: allAnalysts.map((analyst, index) => ({
-                  analystId: analyst.id,
-                  role: index === 0 ? 'PRIMARY' : 'SECONDARY'
-                }))
-              }
-            },
-            include: {
-              analysts: {
-                include: {
-                  analyst: {
-                    select: {
-                      id: true,
-                      firstName: true,
-                      lastName: true,
-                      email: true,
-                      company: true
-                    }
-                  }
-                }
-              }
-            }
-          })
-
-          createdBriefings.push({
-            ...briefing,
-            analysts: briefing.analysts.map(ba => ({
-              ...ba.analyst,
-              role: ba.role
-            }))
-          })
-        }
-      } catch (error) {
-        console.error(`Error creating briefing for meeting ${meeting.id}:`, error)
-        // Continue with other meetings
-      }
-    }
-
+    // Placeholder implementation
     return NextResponse.json({
       success: true,
-      message: `Created ${createdBriefings.length} briefings from calendar meetings`,
-      data: createdBriefings
+      message: 'Calendar sync endpoint - to be implemented'
     })
-
   } catch (error) {
-    console.error('Error syncing calendar meetings to briefings:', error)
+    console.error('Error in calendar sync:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to sync calendar meetings' },
-      { status: 500 }
+      { success: false, error: 'Calendar sync not implemented yet' },
+      { status: 501 }
     )
   }
 }

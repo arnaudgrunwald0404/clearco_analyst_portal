@@ -3,6 +3,8 @@
 import { PrismaClient } from '@prisma/client'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { consolidateTopics } from '../lib/topic-consolidation'
+import { getAnalystsWithTopics, logAnalystCount } from '../lib/utils/database-queries'
 
 // Load environment variables
 try {
@@ -160,7 +162,6 @@ const consolidationMap: Record<string, string> = {
   
   // Digital Workplace/Transformation
   "digital workplace": "Digital Transformation",
-  "digital learning strategy & technology": "Learning & Development",
   
   // Customer Experience variants
   "customer experience in hr tech": "Customer Experience",
@@ -240,24 +241,7 @@ function consolidateTopic(topic: string): string {
   return consolidationMap[normalizedTopic] || topic
 }
 
-function consolidateTopics(topics: string[]): string[] {
-  if (!topics || topics.length === 0) return []
-  
-  // Map topics to consolidated versions
-  const consolidated = topics.map(topic => consolidateTopic(topic))
-  
-  // Remove duplicates while preserving order
-  const seen = new Set<string>()
-  const unique = consolidated.filter(topic => {
-    if (seen.has(topic.toLowerCase())) {
-      return false
-    }
-    seen.add(topic.toLowerCase())
-    return true
-  })
-  
-  return unique
-}
+
 
 async function consolidateAndUpdateDatabase() {
   console.log('🔄 Consolidating Topics in Database')
@@ -266,23 +250,14 @@ async function consolidateAndUpdateDatabase() {
   try {
     // Fetch all analysts with their topics
     console.log('📊 Fetching analysts and their topics...')
-    const analysts = await prisma.analyst.findMany({
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        coveredTopics: {
-          select: { topic: true }
-        }
-      }
-    })
+    const analysts = await getAnalystsWithTopics()
 
     if (analysts.length === 0) {
       console.log('ℹ️  No analysts found')
       return
     }
 
-    console.log(`📋 Found ${analysts.length} analysts`)
+    logAnalystCount(analysts.length, 'analysts')
 
     // Collect all unique topics
     const allTopics = new Set<string>()

@@ -10,6 +10,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { consolidateTopics, analyzeTopicConsolidation } from '../lib/topic-consolidation'
+import { getAnalystsWithTopics, logAnalystCount } from '../lib/utils/database-queries'
 import * as dotenv from 'dotenv'
 import { readFileSync } from 'fs'
 import { join } from 'path'
@@ -55,28 +56,14 @@ async function applyTopicConsolidation(dryRun: boolean = false) {
   try {
     // Get all analysts with their covered topics
     console.log('📊 Fetching analysts and their topics...')
-    const analysts = await prisma.analyst.findMany({
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        coveredTopics: {
-          select: { topic: true }
-        }
-      },
-      where: {
-        coveredTopics: {
-          some: {}
-        }
-      }
-    })
+    const analysts = await getAnalystsWithTopics()
 
     if (analysts.length === 0) {
       console.log('ℹ️  No analysts found with topics')
       return
     }
 
-    console.log(`📋 Found ${analysts.length} analysts with topics`)
+    logAnalystCount(analysts.length, 'analysts with topics')
 
     // Extract all unique topics
     const allTopics = new Set<string>()

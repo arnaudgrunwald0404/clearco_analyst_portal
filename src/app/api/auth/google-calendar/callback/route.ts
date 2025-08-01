@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
 import CryptoJS from 'crypto-js'
-
-const prisma = new PrismaClient()
 
 // Initialize Google OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -91,7 +89,7 @@ export async function GET(request: NextRequest) {
     } catch (tokenError) {
       console.error('❌ [CALENDAR OAUTH] Token exchange failed:')
       console.error('📝 [CALENDAR OAUTH] Token error details:', tokenError)
-      console.error('💬 [CALENDAR OAUTH] Token error message:', tokenError?.message)
+      console.error('💬 [CALENDAR OAUTH] Token error message:', tokenError instanceof Error ? tokenError.message : 'Unknown error')
       return NextResponse.redirect(
         new URL('/settings?error=token_exchange_failed', request.url)
       )
@@ -145,9 +143,52 @@ export async function GET(request: NextRequest) {
 
     // Get user ID from session/auth or use fallback
     // TODO: Replace with proper session management
-    const userId = 'user-1'
+    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
     console.log('👤 [CALENDAR OAUTH] Using userId:', userId)
     console.log('⚠️  [CALENDAR OAUTH] WARNING: Using hardcoded user ID - should be from session in production')
+
+    // Ensure user exists in database
+    console.log('🔍 [CALENDAR OAUTH] Ensuring user exists in database...')
+    try {
+      const supabase = await createClient()
+      
+      let { data: user, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (!user && !userError) {
+        console.log('👤 [CALENDAR OAUTH] User not found, creating new user...')
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            email: userInfo.data.email,
+            name: userInfo.data.name || userInfo.data.email?.split('@')[0] || 'User',
+            password: 'oauth-user-no-password', // Placeholder for OAuth users
+            role: 'ADMIN', // Default role for OAuth users
+          })
+          .select()
+          .single()
+        
+        if (createError) {
+          throw createError
+        }
+        
+        user = newUser
+        console.log('✅ [CALENDAR OAUTH] User created successfully:', user.email)
+      } else if (user) {
+        console.log('✅ [CALENDAR OAUTH] User already exists:', user.email)
+      } else {
+        throw userError
+      }
+    } catch (userError) {
+      console.error('❌ [CALENDAR OAUTH] Error ensuring user exists:', userError)
+      return NextResponse.redirect(
+        new URL('/settings?error=user_creation_failed', request.url)
+      )
+    }
 
     // Check if this Google account is already connected
     console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
@@ -156,16 +197,20 @@ export async function GET(request: NextRequest) {
     
     let existingConnection
     try {
-      await prisma.$connect()
-      console.log('✅ [CALENDAR OAUTH] Database connection established')
+      console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
       
-      existingConnection = await prisma.calendarConnection.findFirst({
-        where: {
-          userId: userId,
-          googleAccountId: userInfo.data.id!,
-        },
-      })
+      const { data: connection, error: connectionError } = await supabase
+        .from('calendar_connections')
+        .select('*')
+        .eq('userId', userId)
+        .eq('googleAccountId', userInfo.data.id!)
+        .single()
       
+      if (connectionError && connectionError.code !== 'PGRST116') { // PGRST116 is "not found"
+        throw connectionError
+      }
+      
+      existingConnection = connection
       console.log('📊 [CALENDAR OAUTH] Existing connection query result:', existingConnection ? 'Found' : 'Not found')
       if (existingConnection) {
         console.log('📝 [CALENDAR OAUTH] Existing connection details:', {
@@ -176,11 +221,9 @@ export async function GET(request: NextRequest) {
         })
       }
     } catch (dbError) {
-      console.error('❌ [CALENDAR OAUTH] Database connection/query failed:')
-      console.error('📝 [CALENDAR OAUTH] DB Error details:', dbError)
-      console.error('💬 [CALENDAR OAUTH] DB Error message:', dbError?.message)
+      console.error('❌ [CALENDAR OAUTH] Database query failed:', dbError)
       return NextResponse.redirect(
-        new URL('/settings?error=database_connection_failed', request.url)
+        new URL('/settings?error=database_query_failed', request.url)
       )
     }
 
@@ -188,34 +231,48 @@ export async function GET(request: NextRequest) {
     
     if (existingConnection) {
       // Update existing connection with new tokens
-      const updatedConnection = await prisma.calendarConnection.update({
-        where: {
-          id: existingConnection.id,
-        },
-        data: {
+      const { data: updatedConnection, error: updateError } = await supabase
+        .from('calendar_connections')
+        .update({
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
           accessToken: encryptToken(tokens.access_token),
           refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-          tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           isActive: true,
-          updatedAt: new Date(),
-        },
-      })
+          updatedAt: new Date().toISOString(),
+        })
+        .eq('id', existingConnection.id)
+        .select()
+        .single()
+      
+      if (updateError) {
+        throw updateError
+      }
+      
       connectionId = updatedConnection.id
     } else {
       // Create new calendar connection with calendar name as default title
-      const newConnection = await prisma.calendarConnection.create({
-        data: {
+      const { data: newConnection, error: createError } = await supabase
+        .from('calendar_connections')
+        .insert({
           userId: userId,
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
           email: userInfo.data.email,
           googleAccountId: userInfo.data.id!,
           accessToken: encryptToken(tokens.access_token),
           refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-          tokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           isActive: true,
-        },
-      })
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .select()
+        .single()
+      
+      if (createError) {
+        throw createError
+      }
+      
       connectionId = newConnection.id
     }
 
@@ -240,9 +297,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('\n❌ [CALENDAR OAUTH] CRITICAL ERROR in OAuth callback:')
     console.error('📝 [CALENDAR OAUTH] Error details:', error)
-    console.error('💬 [CALENDAR OAUTH] Error message:', error?.message)
-    console.error('📚 [CALENDAR OAUTH] Error stack:', error?.stack)
-    console.error('🏷️ [CALENDAR OAUTH] Error name:', error?.name)
+    console.error('💬 [CALENDAR OAUTH] Error message:', error instanceof Error ? error.message : 'Unknown error')
+    console.error('📚 [CALENDAR OAUTH] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('🏷️ [CALENDAR OAUTH] Error name:', error instanceof Error ? error.name : 'Unknown error type')
     
     // Log environment check again in error case
     console.error('🔍 [CALENDAR OAUTH] Environment check (in error):')
@@ -255,8 +312,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL('/settings?error=oauth_callback_failed', request.url)
     )
-  } finally {
-    await prisma.$disconnect()
-    console.log('🔚 [CALENDAR OAUTH] Database connection closed')
   }
 }

@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
 
-const prisma = new PrismaClient()
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
 
 export async function GET() {
   try {
-    const topics = await prisma.predefinedTopic.findMany({
-      orderBy: {
-        order: 'asc'
-      }
-    })
+    const supabase = await createClient()
+    
+    const { data: topics, error } = await supabase
+      .from('topics')
+      .select('*')
+      .eq('isActive', true)
+      .order('order', { ascending: true })
 
-    return NextResponse.json(topics)
+    if (error) {
+      console.error('Error fetching topics:', error)
+      return NextResponse.json(
+        { error: 'Failed to fetch topics' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(topics || [])
   } catch (error) {
     console.error('Error in topics API:', error)
     return NextResponse.json(
@@ -40,10 +54,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabase = await createClient()
+
     // Check if topic name already exists
-    const existingTopic = await prisma.predefinedTopic.findUnique({
-      where: { name: name.trim() }
-    })
+    const { data: existingTopic } = await supabase
+      .from('topics')
+      .select('id')
+      .eq('name', name.trim())
+      .single()
 
     if (existingTopic) {
       return NextResponse.json(
@@ -52,19 +70,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create new topic
-    const newTopic = await prisma.predefinedTopic.create({
-      data: {
-        name: name.trim(),
-        category,
-        description: description?.trim() || null,
-        order: order || 0
-      }
-    })
+    // Create the new topic
+    const newTopic = {
+      id: generateId(),
+      name: name.trim(),
+      category,
+      description: description?.trim() || null,
+      order: order || 0,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
 
-    return NextResponse.json(newTopic, { status: 201 })
+    const { data: createdTopic, error: createError } = await supabase
+      .from('topics')
+      .insert(newTopic)
+      .select()
+      .single()
+
+    if (createError) {
+      console.error('Error creating topic:', createError)
+      return NextResponse.json(
+        { error: 'Failed to create topic' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Topic created successfully',
+      data: createdTopic
+    })
   } catch (error) {
-    console.error('Error in topics POST API:', error)
+    console.error('Error creating topic:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

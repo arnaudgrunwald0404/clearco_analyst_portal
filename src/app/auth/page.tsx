@@ -1,102 +1,94 @@
 'use client'
 
-import { useState, useEffect, useMemo, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
-import { motion } from 'framer-motion'
-import { AnimatedHero } from '@/components/ui/animated-hero'
-import { 
-  AlertCircle,
-  Loader2,
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  User,
-  ArrowRight
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import Link from 'next/link'
+import { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Eye, EyeOff, Mail, Lock, Chrome } from 'lucide-react'
 import Image from 'next/image'
+import { createClient } from '@/lib/supabase/client'
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AuthPageContent />
+    </Suspense>
+  )
+}
 
 function AuthPageContent() {
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [loginMethod, setLoginMethod] = useState<'password' | 'magic'>('password')
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
-  const [loginMethod, setLoginMethod] = useState<'magic' | 'password'>('magic')
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    firstName: '',
-    lastName: ''
+    name: '',
+    company: ''
   })
-  
-  // Animated text phrases for the hero component
-  const animatedPhrases = useMemo(
-    () => ['exciting', 'inspiring', 'mind-boggling', 'packed with value', "you've never seen before"],
-    []
-  )
-  
-  const router = useRouter()
+
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user, loading, signIn, signInWithGoogle } = useAuth()
   const supabase = createClient()
 
-  // Check URL params for mode
   useEffect(() => {
-    const mode = searchParams.get('mode')
-    if (mode === 'signup') {
-      setAuthMode('signup')
+    // Check if user is already logged in and redirect
+    if (!loading && user) {
+      const redirectTo = user.role === 'ANALYST' ? '/portal' : '/'
+      router.push(redirectTo)
     }
-  }, [searchParams])
+  }, [user, loading, router])
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        // Get user profile to determine role
-        const { data: profile } = await supabase
-          .from('User')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-        
-        if (profile?.role === 'ANALYST') {
-          router.push('/portal')
-        } else {
-          router.push('/')
-        }
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
+
+    try {
+      const result = await signIn(formData.email, formData.password)
+      
+      if (result.success && result.redirectTo) {
+        router.push(result.redirectTo)
+      } else {
+        setError(result.error || 'Login failed')
       }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
-    
-    checkUser()
-  }, [router, supabase])
-
-  // No need for manual animation effect - handled by AnimatedHero component
+  }
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
     setError('')
     
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false)
+      setError('Google sign-in timed out. Please try again.')
+    }, 10000) // 10 second timeout
+    
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent'
-          }
-        }
-      })
+      const result = await signInWithGoogle()
       
-      if (error) {
-        setError(error.message)
+      clearTimeout(timeoutId) // Clear timeout if successful
+      
+      if (!result.success) {
+        setError(result.error || 'Google sign-in failed')
         setIsLoading(false)
+      } else {
+        // If successful, the user will be redirected to Google OAuth
+        // Don't reset loading state here as the page will redirect
+        console.log('Google OAuth initiated successfully')
       }
     } catch (err) {
+      clearTimeout(timeoutId) // Clear timeout on error
+      console.error('Google sign-in error:', err)
       setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
     }
@@ -106,12 +98,13 @@ function AuthPageContent() {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSuccess('')
 
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithOtp({
         email: formData.email,
         options: {
-          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       })
 
@@ -121,58 +114,8 @@ function AuthPageContent() {
         return
       }
 
-      setSuccess('Magic link sent! Check your email.')
+      setSuccess('Magic link sent! Check your email and click the link to sign in.')
       setIsLoading(false)
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
-      setIsLoading(false)
-    }
-  }
-
-  const handlePasswordAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    setSuccess('')
-
-    try {
-      if (authMode === 'signup') {
-        // Sign up with email and password
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              first_name: formData.firstName,
-              last_name: formData.lastName
-            }
-          }
-        })
-
-        if (error) {
-          setError(error.message)
-          setIsLoading(false)
-          return
-        }
-
-        setSuccess('Account created! Please check your email to confirm your account.')
-        setIsLoading(false)
-      } else {
-        // Sign in with email and password
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password
-        })
-
-        if (error) {
-          setError(error.message)
-          setIsLoading(false)
-          return
-        }
-
-        // Successful login - redirect will be handled by the auth state change
-        setIsLoading(false)
-      }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)
@@ -186,297 +129,184 @@ function AuthPageContent() {
     }))
   }
 
-  const toggleAuthMode = () => {
-    setAuthMode(authMode === 'signin' ? 'signup' : 'signin')
-    setError('')
-    setSuccess('')
-    setFormData({
-      email: '',
-      password: '',
-      firstName: '',
-      lastName: ''
-    })
+  // Show loading while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // Don't render if user is already logged in (prevents flash)
+  if (user) {
+    return null
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center">
-        <AnimatedHero
-          title="Let us show you something"
-          subtitle={animatedPhrases.join(' • ')}
-          ctaText=""
-          onCtaClick={() => {}}
-        />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        {/* Logo and Header */}
+        <div className="text-center mb-8">
+          <div className="mx-auto w-20 h-20 mb-4 relative">
+            <Image
+              src="/clearco-logo.png"
+              alt="ClearCompany"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-gray-600">
+            Sign in to access the Analyst Portal
+          </p>
+        </div>
 
-      {/* Right Side - Auth Form */}
-      <div className="flex-1 flex justify-center items-center px-4 sm:px-6 lg:px-20 xl:px-24">
-        <div className="w-full max-w-sm lg:w-96">
-          <div className="bg-white rounded-2xl shadow-2xl p-8">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-purple-900 mb-2">
-                ClearCompany
-              </h2>
-              <h3 className="text-xl font-semibold text-purple-800 mb-4">
-                Industry Analyst Portal
-              </h3>
-              <h4 className="text-lg font-medium text-gray-800 mb-2">
-                {authMode === 'signin' ? 'Sign In' : 'Sign Up'}
-              </h4>
-              <p className="text-sm text-blue-600">
-                {authMode === 'signin' ? (
-                  <>
-                    Don't have an account?{' '}
-                    <button
-                      onClick={toggleAuthMode}
-                      className="font-medium hover:underline"
-                    >
-                      Sign Up
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    Already have an account?{' '}
-                    <button
-                      onClick={toggleAuthMode}
-                      className="font-medium hover:underline"
-                    >
-                      Sign In
-                    </button>
-                  </>
-                )}
-              </p>
+        {/* Auth Form */}
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+          {/* Error/Success Messages */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700 text-sm">{error}</p>
             </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center">
-                  <AlertCircle className="h-4 w-4 text-red-400 mr-2" />
-                  <span className="text-sm text-red-700">{error}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Success Message for non-magic link actions */}
-            {success && !success.includes('Magic link') && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                <div className="flex items-center">
-                  <Mail className="h-4 w-4 text-green-400 mr-2" />
-                  <span className="text-sm text-green-700">{success}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Google Sign In */}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed mb-6"
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-              )}
-              Sign {authMode === 'signin' ? 'in' : 'up'} with Google
-            </button>
-
-            {/* Divider */}
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">or</span>
-              </div>
+          )}
+          {success && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-700 text-sm">{success}</p>
             </div>
+          )}
 
-            {/* Form */}
-            <form onSubmit={loginMethod === 'magic' && authMode === 'signin' ? handleMagicLink : handlePasswordAuth} className="space-y-4">
-              {/* Name Fields for Sign Up */}
-              {authMode === 'signup' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="firstName"
-                      placeholder="First name"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <input
-                      type="text"
-                      name="lastName"
-                      placeholder="Last name"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              )}
+          {/* Login Method Toggle */}
+          <div className="mb-6">
+            <div className="flex rounded-lg border border-gray-200 p-1">
+              <button
+                type="button"
+                onClick={() => setLoginMethod('password')}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  loginMethod === 'password'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Password
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod('magic')}
+                className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  loginMethod === 'magic'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Magic Link
+              </button>
+            </div>
+          </div>
 
-              {/* Email Input */}
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Work email address"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+          {/* Google Sign In */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full mb-6 h-12 text-base"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
+          >
+            <Chrome className="mr-3 h-5 w-5" />
+            Continue with Google
+          </Button>
 
-              {/* Auth Method Toggle for Sign In */}
-              {authMode === 'signin' && (
-                <div className="flex space-x-2">
-                  <button
-                    type={loginMethod === 'magic' ? 'submit' : 'button'}
-                    onClick={() => {
-                      if (loginMethod !== 'magic') {
-                        setLoginMethod('magic')
-                      }
-                    }}
-                    disabled={isLoading}
-                    className={cn(
-                      "flex-1 px-4 py-3 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
-                      loginMethod === 'magic'
-                        ? "bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500"
-                    )}
-                  >
-                    {isLoading && loginMethod === 'magic' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                        Sending...
-                      </>
-                    ) : (
-                      'Send me a magic link'
-                    )}
-                  </button>
-                  
-                  <button
-                    type="button"
-                    onClick={() => setLoginMethod('password')}
-                    className={cn(
-                      "px-4 py-3 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2",
-                      loginMethod === 'password'
-                        ? "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500"
-                    )}
-                  >
-                    Enter my password
-                  </button>
-                </div>
-              )}
+          {/* Divider */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-200" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">or</span>
+            </div>
+          </div>
 
-              {/* Magic Link Success Message */}
-              {authMode === 'signin' && success && success.includes('Magic link') && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                  <div className="flex items-center">
-                    <Mail className="h-4 w-4 text-green-400 mr-2" />
-                    <span className="text-sm text-green-700">{success}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Password Input */}
-              {(authMode === 'signup' || (authMode === 'signin' && loginMethod === 'password')) && (
+          {/* Email/Password Form */}
+          <form onSubmit={loginMethod === 'password' ? handlePasswordSignIn : handleMagicLink}>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email address
+                </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleInputChange}
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
                     required
-                    className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your email"
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    )}
-                  </button>
+                </div>
+              </div>
+
+              {loginMethod === 'password' && (
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      required
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Submit Button */}
-              {(authMode === 'signup' || (authMode === 'signin' && loginMethod === 'password')) && (
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {authMode === 'signin' ? 'Signing in...' : 'Creating account...'}
-                    </>
-                  ) : (
-                    <>
-                      {authMode === 'signin' ? 'Sign In' : 'Create Account'}
-                      <ArrowRight className="h-4 w-4 ml-2" />
-                    </>
-                  )}
-                </button>
-              )}
-            </form>
+              <Button
+                type="submit"
+                className="w-full h-12 text-base"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : loginMethod === 'password' ? (
+                  'Sign In'
+                ) : (
+                  'Send Magic Link'
+                )}
+              </Button>
+            </div>
+          </form>
 
-            {/* Footer Links */}
-            <div className="mt-6 text-center text-sm text-gray-600">
-              <Link href="/auth/forgot-password" className="hover:text-blue-600">
-                Forgot your password?
-              </Link>
+          {/* Demo Credentials */}
+          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
+            <div className="text-xs text-gray-600 space-y-1">
+              <div><strong>Admin:</strong> agrunwald@clearcompany.com / 3tts3tte</div>
+              <div><strong>Analyst:</strong> sarah.chen@analystcompany.com / password</div>
+              <div className="text-blue-600 mt-2"><strong>💡 Tip:</strong> Analysts can use Magic Link for easier login!</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
-
-// Loading component for Suspense fallback
-function LoadingAuth() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
-      <div className="flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
-        <span className="ml-2 text-white">Loading...</span>
-      </div>
-    </div>
-  )
-}
-
-// Main component with Suspense boundary
-export default function AuthPage() {
-  return (
-    <Suspense fallback={<LoadingAuth />}>
-      <AuthPageContent />
-    </Suspense>
   )
 }

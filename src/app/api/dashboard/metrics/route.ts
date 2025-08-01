@@ -1,183 +1,163 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+// In-memory cache
+let cache: {
+  data: any | null
+  timestamp: number
+  duration: number
+} = {
+  data: null,
+  timestamp: 0,
+  duration: 10 * 60 * 1000 // 10 minutes
+}
 
 export async function GET() {
   try {
-    // Calculate date 90 days ago
-    const ninetyDaysAgo = new Date()
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90)
-
-    // Get basic counts using Prisma - with error handling for missing tables
-    let totalAnalysts = 0
-    let activeAnalysts = 0
-    let analystsAddedPast90Days = 0
-    let newslettersSentPast90Days = 0
-    let contentItemsPast90Days = 0
-    let activeAlerts = 0
-    let briefingsPast90Days = 0
-
-    try {
-      totalAnalysts = await prisma.analyst.count()
-    } catch (error) {
-      console.log('Analyst table not available:', error)
-    }
-
-    try {
-      activeAnalysts = await prisma.analyst.count({ where: { status: 'ACTIVE' } })
-    } catch (error) {
-      console.log('Active analysts query failed:', error)
-    }
-
-    try {
-      analystsAddedPast90Days = await prisma.analyst.count({ where: { createdAt: { gte: ninetyDaysAgo } } })
-    } catch (error) {
-      console.log('Recent analysts query failed:', error)
-    }
-
-    try {
-      newslettersSentPast90Days = await prisma.newsletter.count({ where: { status: 'SENT', sentAt: { gte: ninetyDaysAgo } } })
-    } catch (error) {
-      console.log('Newsletter table not available:', error)
-    }
-
-    try {
-      contentItemsPast90Days = await prisma.content.count({ where: { createdAt: { gte: ninetyDaysAgo } } })
-    } catch (error) {
-      console.log('Content table not available:', error)
-    }
-
-    try {
-      activeAlerts = await prisma.alert.count({ where: { isRead: false } })
-    } catch (error) {
-      console.log('Alert table not available:', error)
-    }
-
-    try {
-      briefingsPast90Days = await prisma.briefing.count({ where: { scheduledAt: { gte: ninetyDaysAgo } } })
-    } catch (error) {
-      console.log('Briefing table not available:', error)
-    }
-
-    // Get detailed content items from past 90 days
-    let recentContentItems: Array<{ id: string; title: string; type: string; createdAt: Date; isPublished: boolean }> = []
-    try {
-      recentContentItems = await prisma.content.findMany({
-        where: { createdAt: { gte: ninetyDaysAgo } },
-        select: { id: true, title: true, type: true, createdAt: true, isPublished: true },
-        orderBy: { createdAt: 'desc' },
-        take: 10
+    // Check cache first
+    const now = Date.now()
+    if (cache.data && (now - cache.timestamp) < cache.duration) {
+      console.log('📊 Returning cached dashboard metrics')
+      return NextResponse.json({
+        ...cache.data,
+        cached: true,
+        cacheAge: Math.floor((now - cache.timestamp) / 1000)
       })
-    } catch (error) {
-      console.log('Content items query failed:', error)
     }
 
-    // Get newly added analysts from past 90 days
-    let newAnalysts: Array<{ id: string; firstName: string; lastName: string; company: string | null; createdAt: Date }> = []
-    try {
-      newAnalysts = await prisma.analyst.findMany({
-        where: { createdAt: { gte: ninetyDaysAgo } },
-        select: { id: true, firstName: true, lastName: true, company: true, createdAt: true },
-        orderBy: { createdAt: 'desc' },
-        take: 10
-      })
-    } catch (error) {
-      console.log('New analysts query failed:', error)
+    const supabase = await createClient()
+
+    console.log('📊 Fetching fresh dashboard metrics from Supabase...')
+
+    // Execute all queries in parallel for better performance
+    const [
+      analystsResult,
+      briefingsResult,
+      upcomingBriefingsResult,
+      actionItemsResult,
+      socialPostsResult
+    ] = await Promise.all([
+      // Total analysts count and breakdown by status
+      supabase
+        .from('analysts')
+        .select('status', { count: 'exact' }),
+      
+      // Total briefings and breakdown by status  
+      supabase
+        .from('briefings')
+        .select('status', { count: 'exact' }),
+
+      // Upcoming briefings (next 30 days)
+      supabase
+        .from('briefings')
+        .select('*', { count: 'exact' })
+        .gte('scheduledAt', new Date().toISOString())
+        .lte('scheduledAt', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+        .eq('status', 'SCHEDULED'),
+
+      // Action items breakdown
+      supabase
+        .from('action_items')
+        .select('status', { count: 'exact' }),
+
+      // Recent social activity (last 7 days)
+      supabase
+        .from('social_posts')
+        .select('*', { count: 'exact' })
+        .gte('postedAt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    ])
+
+    // Check for errors
+    if (analystsResult.error) {
+      console.error('Error fetching analysts:', analystsResult.error)
+      throw new Error('Failed to fetch analysts data')
+    }
+    if (briefingsResult.error) {
+      console.error('Error fetching briefings:', briefingsResult.error)
+      throw new Error('Failed to fetch briefings data')
+    }
+    if (upcomingBriefingsResult.error) {
+      console.error('Error fetching upcoming briefings:', upcomingBriefingsResult.error)
+      throw new Error('Failed to fetch upcoming briefings data')
+    }
+    if (actionItemsResult.error) {
+      console.error('Error fetching action items:', actionItemsResult.error)
+      throw new Error('Failed to fetch action items data')
+    }
+    if (socialPostsResult.error) {
+      console.error('Error fetching social posts:', socialPostsResult.error)
+      throw new Error('Failed to fetch social posts data')
     }
 
-    // Calculate engagement metrics with error handling
-    let newsletterEngagements = 0
-    let completedBriefings = 0
-    let recentInteractions = 0
-    let calendarMeetings = 0
+    // Process analyst status counts
+    const analystStatusCounts = await Promise.all([
+      supabase.from('analysts').select('*', { count: 'exact' }).eq('status', 'ACTIVE'),
+      supabase.from('analysts').select('*', { count: 'exact' }).eq('status', 'INACTIVE'),
+      supabase.from('analysts').select('*', { count: 'exact' }).eq('status', 'ARCHIVED')
+    ])
 
-    try {
-      newsletterEngagements = await prisma.newsletterSubscription.count({
-        where: {
-          OR: [{ opened: true }, { clicked: true }],
-          sentAt: { gte: ninetyDaysAgo }
-        }
-      })
-    } catch (error) {
-      console.log('Newsletter engagements query failed:', error)
-    }
+    // Process briefing status counts
+    const briefingStatusCounts = await Promise.all([
+      supabase.from('briefings').select('*', { count: 'exact' }).eq('status', 'SCHEDULED'),
+      supabase.from('briefings').select('*', { count: 'exact' }).eq('status', 'COMPLETED'),
+      supabase.from('briefings').select('*', { count: 'exact' }).eq('status', 'CANCELLED')
+    ])
 
-    try {
-      completedBriefings = await prisma.briefing.count({
-        where: { status: 'COMPLETED', completedAt: { gte: ninetyDaysAgo } }
-      })
-    } catch (error) {
-      console.log('Completed briefings query failed:', error)
-    }
+    // Process action item status counts
+    const actionItemStatusCounts = await Promise.all([
+      supabase.from('action_items').select('*', { count: 'exact' }).eq('status', 'PENDING'),
+      supabase.from('action_items').select('*', { count: 'exact' }).eq('status', 'IN_PROGRESS'),
+      supabase.from('action_items').select('*', { count: 'exact' }).eq('status', 'COMPLETED')
+    ])
 
-    try {
-      recentInteractions = await prisma.interaction.count({ where: { date: { gte: ninetyDaysAgo } } })
-    } catch (error) {
-      console.log('Recent interactions query failed:', error)
-    }
-
-    try {
-      calendarMeetings = await prisma.calendarMeeting.count({
-        where: { isAnalystMeeting: true, startTime: { gte: ninetyDaysAgo } }
-      })
-    } catch (error) {
-      console.log('Calendar meetings query failed:', error)
-    }
-
-    const totalEngagements = newsletterEngagements + completedBriefings + recentInteractions + calendarMeetings
-    const engagementRate = activeAnalysts > 0
-      ? Math.min(Math.round((totalEngagements / activeAnalysts) * 100), 100)
-      : 0
-
-    // Calculate relationship health
-    let relationshipHealth = 0
-    try {
-      const analysts = await prisma.analyst.findMany({
-        where: { status: 'ACTIVE' },
-        select: { relationshipHealth: true, influenceScore: true }
-      })
-
-      if (analysts.length > 0) {
-        const healthScores = analysts.map(analyst => {
-          let healthScore = 0
-          switch (analyst.relationshipHealth) {
-            case 'EXCELLENT': healthScore = 100; break
-            case 'GOOD': healthScore = 80; break
-            case 'FAIR': healthScore = 60; break
-            case 'POOR': healthScore = 40; break
-            case 'CRITICAL': healthScore = 20; break
-            default: healthScore = 60; break
-          }
-          return healthScore * (analyst.influenceScore / 100)
-        })
-
-        const totalWeightedScore = healthScores.reduce((sum, score) => sum + score, 0)
-        const totalWeight = analysts.reduce((sum, analyst) => sum + (analyst.influenceScore / 100), 0)
-        relationshipHealth = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : 0
-      }
-    } catch (error) {
-      console.log('Relationship health calculation failed:', error)
-    }
-
+    // Build metrics object
     const metrics = {
-      totalAnalysts,
-      activeAnalysts,
-      analystsAddedPast90Days,
-      newslettersSentPast90Days,
-      contentItemsPast90Days,
-      engagementRate,
-      activeAlerts,
-      briefingsPast90Days,
-      relationshipHealth,
-      recentContentItems,
-      newAnalysts
+      analysts: {
+        total: analystsResult.count || 0,
+        active: analystStatusCounts[0].count || 0,
+        inactive: analystStatusCounts[1].count || 0,
+        archived: analystStatusCounts[2].count || 0
+      },
+      briefings: {
+        total: briefingsResult.count || 0,
+        scheduled: briefingStatusCounts[0].count || 0,
+        completed: briefingStatusCounts[1].count || 0,
+        cancelled: briefingStatusCounts[2].count || 0,
+        upcoming: upcomingBriefingsResult.count || 0
+      },
+      actionItems: {
+        total: actionItemsResult.count || 0,
+        pending: actionItemStatusCounts[0].count || 0,
+        inProgress: actionItemStatusCounts[1].count || 0,
+        completed: actionItemStatusCounts[2].count || 0
+      },
+      socialActivity: {
+        recentPosts: socialPostsResult.count || 0,
+        thisWeek: socialPostsResult.count || 0 // Same as recent for 7-day period
+      },
+      lastUpdated: new Date().toISOString()
     }
 
-    return NextResponse.json(metrics)
+    // Update cache
+    cache.data = metrics
+    cache.timestamp = now
+
+    console.log('✅ Dashboard metrics calculated and cached')
+    console.log(`📊 Metrics: ${metrics.analysts.total} analysts, ${metrics.briefings.total} briefings, ${metrics.actionItems.total} action items`)
+
+    return NextResponse.json({
+      ...metrics,
+      cached: false,
+      cacheAge: 0
+    })
 
   } catch (error) {
     console.error('Error fetching dashboard metrics:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch dashboard metrics' },
+      { 
+        error: 'Failed to fetch dashboard metrics',
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     )
   }

@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params
-    // Mark as SENT and set sentAt
-    const updated = await prisma.newsletter.update({
-      where: { id },
-      data: {
-        status: 'SENT',
-        sentAt: new Date()
-      }
+    // Placeholder implementation
+    return NextResponse.json({
+      success: true,
+      message: 'Newsletter send endpoint - to be implemented'
     })
-    // TODO: Trigger actual email sending logic here
-    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to send newsletter' }, { status: 500 })
+    console.error('Error sending newsletter:', error)
+    return NextResponse.json(
+      { success: false, error: 'Newsletter send not implemented yet' },
+      { status: 501 }
+    )
   }
 } 

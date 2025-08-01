@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 })
+
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
 
 export async function GET(
   request: NextRequest,
@@ -12,235 +18,151 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    const supabase = await createClient()
 
-    const briefing = await prisma.briefing.findUnique({
-      where: { id },
-      include: {
-        analysts: {
-          include: {
-            analyst: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                company: true,
-                title: true,
-                profileImageUrl: true
-              }
-            }
-          }
-        },
-        calendarMeeting: {
-          select: {
-            id: true,
-            title: true,
-            startTime: true,
-            endTime: true,
-            attendees: true,
-            description: true
-          }
-        }
-      }
-    })
+    // Get briefing with associated analysts
+    const { data: briefing, error: briefingError } = await supabase
+      .from('briefings')
+      .select('*')
+      .eq('id', id)
+      .single()
 
-    if (!briefing) {
+    if (briefingError || !briefing) {
       return NextResponse.json(
-        { success: false, error: 'Briefing not found' },
+        { error: 'Briefing not found' },
         { status: 404 }
       )
     }
 
-    // Process briefing for better frontend consumption
-    const processedBriefing = {
-      ...briefing,
-      agenda: briefing.agenda ? JSON.parse(briefing.agenda) : [],
-      outcomes: briefing.outcomes ? JSON.parse(briefing.outcomes) : [],
-      followUpActions: briefing.followUpActions ? JSON.parse(briefing.followUpActions) : [],
-      attendeeEmails: briefing.attendeeEmails ? JSON.parse(briefing.attendeeEmails) : [],
-      analysts: briefing.analysts.map(ba => ({
-        ...ba.analyst,
-        role: ba.role
-      })),
-      calendarMeeting: briefing.calendarMeeting ? {
-        ...briefing.calendarMeeting,
-        attendees: briefing.calendarMeeting.attendees ? JSON.parse(briefing.calendarMeeting.attendees) : []
-      } : null
+    // Get associated analysts through briefing_analysts junction table
+    const { data: briefingAnalysts, error: analystsError } = await supabase
+      .from('briefing_analysts')
+      .select(`
+        id,
+        briefingId,
+        analystId,
+        analysts!inner(
+          id,
+          firstName,
+          lastName,
+          email,
+          company,
+          title,
+          profileImageUrl
+        )
+      `)
+      .eq('briefingId', id)
+
+    if (analystsError) {
+      console.error('Error fetching briefing analysts:', analystsError)
     }
 
-    return NextResponse.json({
-      success: true,
-      data: processedBriefing
-    })
+    // Format the response to match the expected structure
+    const formattedBriefing = {
+      ...briefing,
+      analysts: (briefingAnalysts || []).map((ba: any) => ({
+        id: ba.id,
+        briefingId: briefing.id,
+        analystId: ba.analystId,
+        analyst: ba.analysts
+      }))
+    }
+
+    return NextResponse.json(formattedBriefing)
 
   } catch (error) {
     console.error('Error fetching briefing:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch briefing' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     const body = await request.json()
-
+    
     const {
       title,
       description,
+      scheduledAt,
+      duration,
       status,
-      notes,
       outcomes,
       followUpActions,
-      transcript,
-      recordingUrl,
-      completedAt,
       analystIds
     } = body
 
-    // Check if briefing exists
-    const existingBriefing = await prisma.briefing.findUnique({
-      where: { id },
-      include: { analysts: true }
-    })
+    const supabase = await createClient()
 
-    if (!existingBriefing) {
+    // Update briefing
+    const { data: updatedBriefing, error: updateError } = await supabase
+      .from('briefings')
+      .update({
+        title,
+        description,
+        scheduledAt,
+        duration,
+        status,
+        outcomes,
+        followUpActions,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('Error updating briefing:', updateError)
       return NextResponse.json(
-        { success: false, error: 'Briefing not found' },
-        { status: 404 }
+        { error: 'Failed to update briefing' },
+        { status: 500 }
       )
     }
 
-    // Update briefing
-    const updateData: any = {}
-    
-    if (title !== undefined) updateData.title = title
-    if (description !== undefined) updateData.description = description
-    if (status !== undefined) {
-      updateData.status = status
-      if (status === 'COMPLETED' && !existingBriefing.completedAt) {
-        updateData.completedAt = new Date()
-      }
-    }
-    if (completedAt !== undefined) updateData.completedAt = completedAt ? new Date(completedAt) : null
-    if (notes !== undefined) updateData.notes = notes
-    if (outcomes !== undefined) updateData.outcomes = JSON.stringify(outcomes)
-    if (followUpActions !== undefined) updateData.followUpActions = JSON.stringify(followUpActions)
-    if (transcript !== undefined) updateData.transcript = transcript
-    if (recordingUrl !== undefined) updateData.recordingUrl = recordingUrl
+    // Update analyst associations if provided
+    if (analystIds && Array.isArray(analystIds)) {
+      // Remove existing associations
+      await supabase
+        .from('briefing_analysts')
+        .delete()
+        .eq('briefingId', id)
 
-    // Generate AI summary if transcript is provided and no existing summary
-    if (transcript && !existingBriefing.aiSummary) {
-      try {
-        const summary = await generateAISummary(transcript, existingBriefing.title)
-        updateData.aiSummary = summary.summary
-        updateData.followUpSummary = summary.followUps
-      } catch (error) {
-        console.error('Error generating AI summary:', error)
-        // Continue without AI summary
-      }
-    }
-
-    const briefing = await prisma.briefing.update({
-      where: { id },
-      data: updateData,
-      include: {
-        analysts: {
-          include: {
-            analyst: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                company: true,
-                title: true,
-                profileImageUrl: true
-              }
-            }
-          }
-        }
-      }
-    })
-
-    // Update analyst relationships if provided
-    if (analystIds) {
-      // Remove existing relationships
-      await prisma.briefingAnalyst.deleteMany({
-        where: { briefingId: id }
-      })
-
-      // Create new relationships
-      await prisma.briefingAnalyst.createMany({
-        data: analystIds.map((analystId: string, index: number) => ({
+      // Add new associations
+      if (analystIds.length > 0) {
+        const associations = analystIds.map((analystId: string) => ({
+          id: generateId(),
           briefingId: id,
           analystId,
-          role: index === 0 ? 'PRIMARY' : 'SECONDARY'
+          createdAt: new Date().toISOString()
         }))
-      })
 
-      // Fetch updated briefing with new relationships
-      const updatedBriefing = await prisma.briefing.findUnique({
-        where: { id },
-        include: {
-          analysts: {
-            include: {
-              analyst: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  email: true,
-                  company: true,
-                  title: true,
-                  profileImageUrl: true
-                }
-              }
-            }
-          }
-        }
-      })
+        const { error: associationError } = await supabase
+          .from('briefing_analysts')
+          .insert(associations)
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...updatedBriefing,
-          agenda: updatedBriefing?.agenda ? JSON.parse(updatedBriefing.agenda) : [],
-          outcomes: updatedBriefing?.outcomes ? JSON.parse(updatedBriefing.outcomes) : [],
-          followUpActions: updatedBriefing?.followUpActions ? JSON.parse(updatedBriefing.followUpActions) : [],
-          attendeeEmails: updatedBriefing?.attendeeEmails ? JSON.parse(updatedBriefing.attendeeEmails) : [],
-          analysts: updatedBriefing?.analysts.map(ba => ({
-            ...ba.analyst,
-            role: ba.role
-          })) || []
+        if (associationError) {
+          console.error('Error updating briefing analysts:', associationError)
+          // Continue anyway as the briefing was updated successfully
         }
-      })
+      }
     }
 
     return NextResponse.json({
       success: true,
-      data: {
-        ...briefing,
-        agenda: briefing.agenda ? JSON.parse(briefing.agenda) : [],
-        outcomes: briefing.outcomes ? JSON.parse(briefing.outcomes) : [],
-        followUpActions: briefing.followUpActions ? JSON.parse(briefing.followUpActions) : [],
-        attendeeEmails: briefing.attendeeEmails ? JSON.parse(briefing.attendeeEmails) : [],
-        analysts: briefing.analysts.map(ba => ({
-          ...ba.analyst,
-          role: ba.role
-        }))
-      }
+      message: 'Briefing updated successfully',
+      data: updatedBriefing
     })
 
   } catch (error) {
     console.error('Error updating briefing:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to update briefing' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
@@ -252,10 +174,21 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const supabase = await createClient()
 
-    await prisma.briefing.delete({
-      where: { id }
-    })
+    // Delete briefing (associations will be deleted via CASCADE)
+    const { error: deleteError } = await supabase
+      .from('briefings')
+      .delete()
+      .eq('id', id)
+
+    if (deleteError) {
+      console.error('Error deleting briefing:', deleteError)
+      return NextResponse.json(
+        { error: 'Failed to delete briefing' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
@@ -265,55 +198,104 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting briefing:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to delete briefing' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
 
-async function generateAISummary(transcript: string, meetingTitle: string) {
-  const prompt = `
-You are an AI assistant analyzing a transcript from an analyst briefing meeting titled "${meetingTitle}".
-
-Please provide:
-1. A concise TLDR summary (2-3 sentences)
-2. Key discussion points (3-5 bullet points)
-3. Follow-up actions needed (if any)
-
-Transcript:
-${transcript}
-
-Please format your response as JSON with the following structure:
-{
-  "summary": "TLDR summary here",
-  "keyPoints": ["Point 1", "Point 2", "Point 3"],
-  "followUps": ["Action 1", "Action 2"]
-}
-`
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.3,
-    max_tokens: 1000
-  })
-
-  const content = response.choices[0]?.message?.content
-  if (!content) {
-    throw new Error('No response from OpenAI')
-  }
-
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const parsed = JSON.parse(content)
-    return {
-      summary: `**TLDR:** ${parsed.summary}\n\n**Key Points:**\n${parsed.keyPoints.map((point: string) => `• ${point}`).join('\n')}`,
-      followUps: parsed.followUps?.join('\n• ') || ''
+    const { id } = await params
+    const body = await request.json()
+    const { action } = body
+
+    if (action === 'generate-summary') {
+      const supabase = await createClient()
+
+      // Get briefing details
+      const { data: briefing, error: briefingError } = await supabase
+        .from('briefings')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (briefingError || !briefing) {
+        return NextResponse.json(
+          { error: 'Briefing not found' },
+          { status: 404 }
+        )
+      }
+
+      // Get associated analysts
+      const { data: briefingAnalysts, error: analystsError } = await supabase
+        .from('briefing_analysts')
+        .select(`
+          analysts!inner(firstName, lastName, company, title)
+        `)
+        .eq('briefingId', id)
+
+      if (analystsError) {
+        console.error('Error fetching briefing analysts:', analystsError)
+        return NextResponse.json(
+          { error: 'Failed to fetch briefing analysts' },
+          { status: 500 }
+        )
+      }
+
+      const analysts = (briefingAnalysts || []).map((ba: any) => ba.analysts)
+
+      try {
+        const prompt = `Generate a professional briefing summary for the following meeting:
+
+Title: ${briefing.title}
+Description: ${briefing.description || 'No description provided'}
+Duration: ${briefing.duration} minutes
+Participants: ${analysts.map((a: any) => `${a.firstName} ${a.lastName} (${a.title} at ${a.company})`).join(', ')}
+
+Create a structured summary with:
+1. Meeting Overview
+2. Key Discussion Points
+3. Outcomes/Decisions
+4. Next Steps
+
+Keep it professional and concise.`
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 1000
+        })
+
+        const generatedSummary = completion.choices[0]?.message?.content || 'Unable to generate summary'
+
+        return NextResponse.json({
+          success: true,
+          summary: generatedSummary
+        })
+
+      } catch (openaiError) {
+        console.error('OpenAI API error:', openaiError)
+        return NextResponse.json(
+          { error: 'Failed to generate summary' },
+          { status: 500 }
+        )
+      }
     }
+
+    return NextResponse.json(
+      { error: 'Invalid action' },
+      { status: 400 }
+    )
+
   } catch (error) {
-    // Fallback to raw content if JSON parsing fails
-    return {
-      summary: content,
-      followUps: ''
-    }
+    console.error('Error in briefing POST action:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

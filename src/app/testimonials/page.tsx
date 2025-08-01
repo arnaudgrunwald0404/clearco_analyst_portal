@@ -106,7 +106,7 @@ export default function TestimonialsPage() {
     fetchData()
   }, [])
 
-  const filteredTestimonials = testimonials.filter(testimonial => {
+  const filteredTestimonials = testimonials?.filter(testimonial => {
     const matchesSearch = 
       testimonial.quote.toLowerCase().includes(searchTerm.toLowerCase()) ||
       testimonial.analyst.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -383,7 +383,7 @@ export default function TestimonialsPage() {
       )}
 
       {/* Testimonials Grid */}
-      {!loading && (
+      {!loading && filteredTestimonials && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredTestimonials.map((testimonial) => (
           <Card key={testimonial.id} className="p-6 hover:shadow-lg transition-shadow">
@@ -457,7 +457,7 @@ export default function TestimonialsPage() {
         </div>
       )}
 
-      {!loading && filteredTestimonials.length === 0 && (
+      {!loading && (!filteredTestimonials || filteredTestimonials.length === 0) && (
         <div className="text-center py-12">
           <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
           <h3 className="mt-4 text-lg font-medium text-gray-900">No testimonials found</h3>

@@ -1,5 +1,6 @@
 import { RawSearchResult, SearchQuery } from './types'
 import { RATE_LIMITS, SEARCH_TEMPLATES } from './config'
+import { calculateTitleSimilarity, removeDuplicateResults } from '../utils/similarity'
 
 export abstract class BaseSearchEngine {
   protected lastRequestTime: number = 0
@@ -212,7 +213,7 @@ export class ComprehensiveSearchEngine {
     }
 
     // Remove duplicates and limit results
-    const uniqueResults = this.removeDuplicates(allResults)
+    const uniqueResults = removeDuplicateResults(allResults)
     return uniqueResults.slice(0, maxResults)
   }
 
@@ -238,7 +239,7 @@ export class ComprehensiveSearchEngine {
       }
     }
 
-    return this.removeDuplicates(allResults)
+    return removeDuplicateResults(allResults)
   }
 
   /**
@@ -282,50 +283,5 @@ export class ComprehensiveSearchEngine {
     return queries.slice(0, 15) // Limit to prevent rate limiting
   }
 
-  /**
-   * Removes duplicate results based on URL and title similarity
-   */
-  private removeDuplicates(results: RawSearchResult[]): RawSearchResult[] {
-    const seen = new Set<string>()
-    const unique: RawSearchResult[] = []
 
-    for (const result of results) {
-      // Check for exact URL duplicates
-      if (seen.has(result.url)) {
-        continue
-      }
-
-      // Check for title similarity (simple approach)
-      const isDuplicate = unique.some(existing => {
-        const titleSimilarity = this.calculateTitleSimilarity(
-          existing.title.toLowerCase(),
-          result.title.toLowerCase()
-        )
-        return titleSimilarity > 0.8
-      })
-
-      if (!isDuplicate) {
-        seen.add(result.url)
-        unique.push(result)
-      }
-    }
-
-    return unique
-  }
-
-  /**
-   * Calculates title similarity for duplicate detection
-   */
-  private calculateTitleSimilarity(title1: string, title2: string): number {
-    const words1 = title1.split(/\s+/)
-    const words2 = title2.split(/\s+/)
-    
-    const commonWords = words1.filter(word => 
-      words2.includes(word) && word.length > 3
-    ).length
-    
-    const totalWords = Math.max(words1.length, words2.length)
-    
-    return totalWords > 0 ? commonWords / totalWords : 0
-  }
 }

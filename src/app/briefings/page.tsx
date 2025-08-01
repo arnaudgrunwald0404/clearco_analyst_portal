@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Calendar,
   Clock,
@@ -26,10 +26,7 @@ import {
   Mic,
   Bot,
   Eye,
-  Settings,
-  ListTodo,
-  UserCheck,
-  AlertTriangle
+  Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -71,31 +68,16 @@ interface Briefing {
   updatedAt: string
 }
 
-interface ActionItem {
-  id: string
-  briefingId: string
-  description: string
-  assignedTo?: string
-  assignedBy?: string
-  dueDate?: string
-  isCompleted: boolean
-  completedAt?: string
-  completedBy?: string
-  priority: 'HIGH' | 'MEDIUM' | 'LOW'
-  category?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
-  briefing: {
-    id: string
-    title: string
-    scheduledAt: string
-    primaryAnalyst?: {
-      firstName: string
-      lastName: string
-      company?: string
-    }
-  }
+interface SyncProgress {
+  type: string
+  message: string
+  totalEventsProcessed?: number
+  relevantMeetingsCount?: number
+  newMeetingsCount?: number
+  existingMeetingsCount?: number
+  lastAnalystFound?: string
+  isComplete?: boolean
+  error?: string
 }
 
 const briefingStatuses = [
@@ -138,31 +120,242 @@ function formatDateTime(dateString: string) {
   }
 }
 
+function SyncProgressModal({ 
+  isOpen, 
+  onClose, 
+  progress, 
+  connectionTitle 
+}: { 
+  isOpen: boolean
+  onClose: () => void
+  progress: SyncProgress[]
+  connectionTitle: string
+}) {
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [progress])
+
+  if (!isOpen) return null
+
+  const latestProgress = progress[progress.length - 1]
+  const isComplete = latestProgress?.isComplete
+  const hasError = latestProgress?.error
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <RefreshCw className={cn(
+                "w-5 h-5 text-blue-600",
+                !isComplete && !hasError && "animate-spin"
+              )} />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Syncing Calendar
+              </h3>
+              <p className="text-sm text-gray-600">{connectionTitle}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Progress Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Summary Stats */}
+          {latestProgress && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-blue-600">
+                  {latestProgress.totalEventsProcessed || 0}
+                </div>
+                <div className="text-sm text-blue-700">Meetings Parsed</div>
+              </div>
+              <div className="bg-green-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-green-600">
+                  {latestProgress.relevantMeetingsCount || 0}
+                </div>
+                <div className="text-sm text-green-700">Relevant Meetings</div>
+              </div>
+              <div className="bg-emerald-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-emerald-600">
+                  {latestProgress.newMeetingsCount || 0}
+                </div>
+                <div className="text-sm text-emerald-700">New Meetings</div>
+              </div>
+              <div className="bg-orange-50 rounded-lg p-4">
+                <div className="text-2xl font-bold text-orange-600">
+                  {latestProgress.existingMeetingsCount || 0}
+                </div>
+                <div className="text-sm text-orange-700">Existing Meetings</div>
+              </div>
+            </div>
+          )}
+
+          {/* Progress Messages */}
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900 mb-3">Progress Log</h4>
+            <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+              {progress.length === 0 ? (
+                <div className="text-gray-500 text-center py-4">
+                  Starting sync...
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {progress.map((item, index) => (
+                    <div key={index} className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-900">{item.message}</div>
+                        {item.type === 'meeting_found' && item.lastAnalystFound && (
+                          <div className="text-xs text-gray-600 mt-1">
+                            Found meeting with {item.lastAnalystFound}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 p-6">
+          {hasError ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-red-600">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">Sync failed</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : isComplete ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-green-600">
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Sync completed successfully!</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-blue-600">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Syncing in progress...</span>
+              </div>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                disabled
+              >
+                Please wait...
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PortalBriefingsPage() {
   const [briefings, setBriefings] = useState<Briefing[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('ALL')
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null)
   const [drawerTab, setDrawerTab] = useState<'overview' | 'transcript'>('overview')
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [hasCalendarConnections, setHasCalendarConnections] = useState(false)
-  const [calendarConnectionsLoading, setCalendarConnectionsLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(true)
+  const [cursor, setCursor] = useState<string | null>(null)
+  
+  // Sync progress modal state
+  const [showSyncModal, setShowSyncModal] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<SyncProgress[]>([])
+  const [connectionTitle, setConnectionTitle] = useState('')
+  const [isSyncInProgress, setIsSyncInProgress] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<{ isInProgress: boolean; timeElapsed?: number }>({ isInProgress: false })
+  
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const loadingRef = useRef<HTMLDivElement>(null)
 
-  // Fetch briefings on component mount and when filters change
+  // Intersection observer callback
+  const lastElementRef = useCallback((node: HTMLDivElement) => {
+    if (loading) return
+    if (observerRef.current) observerRef.current.disconnect()
+    
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore) {
+        loadMoreBriefings()
+      }
+    })
+    
+    if (node) observerRef.current.observe(node)
+  }, [loading, hasMore, loadingMore])
+
+  // Fetch initial briefings
   useEffect(() => {
-    fetchBriefings()
-    checkCalendarConnections()
-  }, [page, selectedStatus, searchTerm])
+    fetchBriefings(true)
+    checkSyncStatus()
+  }, [selectedStatus, searchTerm])
 
-  const fetchBriefings = async () => {
+  const checkSyncStatus = async () => {
     try {
-      setLoading(true)
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '10'
+      const response = await fetch('/api/settings/calendar-connections/cmdavaxc40004mm0piievkkx6/sync', {
+        method: 'GET'
       })
+      
+      if (response.ok) {
+        const status = await response.json()
+        setSyncStatus(status)
+        setIsSyncInProgress(status.isInProgress)
+      }
+    } catch (error) {
+      console.error('Error checking sync status:', error)
+    }
+  }
+
+  const fetchBriefings = async (reset = false) => {
+    try {
+      if (reset) {
+        setLoading(true)
+        setBriefings([])
+        setCursor(null)
+        setHasMore(true)
+      } else {
+        setLoadingMore(true)
+      }
+
+      const params = new URLSearchParams({
+        limit: '25'
+      })
+      
+      if (cursor && !reset) {
+        params.append('cursor', cursor)
+      }
       
       if (selectedStatus !== 'ALL') {
         params.append('status', selectedStatus)
@@ -176,52 +369,109 @@ export default function PortalBriefingsPage() {
       const data = await response.json()
       
       if (data.success) {
-        setBriefings(data.data)
-        setTotalPages(data.pagination.pages)
+        if (reset) {
+          setBriefings(data.data)
+        } else {
+          setBriefings(prev => [...prev, ...data.data])
+        }
+        
+        setCursor(data.nextCursor)
+        setHasMore(data.hasMore)
       }
     } catch (error) {
       console.error('Error fetching briefings:', error)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
-  const checkCalendarConnections = async () => {
-    try {
-      setCalendarConnectionsLoading(true)
-      const response = await fetch('/api/settings/calendar-connections')
-      if (response.ok) {
-        const connections = await response.json()
-        setHasCalendarConnections(connections.length > 0 && connections.some((conn: any) => conn.isActive))
-      }
-    } catch (error) {
-      console.error('Error checking calendar connections:', error)
-      setHasCalendarConnections(false)
-    } finally {
-      setCalendarConnectionsLoading(false)
+  const loadMoreBriefings = () => {
+    if (!loadingMore && hasMore) {
+      fetchBriefings(false)
     }
   }
 
   const syncCalendarMeetings = async () => {
-    if (!hasCalendarConnections) {
-      // Don't sync if no calendar connections
-      return
-    }
-    
     try {
-      const response = await fetch('/api/briefings/sync-calendar', {
+      // First, get the calendar connections
+      const connectionsResponse = await fetch('/api/settings/calendar-connections')
+      const connectionsData = await connectionsResponse.json()
+      
+      if (!connectionsData.success || connectionsData.data.length === 0) {
+        alert('No calendar connections found. Please set up a calendar connection first.')
+        return
+      }
+
+      // Use the first active connection
+      const connection = connectionsData.data.find((conn: any) => conn.isActive) || connectionsData.data[0]
+      setConnectionTitle(connection.title || connection.email)
+      
+      // Reset progress and show modal
+      setSyncProgress([])
+      setShowSyncModal(true)
+      setIsSyncInProgress(true)
+      setSyncStatus({ isInProgress: true, timeElapsed: 0 })
+      
+      // First trigger the sync process
+      const syncResponse = await fetch(`/api/settings/calendar-connections/${connection.id}/sync`, {
         method: 'POST'
       })
-      const data = await response.json()
       
-      if (data.success) {
-        fetchBriefings() // Refresh the list
+      if (syncResponse.status === 409) {
+        // Sync already in progress
+        const errorData = await syncResponse.json()
+        alert(`Calendar sync already in progress: ${errorData.details}`)
+        return
       }
+      
+      if (!syncResponse.ok) {
+        const errorData = await syncResponse.json()
+        throw new Error(errorData.error || 'Failed to start calendar sync')
+      }
+
+      // Create EventSource for real-time progress updates
+      const eventSource = new EventSource(`/api/settings/calendar-connections/${connection.id}/sync`)
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          setSyncProgress(prev => [...prev, data])
+          
+          // Close modal when sync is complete
+          if (data.type === 'sync_completed' || data.type === 'sync_failed' || data.type === 'sync_error') {
+            eventSource.close()
+            setIsSyncInProgress(false)
+            setSyncStatus({ isInProgress: false })
+            setTimeout(() => {
+              setShowSyncModal(false)
+              fetchBriefings(true) // Refresh the briefings list
+            }, 2000)
+          }
+        } catch (error) {
+          console.error('Error parsing SSE data:', error)
+        }
+      }
+      
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error)
+        eventSource.close()
+        setSyncProgress(prev => [...prev, {
+          type: 'sync_failed',
+          message: 'Sync failed due to connection error',
+          error: 'Connection error'
+        }])
+      }
+
     } catch (error) {
       console.error('Error syncing calendar meetings:', error)
+      setSyncProgress(prev => [...prev, {
+        type: 'sync_failed',
+        message: 'Failed to start calendar sync',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }])
     }
   }
-
 
   const filteredBriefings = briefings
   const upcomingBriefings = filteredBriefings.filter(b => {
@@ -234,69 +484,71 @@ export default function PortalBriefingsPage() {
   })
 
   return (
-    <div className="flex h-screen bg-gray-50 relative">
+    <div className="flex h-screen bg-gray-50">
       {/* Main Content */}
       <div className={cn(
         "flex-1 flex flex-col transition-all duration-300",
-        selectedBriefing ? "opacity-30" : "opacity-100"
+        selectedBriefing ? "mr-96" : ""
       )}>
-        <div className="p-8">
-          <div className="mb-8">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Briefings</h1>
-                <p className="mt-2 text-gray-600">
-                  Manage your analyst briefings, view recordings, and track action items
-                </p>
-              </div>
-              <div className="relative group">
-                <button 
-                  onClick={syncCalendarMeetings}
-                  disabled={calendarConnectionsLoading || !hasCalendarConnections}
-                  className={cn(
-                    "flex items-center px-4 py-2 border rounded-lg transition-colors",
-                    hasCalendarConnections && !calendarConnectionsLoading
-                      ? "border-gray-300 text-gray-700 hover:bg-gray-50"
-                      : "border-gray-200 text-gray-400 cursor-not-allowed"
-                  )}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Sync Calendar
-                </button>
-                
-                {/* Hover tooltip when no calendar connections */}
-                {!hasCalendarConnections && !calendarConnectionsLoading && (
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-                    Go to Settings › Calendar to connect calendars and synchronize meetings, briefings
-                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900"></div>
-                  </div>
+        <div className="p-6 space-y-6">
+          {/* Page Header */}
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Briefings</h1>
+              <p className="mt-2 text-gray-600">
+                Manage your analyst briefings, view recordings, and track action items
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <button 
+                onClick={syncCalendarMeetings}
+                disabled={isSyncInProgress}
+                className={cn(
+                  "flex items-center px-4 py-2 border rounded-lg transition-colors",
+                  isSyncInProgress 
+                    ? "border-gray-300 text-gray-500 bg-gray-100 cursor-not-allowed"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
                 )}
-              </div>
+              >
+                <RefreshCw className={cn(
+                  "w-4 h-4 mr-2",
+                  isSyncInProgress && "animate-spin"
+                )} />
+                {isSyncInProgress 
+                  ? `Syncing... (${syncStatus.timeElapsed || 0}m)`
+                  : "Sync Calendar"
+                }
+              </button>
+              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                <Plus className="w-4 h-4 mr-2" />
+                Schedule Briefing
+              </button>
             </div>
           </div>
 
-          {/* Search and Filter Bar */}
+          {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Search briefings..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               />
             </div>
-            
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <select
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {briefingStatuses.map(status => (
-                  <option key={status.value} value={status.value}>{status.label}</option>
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -310,90 +562,101 @@ export default function PortalBriefingsPage() {
             </div>
           )}
 
-          {/* Briefings List */}
+          {/* Briefings Content */}
           {!loading && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               {/* Upcoming Briefings */}
               {upcomingBriefings.length > 0 && (
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Briefings</h2>
                   <div className="space-y-4">
-                    {upcomingBriefings.map((briefing) => (
-                      <BriefingCard 
-                        key={briefing.id} 
-                        briefing={briefing} 
-                        onSelect={setSelectedBriefing}
-                        isUpcoming={true}
-                      />
+                    {upcomingBriefings.map((briefing, index) => (
+                      <div key={briefing.id} ref={index === upcomingBriefings.length - 1 ? lastElementRef : null}>
+                        <BriefingCard 
+                          briefing={briefing} 
+                          onSelect={setSelectedBriefing}
+                          isUpcoming={true}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Empty State */}
-          {!loading && filteredBriefings.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <div className="text-gray-500">No briefings found matching your criteria.</div>
-            </div>
-          )}
+              {/* Past Briefings */}
+              {pastBriefings.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Past Briefings</h2>
+                  <div className="space-y-4">
+                    {pastBriefings.map((briefing, index) => (
+                      <div key={briefing.id} ref={index === pastBriefings.length - 1 ? lastElementRef : null}>
+                        <BriefingCard 
+                          briefing={briefing} 
+                          onSelect={setSelectedBriefing}
+                          isUpcoming={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Pagination */}
-          {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-between mt-6">
-              <div className="text-sm text-gray-700">
-                Showing page {page} of {totalPages}
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setPage(Math.max(1, page - 1))}
-                  disabled={page === 1}
-                  className="flex items-center px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Previous
-                </button>
-                <button
-                  onClick={() => setPage(Math.min(totalPages, page + 1))}
-                  disabled={page === totalPages}
-                  className="flex items-center px-3 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </button>
-              </div>
+              {/* No Briefings */}
+              {filteredBriefings.length === 0 && !loading && (
+                <div className="text-center py-12">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No briefings found</h3>
+                  <p className="text-gray-600">
+                    {searchTerm || selectedStatus !== 'ALL' 
+                      ? 'Try adjusting your search or filters'
+                      : 'Get started by scheduling your first briefing'
+                    }
+                  </p>
+                </div>
+              )}
+
+              {/* Loading More Indicator */}
+              {loadingMore && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="ml-3 text-gray-600">Loading more briefings...</span>
+                </div>
+              )}
+
+              {/* End of Results */}
+              {!hasMore && filteredBriefings.length > 0 && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 text-sm">You've reached the end of all briefings</p>
+                </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Right Drawer Overlay */}
+      {/* Briefing Drawer */}
       {selectedBriefing && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay background */}
-          <div 
-            className="absolute inset-0 bg-black bg-opacity-20" 
-            onClick={() => setSelectedBriefing(null)}
+        <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
+          <BriefingDrawer
+            briefing={selectedBriefing}
+            activeTab={drawerTab}
+            onTabChange={setDrawerTab}
+            onClose={() => setSelectedBriefing(null)}
+            onUpdate={() => fetchBriefings(true)}
           />
-          
-          {/* Drawer */}
-          <div className="relative w-1/2 min-w-[600px] h-full bg-white shadow-xl border-l border-gray-200">
-            <BriefingDrawer 
-              briefing={selectedBriefing}
-              activeTab={drawerTab}
-              onTabChange={setDrawerTab}
-              onClose={() => setSelectedBriefing(null)}
-              onUpdate={fetchBriefings}
-            />
-          </div>
         </div>
       )}
+
+      {/* Sync Progress Modal */}
+      <SyncProgressModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        progress={syncProgress}
+        connectionTitle={connectionTitle}
+      />
     </div>
   )
 }
-
 
 // BriefingCard Component
 function BriefingCard({ 
@@ -413,38 +676,53 @@ function BriefingCard({
       onClick={() => onSelect(briefing)}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
-            {briefing.title}
-          </h3>
-          <div className="flex items-center text-sm text-gray-600 space-x-4 mb-3">
-            <div className="flex items-center">
-              <CalendarIcon className="w-4 h-4 mr-1" />
-              {date}
-            </div>
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-1" />
-              {time}
-              {briefing.duration && ` (${briefing.duration} min)`}
-            </div>
+        <div className="flex items-start space-x-4 flex-1">
+          <div className={cn(
+            "flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center",
+            isUpcoming ? "bg-blue-100" : "bg-gray-100"
+          )}>
+            <Calendar className={cn(
+              "w-6 h-6",
+              isUpcoming ? "text-blue-600" : "text-gray-600"
+            )} />
           </div>
-          {/* Analyst chips */}
-          <div className="flex flex-wrap gap-2">
-            {briefing.analysts.slice(0, 3).map((analyst) => (
-              <div key={analyst.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs">
-                <span className="font-medium">
-                  {analyst.firstName} {analyst.lastName}
-                </span>
-                {analyst.company && (
-                  <span className="text-gray-500 ml-1">• {analyst.company}</span>
-                )}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
+              {briefing.title}
+            </h3>
+            <div className="flex items-center text-sm text-gray-600 space-x-4 mb-3">
+              <div className="flex items-center">
+                <CalendarIcon className="w-4 h-4 mr-1" />
+                {date}
               </div>
-            ))}
-            {briefing.analysts.length > 3 && (
-              <div className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-500">
-                +{briefing.analysts.length - 3} more
+              <div className="flex items-center">
+                <Clock className="w-4 h-4 mr-1" />
+                {time}
+                {briefing.duration && ` (${briefing.duration} min)`}
               </div>
-            )}
+              <div className="flex items-center">
+                <Users className="w-4 h-4 mr-1" />
+                {briefing.analysts.length} analyst{briefing.analysts.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+            {/* Analyst chips */}
+            <div className="flex flex-wrap gap-2">
+              {briefing.analysts.slice(0, 3).map((analyst) => (
+                <div key={analyst.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs">
+                  <span className="font-medium">
+                    {analyst.firstName} {analyst.lastName}
+                  </span>
+                  {analyst.company && (
+                    <span className="text-gray-500 ml-1">• {analyst.company}</span>
+                  )}
+                </div>
+              ))}
+              {briefing.analysts.length > 3 && (
+                <div className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-500">
+                  +{briefing.analysts.length - 3} more
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -491,7 +769,7 @@ function BriefingDrawer({
   const [transcript, setTranscript] = useState(briefing.transcript || '')
   const [notes, setNotes] = useState(briefing.notes || '')
   
-  const { date, time, isUpcoming } = formatDateTime(briefing.scheduledAt)
+  const { date, time } = formatDateTime(briefing.scheduledAt)
   
   const handleSaveTranscript = async () => {
     try {
@@ -555,22 +833,16 @@ function BriefingDrawer({
         </button>
         <button
           onClick={() => onTabChange('transcript')}
-          disabled={isUpcoming}
           className={cn(
             "flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors",
-            isUpcoming
-              ? "border-transparent text-gray-400 cursor-not-allowed"
-              : activeTab === 'transcript'
-                ? "border-blue-500 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+            activeTab === 'transcript'
+              ? "border-blue-500 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           )}
         >
           <div className="flex items-center justify-center">
             <FileText className="w-4 h-4 mr-2" />
             Transcript
-            {isUpcoming && (
-              <span className="ml-1 text-xs">(Future)</span>
-            )}
           </div>
         </button>
       </div>

@@ -1,63 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { createClient } from '@/lib/supabase/server'
+import { Database } from '@/types/supabase'
 
-const prisma = new PrismaClient()
+interface RouteParams {
+  params: { id: string }
+}
 
 // PATCH - Update calendar connection (active status and/or title)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
+    console.log('🔍 [Calendar Connection] PATCH request started for ID:', params.id)
+    
     const body = await request.json()
-    const { isActive, title } = body
+    const { isActive } = body // Remove title since it doesn't exist in the schema
     const connectionId = params.id
 
     // For now, we'll use a hardcoded user ID
     // In production, this should come from the session/auth
-    const userId = 'user-1'
+    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+
+    const supabase = await createClient()
 
     // Verify the connection belongs to the user
-    const connection = await prisma.calendarConnection.findFirst({
-      where: {
-        id: connectionId,
-        userId: userId,
-      },
-    })
+    const { data: connection, error: fetchError } = await supabase
+      .from('calendar_connections')
+      .select('id')
+      .eq('id', connectionId)
+      .eq('userId', userId)
+      .single()
 
-    if (!connection) {
+    if (fetchError || !connection) {
+      console.error('Error fetching calendar connection:', fetchError)
       return NextResponse.json(
-        { error: 'Calendar connection not found' },
+        { 
+          success: false,
+          error: 'Calendar connection not found or unauthorized' 
+        },
         { status: 404 }
       )
     }
 
     // Build update data object
-    const updateData: any = {
-      updatedAt: new Date(),
+    const updateData: Partial<Database['public']['Tables']['calendar_connections']['Update']> = {
+      updatedAt: new Date().toISOString()
     }
 
-    if (typeof isActive === 'boolean') {
+    if (isActive !== undefined) {
       updateData.isActive = isActive
     }
 
-    if (typeof title === 'string' && title.trim()) {
-      updateData.title = title.trim()
+    // Update the connection
+    const { data: updatedConnection, error: updateError } = await supabase
+      .from('calendar_connections')
+      .update(updateData)
+      .eq('id', connectionId)
+      .select()
+      .single()
+
+    if (updateError || !updatedConnection) {
+      console.error('❌ [Calendar Connection] Update failed:', updateError)
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to update calendar connection' 
+        },
+        { status: 500 }
+      )
     }
 
-    // Update the connection
-    const updatedConnection = await prisma.calendarConnection.update({
-      where: {
-        id: connectionId,
-      },
-      data: updateData,
+    console.log('✅ [Calendar Connection] Update successful:', updatedConnection.title)
+
+    return NextResponse.json({
+      success: true,
+      data: updatedConnection
     })
 
-    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error updating calendar connection:', error)
+    console.error('❌ [Calendar Connection] PATCH error:', error)
     return NextResponse.json(
-      { error: 'Failed to update calendar connection' },
+      { 
+        success: false,
+        error: 'Failed to update calendar connection' 
+      },
       { status: 500 }
     )
   }
@@ -66,42 +93,65 @@ export async function PATCH(
 // DELETE - Remove calendar connection
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: RouteParams
 ) {
   try {
+    console.log('🔍 [Calendar Connection] DELETE request started for ID:', params.id)
+    
     const connectionId = params.id
+    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
 
-    // For now, we'll use a hardcoded user ID
-    // In production, this should come from the session/auth
-    const userId = 'user-1'
+    const supabase = await createClient()
 
-    // Verify the connection belongs to the user
-    const connection = await prisma.calendarConnection.findFirst({
-      where: {
-        id: connectionId,
-        userId: userId,
-      },
-    })
+    // Verify the connection belongs to the user before deleting
+    const { data: connection, error: fetchError } = await supabase
+      .from('calendar_connections')
+      .select('id, title')
+      .eq('id', connectionId)
+      .eq('userId', userId)
+      .single()
 
-    if (!connection) {
+    if (fetchError || !connection) {
       return NextResponse.json(
-        { error: 'Calendar connection not found' },
+        { 
+          success: false,
+          error: 'Calendar connection not found' 
+        },
         { status: 404 }
       )
     }
 
-    // Delete the connection and all related meetings
-    await prisma.calendarConnection.delete({
-      where: {
-        id: connectionId,
-      },
+    // Delete the connection
+    const { error: deleteError } = await supabase
+      .from('calendar_connections')
+      .delete()
+      .eq('id', connectionId)
+
+    if (deleteError) {
+      console.error('❌ [Calendar Connection] Delete failed:', deleteError)
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Failed to delete calendar connection' 
+        },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗑️ [Calendar Connection] Deleted: ${connection.title}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Calendar connection deleted successfully'
     })
 
-    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting calendar connection:', error)
+    console.error('❌ [Calendar Connection] DELETE error:', error)
     return NextResponse.json(
-      { error: 'Failed to delete calendar connection' },
+      { 
+        success: false,
+        error: 'Failed to delete calendar connection' 
+      },
       { status: 500 }
     )
   }

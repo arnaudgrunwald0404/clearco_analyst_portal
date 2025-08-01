@@ -1,69 +1,58 @@
 import crypto from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
-const SECRET_KEY = process.env.ENCRYPTION_SECRET || 'your-secret-key-change-this-in-production'
-const IV_LENGTH = 16
-const SALT_LENGTH = 64
-const KEY_LENGTH = 32
+const SECRET_KEY = process.env.ENCRYPTION_SECRET || 'default-secret-key-change-in-production'
 
-function deriveKey(password: string, salt: Buffer): Buffer {
-  return crypto.pbkdf2Sync(password, salt, 100000, KEY_LENGTH, 'sha256')
+// Ensure we have a 32-byte key
+const getKey = () => {
+  const hash = crypto.createHash('sha256')
+  hash.update(SECRET_KEY)
+  return hash.digest()
 }
 
+/**
+ * Encrypts a string using AES-256-GCM
+ */
 export function encrypt(text: string): string {
   try {
-    // Generate random salt and IV
-    const salt = crypto.randomBytes(SALT_LENGTH)
-    const iv = crypto.randomBytes(IV_LENGTH)
+    const iv = crypto.randomBytes(16)
+    const key = getKey()
     
-    // Derive key from secret and salt
-    const key = deriveKey(SECRET_KEY, salt)
+    const cipher = crypto.createCipher('aes-256-gcm', key)
     
-    // Create cipher
-    const cipher = crypto.createCipherGCM(ALGORITHM, key, iv)
-    
-    // Encrypt the text
     let encrypted = cipher.update(text, 'utf8', 'hex')
     encrypted += cipher.final('hex')
     
-    // Get the authentication tag
     const authTag = cipher.getAuthTag()
     
-    // Combine salt, iv, authTag, and encrypted data
-    const combined = Buffer.concat([
-      salt,
-      iv,
-      authTag,
-      Buffer.from(encrypted, 'hex')
-    ])
-    
-    return combined.toString('base64')
+    // Combine iv, authTag, and encrypted data
+    const result = iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted
+    return result
   } catch (error) {
     console.error('Encryption error:', error)
     throw new Error('Failed to encrypt data')
   }
 }
 
+/**
+ * Decrypts a string using AES-256-GCM
+ */
 export function decrypt(encryptedData: string): string {
   try {
-    // Parse the base64 encoded data
-    const combined = Buffer.from(encryptedData, 'base64')
+    const parts = encryptedData.split(':')
+    if (parts.length !== 3) {
+      throw new Error('Invalid encrypted data format')
+    }
     
-    // Extract components
-    const salt = combined.subarray(0, SALT_LENGTH)
-    const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH)
-    const authTag = combined.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + 16)
-    const encrypted = combined.subarray(SALT_LENGTH + IV_LENGTH + 16)
+    const iv = Buffer.from(parts[0], 'hex')
+    const authTag = Buffer.from(parts[1], 'hex')
+    const encrypted = parts[2]
+    const key = getKey()
     
-    // Derive key from secret and salt
-    const key = deriveKey(SECRET_KEY, salt)
-    
-    // Create decipher
-    const decipher = crypto.createDecipherGCM(ALGORITHM, key, iv)
+    const decipher = crypto.createDecipher('aes-256-gcm', key)
     decipher.setAuthTag(authTag)
     
-    // Decrypt the data
-    let decrypted = decipher.update(encrypted, undefined, 'utf8')
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
     decrypted += decipher.final('utf8')
     
     return decrypted
@@ -73,12 +62,16 @@ export function decrypt(encryptedData: string): string {
   }
 }
 
-// Utility function to hash passwords or other sensitive data
-export function hash(data: string): string {
-  return crypto.createHash('sha256').update(data).digest('hex')
+/**
+ * Generates a secure random string
+ */
+export function generateSecureToken(length: number = 32): string {
+  return crypto.randomBytes(length).toString('hex')
 }
 
-// Utility function to generate secure random tokens
-export function generateToken(length: number = 32): string {
-  return crypto.randomBytes(length).toString('hex')
+/**
+ * Creates a SHA-256 hash of the input
+ */
+export function createHash(input: string): string {
+  return crypto.createHash('sha256').update(input).digest('hex')
 }

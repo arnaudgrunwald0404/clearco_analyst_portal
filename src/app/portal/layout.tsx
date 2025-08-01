@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, LogOut } from 'lucide-react'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
+import { useAuth } from '@/contexts/AuthContext'
+import BriefingSummary from '@/components/briefings/BriefingSummary'
 
 interface PortalLayoutProps {
   children: React.ReactNode
@@ -17,21 +19,42 @@ export default function PortalLayout({
   const [bannerImage, setBannerImage] = useState<string>('')
   const [bannerError, setBannerError] = useState<boolean>(false)
   const [companySettings, setCompanySettings] = useState<any>(null)
-  const [impersonatedAnalyst, setImpersonatedAnalyst] = useState<any>(null)
   const router = useRouter()
+  const { user, signOut } = useAuth()
 
-  // Load impersonated analyst from sessionStorage and set persistent banner per session
+  // Redirect if not authenticated or not an analyst
   useEffect(() => {
-    const stored = sessionStorage.getItem('impersonatedAnalyst')
-    if (stored) {
-      try {
-        setImpersonatedAnalyst(JSON.parse(stored))
-      } catch (error) {
-        console.error('Error parsing impersonated analyst:', error)
-      }
+    if (!user) {
+      router.push('/auth')
+      return
     }
     
-    // Get or set a banner image for this session (persist per session)
+    // Only allow ANALYST users in the portal
+    if (user.role !== 'ANALYST') {
+      router.push('/')
+      return
+    }
+  }, [user, router])
+
+  const handleLogout = async () => {
+    console.log('🚪 PORTAL LOGOUT: Signing out from analyst portal...')
+    
+    try {
+      // Clear session storage
+      sessionStorage.removeItem('portalBannerImage')
+      
+      // Call the real signOut function from AuthContext
+      await signOut()
+      console.log('✅ Portal logout successful - redirected to login page')
+    } catch (error) {
+      console.error('❌ Portal logout error:', error)
+      // Even if there's an error, we should still redirect to login
+      window.location.href = '/auth'
+    }
+  }
+
+  // Load banner image for this session (persist per session)
+  useEffect(() => {
     let sessionBanner = sessionStorage.getItem('portalBannerImage')
     if (!sessionBanner) {
       sessionBanner = getRandomBannerImagePath()
@@ -73,13 +96,13 @@ export default function PortalLayout({
     fetchCompanySettings()
   }, [])
 
-  // Use impersonated analyst data or fallback to default
-  const analystUser = impersonatedAnalyst || {
-    firstName: 'Sarah',
-    lastName: 'Chen',
-    email: 'sarah.chen@clearcompany.com',
-    company: companySettings?.companyName || 'ClearCompany',
-    title: 'Vice President Analyst'
+  // Show loading while checking authentication
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   // Create banner style with image or gradient fallback
@@ -103,15 +126,29 @@ export default function PortalLayout({
       >
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="absolute bottom-4 left-6 text-white">
-          <h1 className="text-2xl font-bold mb-1">Welcome back, {analystUser.firstName}!</h1>
-          <p className="text-lg opacity-90">{analystUser.title} at {analystUser.company}</p>
+          <h1 className="text-2xl font-bold mb-1">Welcome back, {user.name}!</h1>
+          <p className="text-lg opacity-90">Analyst Portal • {companySettings?.companyName || 'ClearCompany'}</p>
         </div>
         
-
+        {/* Logout Button */}
+        <div className="absolute top-4 right-6">
+          <button
+            onClick={handleLogout}
+            className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-all duration-200 backdrop-blur-sm border border-white border-opacity-30"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">Sign Out</span>
+          </button>
+        </div>
       </div>
 
-      {/* Content */}
+      {/* Briefing Summary */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <BriefingSummary />
+        </div>
+
+        {/* Main Content */}
         {children}
       </div>
     </div>

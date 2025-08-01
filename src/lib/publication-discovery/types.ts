@@ -13,7 +13,7 @@ export interface RawSearchResult {
   publishedDate?: string
   source: string
   domain: string
-  searchEngine: 'google' | 'bing' | 'linkedin' | 'twitter'
+  searchEngine: 'google' | 'bing' | 'linkedin' | 'twitter' | 'duckduckgo' | 'linkedin-public'
 }
 
 export interface PublicationAnalysis {

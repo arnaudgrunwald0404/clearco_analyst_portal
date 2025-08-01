@@ -1,82 +1,309 @@
 'use client'
 
-import { createContext, useContext, ReactNode, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { User } from '@supabase/supabase-js'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
-// Mock user data - you can change role to 'ANALYST' if needed
-const mockUser = {
-  id: 'admin-uuid-123',
-  email: 'admin@example.com',
-  user_metadata: {
-    first_name: 'Admin',
-    last_name: 'User'
-  }
-}
-
-const mockAdminProfile = {
-  id: 'admin-uuid-123',
-  role: 'ADMIN' as const,
-  first_name: 'Admin',
-  last_name: 'User',
-  company: 'ClearCompany',
-  email: 'admin@example.com'
-}
-
-const mockAnalystProfile = {
-  id: 'analyst-uuid-456',
-  role: 'ANALYST' as const,
-  first_name: 'Sarah',
-  last_name: 'Chen',
-  company: 'ClearCompany',
-  email: 'sarah.chen@clearcompany.com'
-}
-
-type User = typeof mockUser
-type UserProfile = {
+interface UserProfile {
   id: string
-  role: 'ADMIN' | 'EDITOR' | 'ANALYST'
-  first_name: string
-  last_name: string
-  company: string
   email: string
+  name: string
+  role: 'ADMIN' | 'EDITOR' | 'ANALYST'
+  company: string | null
+  profileImageUrl: string | null
+  createdAt: string
+  updatedAt: string
 }
-type UserRole = 'ADMIN' | 'EDITOR' | 'ANALYST'
 
 interface AuthContextType {
-  user: User | null
-  profile: UserProfile | null
+  user: UserProfile | null
   loading: boolean
+  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectTo?: string }>
+  signInWithGoogle: () => Promise<{ success: boolean; error?: string; redirect?: string }>
   signOut: () => Promise<void>
-  refreshProfile: () => Promise<void>
-  toggleRole: () => void
-  currentRole: 'ADMIN' | 'ANALYST'
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentRole, setCurrentRole] = useState<'ADMIN' | 'ANALYST'>('ADMIN')
-  
-  const toggleRole = () => {
-    setCurrentRole(currentRole === 'ADMIN' ? 'ANALYST' : 'ADMIN')
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (error) {
+          console.error('Error getting session:', error)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user) {
+          await loadUserProfile(session.user)
+        } else {
+          // No session, try localStorage fallback
+          const storedUser = localStorage.getItem('user')
+          if (storedUser) {
+            try {
+              const userData = JSON.parse(storedUser)
+              setUser(userData)
+              console.log('Loaded user from localStorage (no session)')
+            } catch (parseError) {
+              console.error('Error parsing stored user:', parseError)
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user:', error)
+        // Try localStorage fallback on any error
+        const storedUser = localStorage.getItem('user')
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser)
+            setUser(userData)
+            console.log('Loaded user from localStorage (error fallback)')
+          } catch (parseError) {
+            console.error('Error parsing stored user:', parseError)
+          }
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Auth loading timeout - forcing loading to false')
+      setLoading(false)
+    }, 10000) // 10 second timeout
+
+    loadUser()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, !!session)
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadUserProfile(session.user)
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null)
+        }
+      }
+    )
+
+    return () => {
+      clearTimeout(timeoutId)
+      subscription.unsubscribe()
+    }
+  }, [supabase])
+
+  const loadUserProfile = async (authUser: User) => {
+    try {
+      // Get user profile for role information
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+
+      if (profileError && profileError.code === 'PGRST116') {
+        // Profile doesn't exist, create one with role based on email domain
+        const email = authUser.email || ''
+        const emailDomain = email.split('@')[1]?.toLowerCase()
+        const emailName = email.split('@')[0]?.toLowerCase()
+        
+        // Determine role based on email
+        let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
+        
+        if (emailDomain === 'clearcompany.com') {
+          // Check if it's a fake analyst email
+          if (emailName === 'sarah.chen' || emailName === 'mike.johnson' || emailName === 'lisa.wang') {
+            role = 'ANALYST'
+          } else {
+            role = 'ADMIN'
+          }
+        } else if (emailDomain === 'analystcompany.com') {
+          // All @analystcompany.com users are ANALYST
+          role = 'ANALYST'
+        }
+        
+        const defaultProfile = {
+          id: authUser.id,
+          role: role,
+          first_name: authUser.user_metadata?.first_name || 
+                     authUser.email?.split('@')[0] || 'User',
+          last_name: authUser.user_metadata?.last_name || '',
+          company: authUser.user_metadata?.company || 
+                  emailDomain || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+
+        // Use service role client to bypass RLS
+        const serviceClient = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+
+        const { error: createError } = await serviceClient
+          .from('user_profiles')
+          .insert(defaultProfile)
+
+        if (createError) {
+          console.error('Error creating user profile with service role:', createError)
+          // Don't set user if profile creation fails
+          return
+        }
+
+        // Set user with default profile
+        const userData: UserProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          name: defaultProfile.first_name + ' ' + defaultProfile.last_name,
+          role: defaultProfile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
+          company: defaultProfile.company,
+          profileImageUrl: authUser.user_metadata?.avatar_url || null,
+          createdAt: authUser.created_at,
+          updatedAt: new Date().toISOString()
+        }
+
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
+      } else if (profile) {
+        // Set user with existing profile
+        const userData: UserProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          name: (profile.first_name || '') + ' ' + (profile.last_name || ''),
+          role: profile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
+          company: profile.company,
+          profileImageUrl: authUser.user_metadata?.avatar_url || null,
+          createdAt: authUser.created_at,
+          updatedAt: profile.updated_at
+        }
+
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
+      } else if (profileError) {
+        // Handle other profile errors
+        console.error('Error loading user profile:', profileError)
+        // Don't set user if profile loading fails
+        return
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error)
+      // Don't set user if there's an error
+      return
+    }
   }
-  
-  const profile = currentRole === 'ADMIN' ? mockAdminProfile : mockAnalystProfile
-  
-  // Always return mock data - no authentication needed
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.user) {
+        setUser(result.user)
+        localStorage.setItem('user', JSON.stringify(result.user))
+        return { 
+          success: true, 
+          redirectTo: result.redirectTo 
+        }
+      } else {
+        return { 
+          success: false, 
+          error: result.error || 'Login failed' 
+        }
+      }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { 
+        success: false, 
+        error: 'An unexpected error occurred' 
+      }
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`
+        }
+      })
+
+      if (error) {
+        return { 
+          success: false, 
+          error: error.message 
+        }
+      }
+
+      return { success: true, redirect: data.url }
+    } catch (error) {
+      console.error('Google sign in error:', error)
+      return { 
+        success: false, 
+        error: 'An unexpected error occurred' 
+      }
+    }
+  }
+
+  const signOut = async () => {
+    try {
+      // Sign out from Supabase auth (client-side only)
+      await supabase.auth.signOut()
+      
+      // Clear local storage and state
+      localStorage.removeItem('user')
+      setUser(null)
+      
+      // Redirect to login
+      window.location.href = '/auth'
+    } catch (error) {
+      console.error('Sign out error:', error)
+      // Even if there's an error, clear local state and redirect
+      localStorage.removeItem('user')
+      setUser(null)
+      window.location.href = '/auth'
+    }
+  }
+
+  const refreshUser = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      
+      if (authUser) {
+        await loadUserProfile(authUser)
+      } else {
+        await signOut()
+      }
+    } catch (error) {
+      console.error('Error refreshing user:', error)
+    }
+  }
+
   const value = {
-    user: mockUser,
-    profile,
-    loading: false,
-    signOut: async () => {
-      // Mock sign out - just log
-      console.log('Mock sign out called')
-    },
-    refreshProfile: async () => {
-      // Mock refresh - just log
-      console.log('Mock profile refresh called')
-    },
-    toggleRole,
-    currentRole
+    user,
+    loading,
+    signIn,
+    signInWithGoogle,
+    signOut,
+    refreshUser
   }
 
   return (

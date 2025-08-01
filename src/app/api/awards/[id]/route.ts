@@ -1,33 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 
-// Check for required environment variables
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
-}
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+interface RouteParams {
+  params: Promise<{ id: string }>
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
-    const award = await prisma.award.findUnique({
-      where: { id }
-    })
-    if (!award) {
+    const supabase = await createClient()
+
+    const { data: award, error } = await supabase
+      .from('"Award"')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !award) {
       return NextResponse.json(
         { error: 'Award not found' },
         { status: 404 }
       )
     }
+
     return NextResponse.json({
       success: true,
       data: award
     })
+
   } catch (error) {
     console.error('Error fetching award:', error)
     return NextResponse.json(
@@ -39,47 +42,73 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
     const body = await request.json()
     const {
-      awardName,
-      publicationDate,
-      processStartDate,
-      contactInfo,
+      name,
+      link,
+      organization,
+      productTopics,
       priority,
-      topics
+      submissionDate,
+      publicationDate,
+      owner,
+      status,
+      cost,
+      notes
     } = body
-    if (!awardName || !publicationDate || !processStartDate || !contactInfo) {
+
+    // Validate required fields
+    if (!name || !publicationDate || !submissionDate || !organization) {
       return NextResponse.json(
-        { error: 'Award name, publication date, process start date, and contact information are required' },
+        { error: 'Award name, publication date, submission date, and organization are required' },
         { status: 400 }
       )
     }
-    const award = await prisma.award.update({
-      where: { id },
-      data: {
-        awardName,
-        publicationDate: new Date(publicationDate),
-        processStartDate: new Date(processStartDate),
-        contactInfo,
-        priority: priority || 'MEDIUM',
-        topics: topics || ''
-      }
-    })
+
+    const supabase = await createClient()
+
+    const updateData = {
+      name,
+      link: link || null,
+      organization,
+      productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
+      priority: priority || 'MEDIUM',
+      submissionDate: new Date(submissionDate).toISOString(),
+      publicationDate: new Date(publicationDate).toISOString(),
+      owner: owner || null,
+      status: status || 'EVALUATING',
+      cost: cost || null,
+      notes: notes || null,
+      updatedAt: new Date().toISOString()
+    }
+
+    const { data: award, error } = await supabase
+      .from('"Award"')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !award) {
+      console.error('Error updating award:', error)
+      return NextResponse.json(
+        { error: 'Failed to update award or award not found' },
+        { status: error?.code === '23503' ? 404 : 500 }
+      )
+    }
+
+    console.log(`🏆 Updated award: ${award.name}`)
+
     return NextResponse.json({
       success: true,
       data: award
     })
+
   } catch (error) {
-    if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Award not found' },
-        { status: 404 }
-      )
-    }
     console.error('Error updating award:', error)
     return NextResponse.json(
       { error: 'Failed to update award' },
@@ -90,24 +119,33 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
-    await prisma.award.delete({
-      where: { id }
-    })
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('"Award"')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting award:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete award' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗑️ Deleted award: ${id}`)
+
     return NextResponse.json({
       success: true,
       message: 'Award deleted successfully'
     })
+
   } catch (error) {
-    if (typeof error === 'object' && error !== null && 'code' in error && (error as any).code === 'P2025') {
-      return NextResponse.json(
-        { error: 'Award not found' },
-        { status: 404 }
-      )
-    }
     console.error('Error deleting award:', error)
     return NextResponse.json(
       { error: 'Failed to delete award' },

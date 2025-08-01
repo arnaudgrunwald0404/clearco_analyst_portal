@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
+
+interface RouteParams {
+  params: Promise<{ id: string }>
+}
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
-    const event = await prisma.event.findUnique({
-      where: { id }
-    })
+    const supabase = await createClient()
 
-    if (!event) {
+    const { data: event, error } = await supabase
+      .from('Event')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (error || !event) {
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
@@ -41,7 +49,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
@@ -67,38 +75,48 @@ export async function PUT(
       )
     }
 
-    const event = await prisma.event.update({
-      where: { id },
-      data: {
-        eventName,
-        link: link || null,
-        type: type || 'CONFERENCE',
-        audienceGroups: audienceGroups ? JSON.stringify(audienceGroups) : null,
-        startDate: new Date(startDate),
-        participationTypes: participationTypes ? JSON.stringify(participationTypes) : null,
-        owner: owner || null,
-        location: location || null,
-        status: status || 'EVALUATING',
-        notes: notes || null
-      }
-    })
+    const supabase = await createClient()
 
-    // Parse JSON fields for response
-    const eventWithParsedFields = {
-      ...event,
-      audienceGroups: event.audienceGroups ? JSON.parse(event.audienceGroups) : [],
-      participationTypes: event.participationTypes ? JSON.parse(event.participationTypes) : []
+    const updateData = {
+      eventName: eventName.trim(),
+      link: link?.trim() || null,
+      type: type || 'CONFERENCE',
+      audienceGroups: audienceGroups ? JSON.stringify(audienceGroups) : null,
+      startDate: new Date(startDate).toISOString(),
+      participationTypes: participationTypes ? JSON.stringify(participationTypes) : null,
+      owner: owner?.trim() || null,
+      location: location?.trim() || null,
+      status: status || 'EVALUATING',
+      notes: notes?.trim() || null,
+      updatedAt: new Date().toISOString()
     }
+
+    const { data: event, error } = await supabase
+      .from('Event')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error || !event) {
+      console.error('Error updating event:', error)
+      return NextResponse.json(
+        { error: 'Failed to update event or event not found' },
+        { status: error?.code === '23503' ? 404 : 500 }
+      )
+    }
+
+    console.log(`📅 Updated event: ${event.eventName}`)
 
     return NextResponse.json({
       success: true,
-      data: eventWithParsedFields
+      data: event
     })
 
   } catch (error) {
     console.error('Error updating event:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update event' },
+      { error: 'Failed to update event' },
       { status: 500 }
     )
   }
@@ -106,13 +124,26 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteParams
 ) {
   try {
     const { id } = await params
-    await prisma.event.delete({
-      where: { id }
-    })
+    const supabase = await createClient()
+
+    const { error } = await supabase
+      .from('Event')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting event:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete event' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`🗑️ Deleted event: ${id}`)
 
     return NextResponse.json({
       success: true,
