@@ -148,17 +148,6 @@ test('Analyst Page - Data Loading Tests', async (t) => {
 
 // Test Suite: Social Profile Icons
 test('Analyst Page - Social Profile Icons', async (t) => {
-  await t.test('should display LinkedIn icon for legacy linkedIn field', async () => {
-    const analyst = {
-      linkedIn: 'https://linkedin.com/in/sarahchen',
-      socialHandles: []
-    }
-    
-    // Test that LinkedIn icon should be rendered
-    assert.ok(analyst.linkedIn)
-    assert.strictEqual(analyst.socialHandles.length, 0)
-  })
-
   await t.test('should display Twitter icon for legacy twitter field', async () => {
     const analyst = {
       twitter: '@sarahchen_hr',
@@ -170,17 +159,7 @@ test('Analyst Page - Social Profile Icons', async (t) => {
     assert.strictEqual(analyst.socialHandles.length, 0)
   })
 
-  await t.test('should display multiple LinkedIn icons from socialHandles', async () => {
-    const analyst = {
-      socialHandles: [
-        { platform: 'LINKEDIN', handle: 'https://linkedin.com/in/sarahchen1', isActive: true },
-        { platform: 'LINKEDIN', handle: 'https://linkedin.com/in/sarahchen2', isActive: true }
-      ]
-    }
-    
-    const linkedinHandles = analyst.socialHandles.filter(h => h.platform === 'LINKEDIN')
-    assert.strictEqual(linkedinHandles.length, 2)
-  })
+
 
   await t.test('should display multiple Twitter icons from socialHandles', async () => {
     const analyst = {
@@ -238,23 +217,7 @@ test('Analyst Page - Social Profile Icons', async (t) => {
 
 // Test Suite: Social Media Search
 test('Analyst Page - Social Media Search', async (t) => {
-  await t.test('should search for LinkedIn profile', async () => {
-    const response = await fetch('/api/analysts/search-social', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        analystId: 'test-analyst-1',
-        analystName: 'Sarah Chen',
-        company: 'Gartner',
-        platform: 'linkedin'
-      })
-    })
-    
-    const result = await response.json()
-    assert.strictEqual(response.ok, true)
-    assert.strictEqual(result.success, true)
-    assert.ok(result.result && result.result.confidence > 0)
-  })
+
 
   await t.test('should search for Twitter profile', async () => {
     const response = await fetch('/api/analysts/search-social', {

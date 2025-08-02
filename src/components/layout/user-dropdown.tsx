@@ -15,52 +15,8 @@ export function UserDropdown({ isOpen, onToggle, onClose }: UserDropdownProps) {
   const { user, signOut } = useAuth()
 
   const handleLogout = async () => {
-    console.log('🚪 LOGOUT: Signing out user...')
-    
-    // Close dropdown first
     onClose()
-    
-    try {
-      console.log('📡 Calling logout API...')
-      // Call the logout API route
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      console.log('📡 Logout API response:', response.status, response.statusText)
-
-      if (response.ok) {
-        const data = await response.json()
-        console.log('📡 Logout API data:', data)
-        
-        // Clear local storage
-        localStorage.removeItem('user')
-        console.log('🗑️ Local storage cleared')
-        
-        // Force redirect to login page
-        console.log('🔄 Redirecting to login page...')
-        // Use multiple redirect methods to ensure it works
-        window.location.replace('/auth')
-        // Fallback if replace doesn't work
-        setTimeout(() => {
-          window.location.href = '/auth'
-        }, 50)
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Logout failed:', response.status, errorData)
-        // Fallback to direct redirect
-        console.log('🔄 Fallback redirect...')
-        window.location.replace('/auth')
-      }
-    } catch (error) {
-      console.error('❌ Logout error:', error)
-      // Even if there's an error, we should still redirect to login
-      console.log('🔄 Error fallback redirect...')
-      window.location.replace('/auth')
-    }
+    await signOut()
   }
 
   // Generate user initials from name or email

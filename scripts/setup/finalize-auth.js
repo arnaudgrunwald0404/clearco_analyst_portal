@@ -73,7 +73,7 @@ async function finalizeAuth() {
       
       // Update password
       const { error: updateError } = await supabase.auth.admin.updateUserById(existingUser.id, {
-        password: '3tts3tte'
+        password: process.env.DEFAULT_ADMIN_PASSWORD || 'change-me-in-production'
       })
       
       if (updateError) {
@@ -133,7 +133,7 @@ async function finalizeAuth() {
       
       const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: 'agrunwald@clearcompany.com',
-        password: '3tts3tte',
+        password: process.env.DEFAULT_ADMIN_PASSWORD || 'change-me-in-production',
         email_confirm: true, // Skip email confirmation
         user_metadata: {
           first_name: 'Arnaud',
@@ -178,8 +178,8 @@ async function finalizeAuth() {
   console.log('🎯 Authentication System Finalized!')
   console.log('')
   console.log('🔑 Primary Login Credentials:')
-  console.log('  Admin: agrunwald@clearcompany.com / 3tts3tte')
-  console.log('  Analyst: sarah.chen@clearcompany.com / password')
+  console.log(`  Admin: agrunwald@clearcompany.com / ${process.env.DEFAULT_ADMIN_PASSWORD || 'change-me-in-production'}`)
+  console.log(`  Analyst: sarah.chen@clearcompany.com / ${process.env.DEFAULT_ANALYST_PASSWORD || 'change-me-in-production'}`)
   console.log('')
   console.log('🏠 Admin users will be redirected to: /')
   console.log('📊 Analyst users will be redirected to: /portal')

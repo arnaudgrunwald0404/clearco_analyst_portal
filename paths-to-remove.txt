@@ -1,0 +1,7 @@
+.env
+.env-bis
+.env.backup
+logs/db_cluster-19-07-2025@06-28-47.backup
+logs/db_cluster-20-07-2025@04-57-37.backup
+public/db_cluster-29-07-2025@04-32-45.backup
+public/db_cluster-30-07-2025@06-47-36.backup

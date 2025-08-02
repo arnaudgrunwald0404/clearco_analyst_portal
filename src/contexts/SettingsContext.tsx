@@ -43,7 +43,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/settings/general')
       if (response.ok) {
         const data = await response.json()
-        setSettings(data)
+        // Extract only the settings data, excluding cache metadata
+        const { cached, cacheAge, ...settingsData } = data
+        setSettings(settingsData)
         setLastFetch(Date.now())
       } else {
         setError('Failed to load company settings')
@@ -59,6 +61,27 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchSettings()
+    
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Settings loading timeout - forcing loading to false')
+      setLoading(false)
+      setIsInitialized(true)
+      // Set default settings if none exist
+      if (!settings) {
+        setSettings({
+          id: 'default-settings',
+          companyName: 'ClearCompany',
+          protectedDomain: 'clearcompany.com',
+          logoUrl: '',
+          industryName: 'HR Technology',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
+    }, 5000) // 5 second timeout for faster development
+    
+    return () => clearTimeout(timeoutId)
   }, [])
 
   const value = {

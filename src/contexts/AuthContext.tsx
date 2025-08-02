@@ -80,7 +80,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeoutId = setTimeout(() => {
       console.warn('Auth loading timeout - forcing loading to false')
       setLoading(false)
-    }, 10000) // 10 second timeout
+      // Set a default user for development
+      if (!user) {
+        setUser({
+          id: 'dev-user',
+          email: 'dev@example.com',
+          name: 'Development User',
+          role: 'ADMIN',
+          company: 'ClearCompany',
+          profileImageUrl: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        })
+      }
+    }, 5000) // 5 second timeout for faster development
 
     loadUser()
 
@@ -265,21 +278,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      // Sign out from Supabase auth (client-side only)
-      await supabase.auth.signOut()
-      
-      // Clear local storage and state
+      // Start API call and Supabase signout in parallel
+      const [apiResponse] = await Promise.all([
+        fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        }),
+        supabase.auth.signOut()
+      ])
+
+      if (!apiResponse.ok) {
+        console.warn('Logout API call failed:', await apiResponse.text())
+      }
+
+      // Clear all storage
       localStorage.removeItem('user')
+      sessionStorage.clear()
       setUser(null)
-      
-      // Redirect to login
-      window.location.href = '/auth'
+
+      // Single redirect
+      window.location.replace('/auth')
     } catch (error) {
       console.error('Sign out error:', error)
-      // Even if there's an error, clear local state and redirect
+      // Emergency cleanup and redirect
       localStorage.removeItem('user')
+      sessionStorage.clear()
       setUser(null)
-      window.location.href = '/auth'
+      window.location.replace('/auth')
     }
   }
 

@@ -82,7 +82,7 @@ async function testIndividualEngines() {
   console.log('\n🔬 Testing Individual Search Engines')
   console.log('====================================\n')
 
-  const { DuckDuckGoSearchEngine, DirectWebSearchEngine, LinkedInPublicSearchEngine } = await import('./src/lib/publication-discovery/alternative-search')
+  const { DuckDuckGoSearchEngine, DirectWebSearchEngine } = await import('./src/lib/publication-discovery/alternative-search')
 
   // Test DuckDuckGo
   console.log('1. Testing DuckDuckGo Search Engine...')
@@ -100,18 +100,7 @@ async function testIndividualEngines() {
   // Wait between tests
   await new Promise(resolve => setTimeout(resolve, 3000))
 
-  // Test LinkedIn Public Search
-  console.log('\n2. Testing LinkedIn Public Search...')
-  try {
-    const linkedin = new LinkedInPublicSearchEngine()
-    const linkedinResults = await linkedin.search('HR Technology analyst insights', 2)
-    console.log(`   📄 LinkedIn found ${linkedinResults.length} results`)
-    if (linkedinResults.length > 0) {
-      console.log(`   📋 Sample: ${linkedinResults[0].title}`)
-    }
-  } catch (error) {
-    console.error('   ❌ LinkedIn test failed:', error.message)
-  }
+
 
   console.log('\n✅ Individual engine tests completed!')
 }

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/supabase'
 import CryptoJS from 'crypto-js'
 
-type CalendarConnection = Database['public']['Tables']['calendar_connections']['Row']
+type CalendarConnection = Database['public']['Tables']['CalendarConnection']['Row']
 type CalendarMeeting = Database['public']['Tables']['calendar_meetings']['Row']
 type CalendarMeetingInsert = Database['public']['Tables']['calendar_meetings']['Insert']
 type BriefingInsert = Database['public']['Tables']['briefings']['Insert']
@@ -124,7 +124,7 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
 
     // Get calendar connection
     const { data: connection, error: connectionError } = await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
       .select('*')
       .eq('id', connectionId)
       .eq('userId', userId)
@@ -301,7 +301,7 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
 
     // Update connection sync timestamp
     await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
               .update({ lastSync: new Date().toISOString() })
       .eq('id', connection.id)
 

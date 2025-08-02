@@ -1,6 +1,5 @@
 import { RawSearchResult, SearchQuery } from './types'
 import { RATE_LIMITS, SEARCH_TEMPLATES } from './config'
-import { calculateTitleSimilarity, removeDuplicateResults } from '../utils/similarity'
 
 export abstract class BaseSearchEngine {
   protected lastRequestTime: number = 0
@@ -69,6 +68,10 @@ export class GoogleSearchEngine extends BaseSearchEngine {
     super('google')
     this.apiKey = process.env.GOOGLE_SEARCH_API_KEY || ''
     this.searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID || ''
+  }
+
+  isConfigured(): boolean {
+    return Boolean(this.apiKey && this.searchEngineId)
   }
 
   async search(query: string, maxResults: number = 10): Promise<RawSearchResult[]> {
@@ -158,31 +161,7 @@ export class BingSearchEngine extends BaseSearchEngine {
   }
 }
 
-export class LinkedInSearchEngine extends BaseSearchEngine {
-  constructor() {
-    super('linkedin')
-  }
 
-  async search(query: string, maxResults: number = 10): Promise<RawSearchResult[]> {
-    await this.enforceRateLimit()
-
-    try {
-      // Use Google to search LinkedIn specifically
-      const linkedinQuery = `site:linkedin.com ${query}`
-      const googleEngine = new GoogleSearchEngine()
-      const results = await googleEngine.search(linkedinQuery, maxResults)
-      
-      return results.map(result => ({
-        ...result,
-        source: 'LinkedIn Search',
-        searchEngine: 'linkedin' as const
-      }))
-    } catch (error) {
-      console.error('LinkedIn search error:', error)
-      return []
-    }
-  }
-}
 
 export class ComprehensiveSearchEngine {
   private engines: BaseSearchEngine[]
@@ -190,8 +169,7 @@ export class ComprehensiveSearchEngine {
   constructor() {
     this.engines = [
       new GoogleSearchEngine(),
-      new BingSearchEngine(),
-      new LinkedInSearchEngine()
+      new BingSearchEngine()
     ]
   }
 
@@ -213,7 +191,7 @@ export class ComprehensiveSearchEngine {
     }
 
     // Remove duplicates and limit results
-    const uniqueResults = removeDuplicateResults(allResults)
+    const uniqueResults = this.removeDuplicates(allResults)
     return uniqueResults.slice(0, maxResults)
   }
 
@@ -239,7 +217,7 @@ export class ComprehensiveSearchEngine {
       }
     }
 
-    return removeDuplicateResults(allResults)
+    return this.removeDuplicates(allResults)
   }
 
   /**
@@ -283,5 +261,50 @@ export class ComprehensiveSearchEngine {
     return queries.slice(0, 15) // Limit to prevent rate limiting
   }
 
+  /**
+   * Removes duplicate results based on URL and title similarity
+   */
+  private removeDuplicates(results: RawSearchResult[]): RawSearchResult[] {
+    const seen = new Set<string>()
+    const unique: RawSearchResult[] = []
 
+    for (const result of results) {
+      // Check for exact URL duplicates
+      if (seen.has(result.url)) {
+        continue
+      }
+
+      // Check for title similarity (simple approach)
+      const isDuplicate = unique.some(existing => {
+        const titleSimilarity = this.calculateTitleSimilarity(
+          existing.title.toLowerCase(),
+          result.title.toLowerCase()
+        )
+        return titleSimilarity > 0.8
+      })
+
+      if (!isDuplicate) {
+        seen.add(result.url)
+        unique.push(result)
+      }
+    }
+
+    return unique
+  }
+
+  /**
+   * Calculates title similarity for duplicate detection
+   */
+  private calculateTitleSimilarity(title1: string, title2: string): number {
+    const words1 = title1.split(/\s+/)
+    const words2 = title2.split(/\s+/)
+    
+    const commonWords = words1.filter(word => 
+      words2.includes(word) && word.length > 3
+    ).length
+    
+    const totalWords = Math.max(words1.length, words2.length)
+    
+    return totalWords > 0 ? commonWords / totalWords : 0
+  }
 }

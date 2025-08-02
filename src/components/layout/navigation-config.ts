@@ -9,7 +9,8 @@ import {
   Calendar,
   Award,
   CalendarDays,
-  Clock
+  Clock,
+  FileText
 } from 'lucide-react'
 
 export interface NavigationItem {
@@ -23,6 +24,7 @@ export interface NavigationItem {
 export const mainNavigation: NavigationItem[] = [
   { name: 'Overview', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
+  { name: 'Publications', href: '/publications', icon: FileText },
   { name: 'Briefings', href: '/briefings', icon: Calendar },
   { name: 'Briefings due', href: '/briefings/due', icon: Clock },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },

@@ -44,7 +44,7 @@ export async function PATCH(
     }
 
     const { data: actionItem, error } = await supabase
-      .from('action_items')
+      .from('ActionItem')
       .update(updateData)
       .eq('id', id)
       .select(`
@@ -114,7 +114,7 @@ export async function DELETE(
     const supabase = await createClient()
 
     const { error } = await supabase
-      .from('action_items')
+      .from('ActionItem')
       .delete()
       .eq('id', id)
 
@@ -151,7 +151,7 @@ export async function GET(
     const supabase = await createClient()
 
     const { data: actionItem, error } = await supabase
-      .from('action_items')
+      .from('ActionItem')
       .select(`
         *,
         briefings(

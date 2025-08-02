@@ -1,0 +1,207 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { GoogleSearchEngine } from '@/lib/publication-discovery/search-engines'
+
+describe('GoogleSearchEngine', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    // Clear environment variables before each test
+    vi.resetModules()
+    process.env = { ...originalEnv }
+  })
+
+  afterEach(() => {
+    // Restore environment variables after each test
+    process.env = originalEnv
+    vi.restoreAllMocks()
+  })
+
+  describe('Configuration', () => {
+    it('should handle missing API key', () => {
+      // Remove API key from environment
+      delete process.env.GOOGLE_SEARCH_API_KEY
+      process.env.GOOGLE_SEARCH_ENGINE_ID = 'test-engine-id'
+
+      const searchEngine = new GoogleSearchEngine()
+      expect(searchEngine.isConfigured()).toBe(false)
+    })
+
+    it('should handle missing search engine ID', () => {
+      // Remove search engine ID from environment
+      process.env.GOOGLE_SEARCH_API_KEY = 'test-api-key'
+      delete process.env.GOOGLE_SEARCH_ENGINE_ID
+
+      const searchEngine = new GoogleSearchEngine()
+      expect(searchEngine.isConfigured()).toBe(false)
+    })
+
+    it('should be properly configured with both API key and search engine ID', () => {
+      process.env.GOOGLE_SEARCH_API_KEY = 'test-api-key'
+      process.env.GOOGLE_SEARCH_ENGINE_ID = 'test-engine-id'
+
+      const searchEngine = new GoogleSearchEngine()
+      expect(searchEngine.isConfigured()).toBe(true)
+    })
+  })
+
+  describe('Search Functionality', () => {
+    beforeEach(() => {
+      process.env.GOOGLE_SEARCH_API_KEY = 'test-api-key'
+      process.env.GOOGLE_SEARCH_ENGINE_ID = 'test-engine-id'
+    })
+
+    it('should return empty array when not configured', async () => {
+      delete process.env.GOOGLE_SEARCH_API_KEY
+      const searchEngine = new GoogleSearchEngine()
+      const results = await searchEngine.search('test query')
+      expect(results).toEqual([])
+    })
+
+    it('should handle API errors gracefully', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      
+      // Mock fetch to simulate API error
+      global.fetch = vi.fn().mockRejectedValue(new Error('API Error'))
+      
+      const results = await searchEngine.search('test query')
+      expect(results).toEqual([])
+    })
+
+    it('should handle empty API response', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      
+      // Mock fetch to return empty items
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: [] })
+      })
+      
+      const results = await searchEngine.search('test query')
+      expect(results).toEqual([])
+    })
+
+    it('should transform Google results correctly', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      
+      const mockApiResponse = {
+        items: [{
+          title: 'Test Title',
+          link: 'https://example.com/article',
+          snippet: 'Test snippet',
+          pagemap: {
+            metatags: [{
+              'article:published_time': '2023-01-01'
+            }]
+          }
+        }]
+      }
+
+      // Mock fetch to return test data
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockApiResponse)
+      })
+      
+      const results = await searchEngine.search('test query')
+      expect(results).toHaveLength(1)
+      expect(results[0]).toEqual({
+        title: 'Test Title',
+        url: 'https://example.com/article',
+        snippet: 'Test snippet',
+        publishedDate: '2023-01-01',
+        source: 'Google Search',
+        domain: 'example.com',
+        searchEngine: 'google'
+      })
+    })
+
+    it('should respect maxResults parameter', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      const maxResults = 5
+      
+      // Mock fetch to verify the URL contains the correct num parameter
+      global.fetch = vi.fn().mockImplementation((url) => {
+        expect(url).toContain(`num=${maxResults}`)
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ items: [] })
+        })
+      })
+      
+      await searchEngine.search('test query', maxResults)
+      expect(fetch).toHaveBeenCalled()
+    })
+
+    it('should handle non-200 API responses', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      
+      // Mock fetch to return a 403 error
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403
+      })
+      
+      const results = await searchEngine.search('test query')
+      expect(results).toEqual([])
+    })
+
+    it('should enforce rate limiting', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      const startTime = Date.now()
+      
+      // Mock fetch to return success
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: [] })
+      })
+      
+      // Make two consecutive requests
+      await searchEngine.search('query 1')
+      await searchEngine.search('query 2')
+      
+      const timeDiff = Date.now() - startTime
+      expect(timeDiff).toBeGreaterThanOrEqual(1000) // Assuming 1 second rate limit
+    })
+  })
+
+  describe('URL Construction', () => {
+    it('should construct valid search URLs', async () => {
+      process.env.GOOGLE_SEARCH_API_KEY = 'test-api-key'
+      process.env.GOOGLE_SEARCH_ENGINE_ID = 'test-engine-id'
+      
+      const searchEngine = new GoogleSearchEngine()
+      
+      // Mock fetch to capture and verify the URL
+      global.fetch = vi.fn().mockImplementation((url) => {
+        expect(url).toMatch(/^https:\/\/www\.googleapis\.com\/customsearch\/v1/)
+        expect(url).toContain('key=test-api-key')
+        expect(url).toContain('cx=test-engine-id')
+        expect(url).toContain('q=test%20query') // URL encoded query
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ items: [] })
+        })
+      })
+      
+      await searchEngine.search('test query')
+      expect(fetch).toHaveBeenCalled()
+    })
+
+    it('should properly encode special characters in search query', async () => {
+      const searchEngine = new GoogleSearchEngine()
+      const specialQuery = 'test & query + special!'
+      
+      // Mock fetch to verify URL encoding
+      global.fetch = vi.fn().mockImplementation((url) => {
+        expect(url).toContain(encodeURIComponent(specialQuery))
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ items: [] })
+        })
+      })
+      
+      await searchEngine.search(specialQuery)
+      expect(fetch).toHaveBeenCalled()
+    })
+  })
+})

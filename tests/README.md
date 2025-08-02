@@ -14,13 +14,13 @@ Tests for the main analyst detail page functionality including:
 - ✅ **Load social handles data**: Verifies multiple social profile data loading
 
 #### Social Profile Icons Tests
-- ✅ **Legacy field support**: Tests LinkedIn/Twitter icons from legacy fields
+- ✅ **Legacy field support**: Tests Twitter icons from legacy fields
 - ✅ **Multiple social handles**: Tests rendering multiple icons per platform
 - ✅ **Social handles preference**: Verifies new socialHandles take precedence over legacy fields
 - ✅ **URL generation**: Tests proper URL construction for social platforms
 
 #### Social Media Search Tests
-- ✅ **LinkedIn profile search**: Tests AI-powered LinkedIn profile discovery
+
 - ✅ **Twitter profile search**: Tests AI-powered Twitter profile discovery
 - ✅ **Error handling**: Tests graceful handling of search API failures
 

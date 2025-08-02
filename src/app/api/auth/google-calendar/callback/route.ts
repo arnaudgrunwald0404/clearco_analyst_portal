@@ -153,21 +153,22 @@ export async function GET(request: NextRequest) {
       const supabase = await createClient()
       
       let { data: user, error: userError } = await supabase
-        .from('users')
+        .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (!user && !userError) {
-        console.log('👤 [CALENDAR OAUTH] User not found, creating new user...')
+      // PGRST116 means no rows found, which is expected for new users
+      if (!user && (userError?.code === 'PGRST116' || !userError)) {
+        console.log('👤 [CALENDAR OAUTH] User not found, creating new user profile...')
         const { data: newUser, error: createError } = await supabase
-          .from('users')
+          .from('user_profiles')
           .insert({
             id: userId,
-            email: userInfo.data.email,
-            name: userInfo.data.name || userInfo.data.email?.split('@')[0] || 'User',
-            password: 'oauth-user-no-password', // Placeholder for OAuth users
-            role: 'ADMIN', // Default role for OAuth users
+            first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
+            last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
+            company: userInfo.data.hd || null, // Google hosted domain (company)
+            role: 'ADMIN' // Default role for OAuth users
           })
           .select()
           .single()
@@ -177,14 +178,15 @@ export async function GET(request: NextRequest) {
         }
         
         user = newUser
-        console.log('✅ [CALENDAR OAUTH] User created successfully:', user.email)
+        console.log('✅ [CALENDAR OAUTH] User profile created successfully:', user.email)
       } else if (user) {
-        console.log('✅ [CALENDAR OAUTH] User already exists:', user.email)
+        console.log('✅ [CALENDAR OAUTH] User profile already exists:', user.email)
       } else {
+        // Only throw error if it's not a "not found" error
         throw userError
       }
     } catch (userError) {
-      console.error('❌ [CALENDAR OAUTH] Error ensuring user exists:', userError)
+      console.error('❌ [CALENDAR OAUTH] Error ensuring user profile exists:', userError)
       return NextResponse.redirect(
         new URL('/settings?error=user_creation_failed', request.url)
       )
@@ -195,12 +197,13 @@ export async function GET(request: NextRequest) {
     console.log('🔑 [CALENDAR OAUTH] Looking for userId:', userId)
     console.log('🔑 [CALENDAR OAUTH] Looking for googleAccountId:', userInfo.data.id)
     
+    const supabase = await createClient()
     let existingConnection
     try {
       console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
       
       const { data: connection, error: connectionError } = await supabase
-        .from('calendar_connections')
+        .from('CalendarConnection')
         .select('*')
         .eq('userId', userId)
         .eq('googleAccountId', userInfo.data.id!)
@@ -232,7 +235,7 @@ export async function GET(request: NextRequest) {
     if (existingConnection) {
       // Update existing connection with new tokens
       const { data: updatedConnection, error: updateError } = await supabase
-        .from('calendar_connections')
+        .from('CalendarConnection')
         .update({
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
           accessToken: encryptToken(tokens.access_token),
@@ -253,7 +256,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Create new calendar connection with calendar name as default title
       const { data: newConnection, error: createError } = await supabase
-        .from('calendar_connections')
+        .from('CalendarConnection')
         .insert({
           userId: userId,
           title: connectionData.title || calendarName, // Use provided title or calendar name as default

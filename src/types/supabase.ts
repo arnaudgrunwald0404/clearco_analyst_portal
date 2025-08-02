@@ -323,7 +323,7 @@ export interface Database {
           createdAt?: string
         }
       }
-      action_items: {
+      ActionItem: {
         Row: {
           id: string
           title: string
@@ -358,7 +358,7 @@ export interface Database {
           updatedAt?: string
         }
       }
-      calendar_connections: {
+      CalendarConnection: {
         Row: {
           id: string
           userId: string
@@ -368,6 +368,8 @@ export interface Database {
           refreshToken: string | null
           expiresAt: string | null
           calendarId: string | null
+          calendarName: string | null
+          status: string
           isActive: boolean
           lastSync: string | null
           syncInProgress: boolean
@@ -383,6 +385,8 @@ export interface Database {
           refreshToken?: string | null
           expiresAt?: string | null
           calendarId?: string | null
+          calendarName?: string | null
+          status?: string
           isActive?: boolean
           lastSync?: string | null
           syncInProgress?: boolean
@@ -398,6 +402,8 @@ export interface Database {
           refreshToken?: string | null
           expiresAt?: string | null
           calendarId?: string | null
+          calendarName?: string | null
+          status?: string
           isActive?: boolean
           lastSync?: string | null
           syncInProgress?: boolean

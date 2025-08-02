@@ -87,8 +87,8 @@ const iconMap: { [key: string]: any } = {
 
 function DashboardContent() {
   const searchParams = useSearchParams()
-  const { user, profile } = useAuth()
-  const { settings } = useSettings()
+  const { user, profile, loading: authLoading } = useAuth()
+  const { settings, loading: settingsLoading } = useSettings()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
   const [actionItems, setActionItems] = useState<ActionItem[]>([])
@@ -107,7 +107,8 @@ function DashboardContent() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const [metricsRes, activityRes, actionItemsRes] = await Promise.all([
+      // Use Promise.allSettled to handle failures gracefully
+      const results = await Promise.allSettled([
         fetch('/api/dashboard/metrics', { signal: controller.signal }),
         fetch('/api/dashboard/recent-activity', { signal: controller.signal }),
         fetch('/api/action-items?status=pending', { signal: controller.signal })
@@ -115,50 +116,53 @@ function DashboardContent() {
 
       clearTimeout(timeoutId);
 
-      // Process responses with better error handling
-      const promises = [];
+      // Process results with better error handling
+      const [metricsResult, activityResult, actionItemsResult] = results;
       
-      if (metricsRes.ok) {
-        promises.push(
-          metricsRes.json().then(data => {
-            // Handle both old object format and new object format with cache metadata
-            const metricsData = data.data || data;
-            setMetrics(metricsData);
-            console.log('📊 Dashboard metrics loaded:', data.cached ? '(cached)' : '(fresh)');
-          })
-        );
+      // Process metrics
+      if (metricsResult.status === 'fulfilled' && metricsResult.value.ok) {
+        try {
+          const data = await metricsResult.value.json();
+          const metricsData = data.data || data;
+          setMetrics(metricsData);
+          console.log('📊 Dashboard metrics loaded:', data.cached ? '(cached)' : '(fresh)');
+        } catch (error) {
+          console.error('Failed to parse metrics data:', error);
+        }
       } else {
-        console.error('Failed to fetch metrics:', metricsRes.status);
+        console.error('Failed to fetch metrics:', metricsResult.status === 'rejected' ? metricsResult.reason : metricsResult.value?.status);
       }
 
-      if (activityRes.ok) {
-        promises.push(
-          activityRes.json().then(data => {
-            // Handle both old array format and new object format with cache metadata
-            const activityData = Array.isArray(data) ? data : (data.data || data);
-            setRecentActivity(activityData);
-            console.log('📈 Recent activity loaded:', data.cached ? '(cached)' : '(fresh)');
-          })
-        );
+      // Process activity
+      if (activityResult.status === 'fulfilled' && activityResult.value.ok) {
+        try {
+          const data = await activityResult.value.json();
+          const activityData = Array.isArray(data) ? data : (data.data || data);
+          setRecentActivity(activityData);
+          console.log('📈 Recent activity loaded:', data.cached ? '(cached)' : '(fresh)');
+        } catch (error) {
+          console.error('Failed to parse activity data:', error);
+        }
       } else {
-        console.error('Failed to fetch activity:', activityRes.status);
+        console.error('Failed to fetch activity:', activityResult.status === 'rejected' ? activityResult.reason : activityResult.value?.status);
       }
 
-      if (actionItemsRes.ok) {
-        promises.push(
-          actionItemsRes.json().then(data => {
-            if (data.success) {
-              setActionItems(data.data);
-              console.log('✅ Action items loaded');
-            }
-          })
-        );
+      // Process action items
+      if (actionItemsResult.status === 'fulfilled' && actionItemsResult.value.ok) {
+        try {
+          const data = await actionItemsResult.value.json();
+          if (data.success) {
+            setActionItems(data.data);
+            console.log('✅ Action items loaded');
+          }
+        } catch (error) {
+          console.error('Failed to parse action items data:', error);
+        }
       } else {
-        console.error('Failed to fetch action items:', actionItemsRes.status);
+        console.error('Failed to fetch action items:', actionItemsResult.status === 'rejected' ? actionItemsResult.reason : actionItemsResult.value?.status);
+        // Set empty array for action items if they fail
+        setActionItems([]);
       }
-
-      // Wait for all data processing to complete
-      await Promise.all(promises);
       
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -268,12 +272,18 @@ function DashboardContent() {
     }
   }
 
-  if (loading) {
+  if (loading || settingsLoading || authLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <p className="text-gray-600">
+            {authLoading ? 'Loading authentication...' : 
+             settingsLoading ? 'Loading your workspace...' : 'Loading dashboard...'}
+          </p>
+          {settingsLoading && (
+            <p className="text-sm text-gray-500 mt-2">This may take a few moments...</p>
+          )}
         </div>
       </div>
     )

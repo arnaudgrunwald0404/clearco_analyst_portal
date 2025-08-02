@@ -26,7 +26,7 @@ export async function PATCH(
 
     // Verify the connection belongs to the user
     const { data: connection, error: fetchError } = await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
       .select('id')
       .eq('id', connectionId)
       .eq('userId', userId)
@@ -44,7 +44,7 @@ export async function PATCH(
     }
 
     // Build update data object
-    const updateData: Partial<Database['public']['Tables']['calendar_connections']['Update']> = {
+    const updateData: Partial<Database['public']['Tables']['CalendarConnection']['Update']> = {
       updatedAt: new Date().toISOString()
     }
 
@@ -54,7 +54,7 @@ export async function PATCH(
 
     // Update the connection
     const { data: updatedConnection, error: updateError } = await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
       .update(updateData)
       .eq('id', connectionId)
       .select()
@@ -105,7 +105,7 @@ export async function DELETE(
 
     // Verify the connection belongs to the user before deleting
     const { data: connection, error: fetchError } = await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
       .select('id, title')
       .eq('id', connectionId)
       .eq('userId', userId)
@@ -123,7 +123,7 @@ export async function DELETE(
 
     // Delete the connection
     const { error: deleteError } = await supabase
-      .from('calendar_connections')
+      .from('CalendarConnection')
       .delete()
       .eq('id', connectionId)
 
