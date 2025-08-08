@@ -14,7 +14,7 @@ export async function GET(
     const supabase = await createClient()
 
     const { data: award, error } = await supabase
-      .from('"Award"')
+      .from('awards')
       .select('*')
       .eq('id', id)
       .single()
@@ -75,19 +75,19 @@ export async function PUT(
       name,
       link: link || null,
       organization,
-      productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
+      product_topics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
       priority: priority || 'MEDIUM',
-      submissionDate: new Date(submissionDate).toISOString(),
-      publicationDate: new Date(publicationDate).toISOString(),
+      submission_date: new Date(submissionDate).toISOString(),
+      publication_date: new Date(publicationDate).toISOString(),
       owner: owner || null,
       status: status || 'EVALUATING',
       cost: cost || null,
       notes: notes || null,
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     }
 
     const { data: award, error } = await supabase
-      .from('"Award"')
+      .from('awards')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -126,7 +126,7 @@ export async function DELETE(
     const supabase = await createClient()
 
     const { error } = await supabase
-      .from('"Award"')
+      .from('awards')
       .delete()
       .eq('id', id)
 

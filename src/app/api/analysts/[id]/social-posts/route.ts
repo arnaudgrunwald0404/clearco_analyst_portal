@@ -15,12 +15,11 @@ export async function GET(
 
     // Fetch latest 5 social media posts from LinkedIn and Twitter
     const { data: socialPosts, error } = await supabase
-      .from('social_posts')
+      .from('social_media_posts')
       .select('*')
-      .eq('analystId', id)
+      .eq('analyst_id', id)
       .in('platform', ['LINKEDIN', 'TWITTER'])
-      .eq('isRelevant', true)
-      .order('postedAt', { ascending: false })
+      .order('published_at', { ascending: false })
       .limit(5)
 
     if (error) {

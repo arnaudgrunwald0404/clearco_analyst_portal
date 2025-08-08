@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth-utils'
 import type { Database } from '@/types/supabase'
 
-type GeneralSettings = Database['public']['Tables']['GeneralSettings']['Row']
-type GeneralSettingsInsert = Database['public']['Tables']['GeneralSettings']['Insert']
+type general_settings = Database['public']['Tables']['general_settings']['Row']
+type general_settingsInsert = Database['public']['Tables']['general_settings']['Insert']
 
 // Simple CUID-like ID generator
 function generateId(): string {
@@ -19,6 +21,17 @@ let cacheTimestamp: number = 0;
 
 export async function GET() {
   try {
+    // Check authentication first
+    const authResult = await requireAuth()
+    
+    // If it's a NextResponse (error), return it directly
+    if (authResult instanceof NextResponse) {
+      return authResult
+    }
+    
+    // Otherwise it's the user
+    const user = authResult
+
     const now = Date.now();
     
     // Return cached data if still valid
@@ -30,11 +43,15 @@ export async function GET() {
       });
     }
 
-    const supabase = await createClient()
+    // Use service role key for server-side operations to bypass RLS
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Get the first (and only) general settings record
     const { data: settings, error: fetchError } = await supabase
-      .from('GeneralSettings')
+      .from('general_settings')
       .select('*')
       .limit(1)
       .single()
@@ -43,16 +60,16 @@ export async function GET() {
 
     // If no settings exist, create default ones
     if (fetchError?.code === 'PGRST116' || !settings) {
-      const defaultSettings: GeneralSettingsInsert = {
+      const defaultSettings: general_settingsInsert = {
         id: generateId(),
-        companyName: '',
-        protectedDomain: '',
-        logoUrl: '',
-        industryName: 'HR Technology'
+        company_name: '',
+        protected_domain: '',
+        logo_url: '',
+        industry_name: 'HR Technology'
       }
 
       const { data: newSettings, error: createError } = await supabase
-        .from('GeneralSettings')
+        .from('general_settings')
         .insert(defaultSettings)
         .select()
         .single()
@@ -88,6 +105,17 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    // Check authentication first
+    const authResult = await requireAuth()
+    
+    // If it's a NextResponse (error), return it directly
+    if (authResult instanceof NextResponse) {
+      return authResult
+    }
+    
+    // Otherwise it's the user
+    const user = authResult
+
     const body = await request.json()
     const { companyName, protectedDomain, logoUrl, industryName } = body
     
@@ -128,27 +156,31 @@ export async function PUT(request: NextRequest) {
       }
     }
     
-    const supabase = await createClient()
+    // Use service role key for server-side operations to bypass RLS
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Check if settings already exist
     const { data: existingSettings } = await supabase
-      .from('GeneralSettings')
+      .from('general_settings')
       .select('*')
       .limit(1)
       .single()
     
     const updateData = {
-      companyName: companyName.trim(),
-      protectedDomain: protectedDomain.trim().toLowerCase(),
-      logoUrl: logoUrl?.trim() || '',
-      industryName: industryName.trim()
+      company_name: companyName.trim(),
+      protected_domain: protectedDomain.trim().toLowerCase(),
+      logo_url: logoUrl?.trim() || '',
+      industry_name: industryName.trim()
     }
     
     let settings
     if (existingSettings) {
       // Update existing settings
       const { data: updatedSettings, error: updateError } = await supabase
-        .from('GeneralSettings')
+        .from('general_settings')
         .update(updateData)
         .eq('id', existingSettings.id)
         .select()
@@ -162,13 +194,13 @@ export async function PUT(request: NextRequest) {
       settings = updatedSettings
     } else {
       // Create new settings
-      const newSettingsData: GeneralSettingsInsert = {
+      const newSettingsData: general_settingsInsert = {
         id: generateId(),
         ...updateData
       }
 
       const { data: newSettings, error: createError } = await supabase
-        .from('GeneralSettings')
+        .from('general_settings')
         .insert(newSettingsData)
         .select()
         .single()

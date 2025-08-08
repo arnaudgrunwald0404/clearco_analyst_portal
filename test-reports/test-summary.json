@@ -1,0 +1,58 @@
+{
+  "summary": {
+    "totalTests": 4,
+    "passedTests": 0,
+    "failedTests": 4,
+    "successRate": 0,
+    "totalDuration": 484571,
+    "timestamp": "2025-08-04T03:38:24.511Z"
+  },
+  "results": [
+    {
+      "name": "page-load-tests",
+      "status": "failed",
+      "duration": 121130,
+      "error": "Command failed: npx playwright test tests/e2e/page-load-tests.spec.ts",
+      "details": {
+        "stdout": "Error: Timed out waiting 120000ms from config.webServer.\n\n\u001b[1A\u001b[2K\nTo open last HTML report run:\n\u001b[36m\u001b[39m\n\u001b[36m  npx playwright show-report\u001b[39m\n\u001b[36m\u001b[39m\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "ux-patterns",
+      "status": "failed",
+      "duration": 121179,
+      "error": "Command failed: npx playwright test tests/e2e/ux-patterns.spec.ts",
+      "details": {
+        "stdout": "Error: Timed out waiting 120000ms from config.webServer.\n\n\u001b[1A\u001b[2K\nTo open last HTML report run:\n\u001b[36m\u001b[39m\n\u001b[36m  npx playwright show-report\u001b[39m\n\u001b[36m\u001b[39m\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "api-endpoints",
+      "status": "failed",
+      "duration": 121156,
+      "error": "Command failed: npx playwright test tests/api/api-endpoints.spec.ts",
+      "details": {
+        "stdout": "Error: Timed out waiting 120000ms from config.webServer.\n\n\u001b[1A\u001b[2K\nTo open last HTML report run:\n\u001b[36m\u001b[39m\n\u001b[36m  npx playwright show-report\u001b[39m\n\u001b[36m\u001b[39m\n",
+        "stderr": ""
+      }
+    },
+    {
+      "name": "performance",
+      "status": "failed",
+      "duration": 121106,
+      "error": "Command failed: npx playwright test tests/performance/performance.spec.ts",
+      "details": {
+        "stdout": "Error: Timed out waiting 120000ms from config.webServer.\n\n\u001b[1A\u001b[2K\nTo open last HTML report run:\n\u001b[36m\u001b[39m\n\u001b[36m  npx playwright show-report\u001b[39m\n\u001b[36m\u001b[39m\n",
+        "stderr": ""
+      }
+    }
+  ],
+  "environment": {
+    "nodeVersion": "v22.14.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "ci": false
+  }
+}

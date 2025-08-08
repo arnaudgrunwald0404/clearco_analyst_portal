@@ -88,6 +88,35 @@ export interface Database {
           updatedAt?: string
         }
       }
+      general_settings: {
+        Row: {
+          id: string
+          company_name: string
+          protected_domain: string
+          logo_url: string
+          industry_name: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_name?: string
+          protected_domain?: string
+          logo_url?: string
+          industry_name?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_name?: string
+          protected_domain?: string
+          logo_url?: string
+          industry_name?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
       GeneralSettings: {
         Row: {
           id: string
@@ -358,95 +387,98 @@ export interface Database {
           updatedAt?: string
         }
       }
-      CalendarConnection: {
+      calendar_connections: {
         Row: {
           id: string
-          userId: string
-          provider: string
+          user_id: string
+          title: string
           email: string
-          accessToken: string
-          refreshToken: string | null
-          expiresAt: string | null
-          calendarId: string | null
-          calendarName: string | null
-          status: string
-          isActive: boolean
-          lastSync: string | null
-          syncInProgress: boolean
-          createdAt: string
-          updatedAt: string
+          google_account_id: string
+          access_token: string
+          refresh_token: string | null
+          token_expiry: string | null
+          is_active: boolean
+          last_sync_at: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          userId: string
-          provider?: string
+          user_id: string
+          title: string
           email: string
-          accessToken: string
-          refreshToken?: string | null
-          expiresAt?: string | null
-          calendarId?: string | null
-          calendarName?: string | null
-          status?: string
-          isActive?: boolean
-          lastSync?: string | null
-          syncInProgress?: boolean
-          createdAt?: string
-          updatedAt?: string
+          google_account_id: string
+          access_token: string
+          refresh_token?: string | null
+          token_expiry?: string | null
+          is_active?: boolean
+          last_sync_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          userId?: string
-          provider?: string
+          user_id?: string
+          title?: string
           email?: string
-          accessToken?: string
-          refreshToken?: string | null
-          expiresAt?: string | null
-          calendarId?: string | null
-          calendarName?: string | null
-          status?: string
-          isActive?: boolean
-          lastSync?: string | null
-          syncInProgress?: boolean
-          createdAt?: string
-          updatedAt?: string
+          google_account_id?: string
+          access_token?: string
+          refresh_token?: string | null
+          token_expiry?: string | null
+          is_active?: boolean
+          last_sync_at?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
       calendar_meetings: {
         Row: {
           id: string
-          analystId: string
-          calendarConnectionId: string
-          googleEventId: string
+          calendar_connection_id: string
+          google_event_id: string
           title: string
-          startTime: string
-          endTime: string
+          description: string | null
+          start_time: string
+          end_time: string
           attendees: string | null
-          createdAt: string
-          updatedAt: string
+          analyst_id: string | null
+          is_analyst_meeting: boolean
+          confidence: number | null
+          tags: string | null
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          analystId: string
-          calendarConnectionId: string
-          googleEventId: string
+          calendar_connection_id: string
+          google_event_id: string
           title: string
-          startTime: string
-          endTime: string
+          description?: string | null
+          start_time: string
+          end_time: string
           attendees?: string | null
-          createdAt?: string
-          updatedAt?: string
+          analyst_id?: string | null
+          is_analyst_meeting?: boolean
+          confidence?: number | null
+          tags?: string | null
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          analystId?: string
-          calendarConnectionId?: string
-          googleEventId?: string
+          calendar_connection_id?: string
+          google_event_id?: string
           title?: string
-          startTime?: string
-          endTime?: string
+          description?: string | null
+          start_time?: string
+          end_time?: string
           attendees?: string | null
-          createdAt?: string
-          updatedAt?: string
+          analyst_id?: string | null
+          is_analyst_meeting?: boolean
+          confidence?: number | null
+          tags?: string | null
+          created_at?: string
+          updated_at?: string
         }
       }
     }

@@ -60,9 +60,9 @@ async function applyPerformanceOptimizations() {
       WHERE tablename IN (
         'Analyst', 'Briefing', 'SocialPost', 'CalendarMeeting', 
         'Newsletter', 'NewsletterSubscription', 'Interaction', 
-        'Alert', 'Content', 'BriefingAnalyst', 'SocialHandle',
+        'Alert', 'Content', 'SocialHandle',
         'Publication', 'ActionItem', 'Testimonial', 'Award',
-        'Event', 'User', 'CalendarConnection', 'ConversationSummary',
+        'Event', 'User', 'ConversationSummary',
         'AnalystPortalSession'
       )
       ORDER BY tablename, indexname

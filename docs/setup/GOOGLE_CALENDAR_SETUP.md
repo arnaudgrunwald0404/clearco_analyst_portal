@@ -85,7 +85,7 @@ npx prisma migrate dev
 ```
 
 This will create the following tables:
-- `CalendarConnection` - Stores connected Google Calendar accounts
+- `calendar_connections` - Stores connected Google Calendar accounts
 - `CalendarMeeting` - Stores calendar events and analyst meeting identification
 
 ## Testing the Integration

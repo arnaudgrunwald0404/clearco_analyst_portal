@@ -10,9 +10,9 @@ interface CalendarConnection {
   id: string
   title: string
   email: string
-  isActive: boolean
-  lastSyncAt: string | null
-  createdAt: string
+  is_active: boolean
+  last_sync_at: string | null
+  created_at: string
 }
 
 interface SyncProgress {
@@ -32,7 +32,7 @@ interface CalendarSectionProps {
   adding: boolean
   syncProgress: Map<string, SyncProgress>
   onAddConnection: () => void
-  onToggleConnection: (connectionId: string, isActive: boolean) => void
+  onToggleConnection: (connectionId: string, is_active: boolean) => void
   onDeleteConnection: (connectionId: string) => void
   onStartSync: (connectionId: string) => void
 }
@@ -48,15 +48,15 @@ export default function CalendarSection({
   onStartSync
 }: CalendarSectionProps) {
   const getConnectionStatus = (connection: CalendarConnection) => {
-    if (!connection.isActive) {
+    if (!connection.is_active) {
       return { icon: AlertCircle, text: 'Inactive', color: 'text-gray-500' }
     }
     
-    if (!connection.lastSyncAt) {
+    if (!connection.last_sync_at) {
       return { icon: Clock, text: 'Never synced', color: 'text-yellow-600' }
     }
     
-    const lastSync = new Date(connection.lastSyncAt)
+    const lastSync = new Date(connection.last_sync_at)
     const now = new Date()
     const daysSinceSync = Math.floor((now.getTime() - lastSync.getTime()) / (1000 * 60 * 60 * 24))
     
@@ -69,9 +69,9 @@ export default function CalendarSection({
     }
   }
 
-  const formatLastSync = (lastSyncAt: string | null) => {
-    if (!lastSyncAt) return 'Never'
-    const date = new Date(lastSyncAt)
+  const formatLastSync = (last_sync_at: string | null) => {
+    if (!last_sync_at) return 'Never'
+    const date = new Date(last_sync_at)
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
@@ -148,8 +148,8 @@ export default function CalendarSection({
                       <p className="text-sm text-gray-600 mb-2">{connection.email}</p>
                       
                       <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>Last sync: {formatLastSync(connection.lastSyncAt)}</span>
-                        <span>Connected: {new Date(connection.createdAt).toLocaleDateString()}</span>
+                        <span>Last sync: {formatLastSync(connection.last_sync_at)}</span>
+                        <span>Connected: {new Date(connection.created_at).toLocaleDateString()}</span>
                       </div>
 
                       {/* Sync Progress */}
@@ -176,7 +176,7 @@ export default function CalendarSection({
                       {/* Active Toggle */}
                       <div className="flex items-center gap-2">
                         <Switch
-                          checked={connection.isActive}
+                          checked={connection.is_active}
                           onCheckedChange={(checked) => onToggleConnection(connection.id, checked)}
                         />
                         <span className="text-xs text-gray-500">Active</span>

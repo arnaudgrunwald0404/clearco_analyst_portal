@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results Summary</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; }
+        .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .metric { background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; }
+        .metric-value { font-size: 2em; font-weight: bold; margin-bottom: 5px; }
+        .passed { color: #28a745; }
+        .failed { color: #dc3545; }
+        .test-result { margin-bottom: 20px; padding: 15px; border-radius: 8px; }
+        .test-result.passed { background: #d4edda; border-left: 4px solid #28a745; }
+        .test-result.failed { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .test-name { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+        .test-duration { color: #666; font-size: 0.9em; }
+        .error-details { background: #fff; padding: 10px; border-radius: 4px; margin-top: 10px; font-family: monospace; white-space: pre-wrap; }
+        .timestamp { color: #666; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Test Results Summary</h1>
+        <p class="timestamp">Generated: 8/3/2025, 8:38:24 PM</p>
+    </div>
+    
+    <div class="summary">
+        <div class="metric">
+            <div class="metric-value">4</div>
+            <div>Total Tests</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value passed">0</div>
+            <div>Passed</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value failed">4</div>
+            <div>Failed</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">0%</div>
+            <div>Success Rate</div>
+        </div>
+        <div class="metric">
+            <div class="metric-value">485s</div>
+            <div>Total Duration</div>
+        </div>
+    </div>
+    
+    <h2>📋 Test Results</h2>
+    
+        <div class="test-result failed">
+            <div class="test-name">page-load-tests</div>
+            <div class="test-duration">Duration: 121s</div>
+            <div class="error-details">Command failed: npx playwright test tests/e2e/page-load-tests.spec.ts</div>
+        </div>
+    
+        <div class="test-result failed">
+            <div class="test-name">ux-patterns</div>
+            <div class="test-duration">Duration: 121s</div>
+            <div class="error-details">Command failed: npx playwright test tests/e2e/ux-patterns.spec.ts</div>
+        </div>
+    
+        <div class="test-result failed">
+            <div class="test-name">api-endpoints</div>
+            <div class="test-duration">Duration: 121s</div>
+            <div class="error-details">Command failed: npx playwright test tests/api/api-endpoints.spec.ts</div>
+        </div>
+    
+        <div class="test-result failed">
+            <div class="test-name">performance</div>
+            <div class="test-duration">Duration: 121s</div>
+            <div class="error-details">Command failed: npx playwright test tests/performance/performance.spec.ts</div>
+        </div>
+    
+    
+    <h2>🖥️ Environment</h2>
+    <ul>
+        <li>Node.js: v22.14.0</li>
+        <li>Platform: darwin arm64</li>
+        <li>CI: No</li>
+    </ul>
+</body>
+</html>
+  

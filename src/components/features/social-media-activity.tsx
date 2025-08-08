@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { handleAbortError } from '@/lib/utils/abort-error-handler'
 
 interface SocialPost {
   id: string
@@ -98,13 +99,30 @@ export default function SocialMediaActivity() {
   })
 
   useEffect(() => {
-    fetchRecentActivity()
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isMounted) {
+        await fetchRecentActivity();
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [])
 
   const fetchRecentActivity = async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/social-media/recent-activity?limit=10')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
       
       if (data.success && data.posts) {
@@ -116,7 +134,10 @@ export default function SocialMediaActivity() {
           topThemes: [] // Could be extracted from posts themes if needed
         })
       } else {
-        console.error('API error:', data.error)
+        console.error('❌ API error:', data.error || 'Unknown error')
+        if (data.details) {
+          console.error('❌ Error details:', data.details)
+        }
         // Show empty state
         setPosts([])
         setStats({
@@ -127,7 +148,7 @@ export default function SocialMediaActivity() {
         })
       }
     } catch (error) {
-      console.error('Error fetching social media activity:', error)
+      handleAbortError(error, 'Social media activity fetch')
       // Show empty state on error
       setPosts([])
       setStats({

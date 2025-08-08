@@ -102,16 +102,16 @@ export async function GET(request: NextRequest) {
         
         console.log('💾 [GOOGLE OAUTH] Storing calendar connection...')
         const { data: connection, error: connectionError } = await supabase
-          .from('CalendarConnection')
+          .from('calendar_connections')
           .insert({
-            userId: userInfo.data.email,
+            user_id: userInfo.data.email,
             provider: 'google',
             email: userInfo.data.email,
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
-            expiresAt: new Date(tokens.expiry_date || 0).toISOString(),
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token,
+            expires_at: new Date(tokens.expiry_date || 0).toISOString(),
             status: 'PENDING_NAME',
-            isActive: true
+            is_active: true
           })
           .select()
           .single()

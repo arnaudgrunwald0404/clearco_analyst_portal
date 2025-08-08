@@ -323,19 +323,9 @@ export default function PortalBriefingsPage() {
   }, [selectedStatus, searchTerm])
 
   const checkSyncStatus = async () => {
-    try {
-      const response = await fetch('/api/settings/calendar-connections/cmdavaxc40004mm0piievkkx6/sync', {
-        method: 'GET'
-      })
-      
-      if (response.ok) {
-        const status = await response.json()
-        setSyncStatus(status)
-        setIsSyncInProgress(status.isInProgress)
-      }
-    } catch (error) {
-      console.error('Error checking sync status:', error)
-    }
+    // Skip sync status check - remove hardcoded calendar connection ID
+    // This was causing 400 Bad Request errors
+    return
   }
 
   const fetchBriefings = async (reset = false) => {
@@ -357,7 +347,7 @@ export default function PortalBriefingsPage() {
         params.append('cursor', cursor)
       }
       
-      if (selectedStatus !== 'ALL') {
+      if (selectedStatus && selectedStatus !== 'ALL') {
         params.append('status', selectedStatus)
       }
       
@@ -377,6 +367,13 @@ export default function PortalBriefingsPage() {
         
         setCursor(data.nextCursor)
         setHasMore(data.hasMore)
+      } else {
+        console.error('API returned error:', data.error || 'Unknown error')
+        // Set empty state if there's an error
+        if (reset) {
+          setBriefings([])
+        }
+        setHasMore(false)
       }
     } catch (error) {
       console.error('Error fetching briefings:', error)
@@ -475,13 +472,13 @@ export default function PortalBriefingsPage() {
 
   const filteredBriefings = briefings
   const upcomingBriefings = filteredBriefings.filter(b => {
-    const { isUpcoming } = formatDateTime(b.scheduledAt)
-    return isUpcoming
-  })
+    const { isUpcoming } = formatDateTime(b.scheduledAt);
+    return isUpcoming;
+  });
   const pastBriefings = filteredBriefings.filter(b => {
-    const { isUpcoming } = formatDateTime(b.scheduledAt)
-    return !isUpcoming
-  })
+    const { isUpcoming } = formatDateTime(b.scheduledAt);
+    return !isUpcoming;
+  });
 
   return (
     <div className="flex h-screen bg-gray-50">

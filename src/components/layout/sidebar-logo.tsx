@@ -1,9 +1,11 @@
 'use client'
 
 import { useSettings } from '@/contexts/SettingsContext'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function SidebarLogo() {
   const { settings, isInitialized } = useSettings()
+  const { user } = useAuth()
 
   // Don't render logo until settings are initialized
   if (!isInitialized || !settings) {
@@ -14,53 +16,48 @@ export function SidebarLogo() {
     )
   }
 
-  // Use actual settings - no fallbacks
+  // Use actual settings with improved logo handling
   const logoUrl = settings.logoUrl
   const companyName = settings.companyName
+  
+  // Define a default logo URL for ClearCompany when none is provided
+  const defaultLogoUrl = '/clearco-logo.png'
+  const shouldUseDefaultLogo = !logoUrl && companyName?.toLowerCase().includes('clearcompany')
+  const effectiveLogoUrl = logoUrl || (shouldUseDefaultLogo ? defaultLogoUrl : null)
 
   return (
     <div className="flex items-center justify-center h-36 p-4 bg-white border-b border-gray-200">
-      {logoUrl ? (
+      {/* Show logo if user is authenticated and we have a logo URL (custom or default) */}
+      {user && effectiveLogoUrl ? (
         <img
-          src={logoUrl}
+          src={effectiveLogoUrl}
           alt={`${companyName} Logo`}
-          className="max-w-full max-h-24 object-contain"
+          className="max-w-full max-h-full object-contain"
           style={{ minHeight: '60px' }}
           onError={(e) => {
-            console.error('Custom logo failed to load:', logoUrl)
+            console.error('Logo failed to load:', effectiveLogoUrl)
+            // Hide the failed image
             e.currentTarget.style.display = 'none'
-            if (e.currentTarget.nextSibling) {
-              (e.currentTarget.nextSibling as HTMLElement).style.display = 'flex'
+            // Show the company name fallback
+            const fallbackDiv = e.currentTarget.nextSibling as HTMLElement
+            if (fallbackDiv) {
+              fallbackDiv.style.display = 'flex'
             }
           }}
           onLoad={() => {
-            console.log('Custom logo loaded successfully:', logoUrl)
+            console.log('Logo loaded successfully:', effectiveLogoUrl)
           }}
         />
-      ) : (
-        <img
-          src="/clearco-logo.png"
-          alt="ClearCompany Logo"
-          className="max-w-full max-h-24 object-contain"
-          style={{ minHeight: '60px' }}
-          onError={(e) => {
-            console.error('Default logo failed to load')
-            e.currentTarget.style.display = 'none'
-            if (e.currentTarget.nextSibling) {
-              (e.currentTarget.nextSibling as HTMLElement).style.display = 'flex'
-            }
-          }}
-          onLoad={() => {
-            console.log('Default logo loaded successfully')
-          }}
-        />
-      )}
+      ) : null}
+      
+      {/* Company name fallback - always present but hidden when logo loads successfully */}
       <div 
         className="flex items-center justify-center text-lg font-bold text-gray-800"
-        style={{ display: 'none' }}
+        style={{ display: user && effectiveLogoUrl ? 'none' : 'flex' }}
       >
-        {companyName}
+        {companyName || 'Portal'}
       </div>
+
     </div>
   )
 }

@@ -46,20 +46,41 @@ export async function GET(request: NextRequest) {
           // Profile doesn't exist, create one
           const email = data.user.email || ''
           const emailDomain = email.split('@')[1]?.toLowerCase()
-          const emailName = email.split('@')[0]?.toLowerCase()
           
-          // Determine role based on email domain
+          // Apply domain validation - block unauthorized users
+          if (email.toLowerCase() === 'dev@example.com') {
+            console.error('Blocked unauthorized email:', email)
+            return NextResponse.redirect(`${origin}/auth/auth-code-error?error=unauthorized`)
+          }
+
+          // Check if email is from authorized domain OR is a registered analyst
+          const isAuthorizedDomain = emailDomain === 'clearcompany.com'
+          
+          let isRegisteredAnalyst = false
+          if (!isAuthorizedDomain) {
+            // Check if email exists in analysts table
+            const { data: analyst, error: analystError } = await serviceClient
+              .from('analysts')
+              .select('id, email')
+              .eq('email', email.toLowerCase())
+              .single()
+            
+            isRegisteredAnalyst = !analystError && !!analyst
+          }
+
+          if (!isAuthorizedDomain && !isRegisteredAnalyst) {
+            console.error('Access denied for email:', email, 'Domain:', emailDomain)
+            return NextResponse.redirect(`${origin}/auth/auth-code-error?error=domain_restricted`)
+          }
+
+          // Determine role based on validated authorization
           let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
           
-          if (emailDomain === 'clearcompany.com') {
-            // Check if it's a fake analyst email
-            if (emailName === 'sarah.chen' || emailName === 'mike.johnson' || emailName === 'lisa.wang') {
-              role = 'ANALYST'
-            } else {
-              role = 'ADMIN'
-            }
-          } else if (emailDomain === 'analystcompany.com') {
-            // All @analystcompany.com users are ANALYST
+          if (isAuthorizedDomain) {
+            // All @clearcompany.com users are admins
+            role = 'ADMIN'
+          } else if (isRegisteredAnalyst) {
+            // Registered analysts get ANALYST role
             role = 'ANALYST'
           }
           
@@ -71,7 +92,7 @@ export async function GET(request: NextRequest) {
                        data.user.email?.split('@')[0] || 'User',
             last_name: data.user.user_metadata?.last_name || '',
             company: data.user.user_metadata?.company || 
-                    emailDomain || null,
+                    (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }

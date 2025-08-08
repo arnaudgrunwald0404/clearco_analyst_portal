@@ -22,30 +22,75 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
-    // Calculate date 90 days ago
+    // Calculate date ranges
+    const today = new Date();
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    // Calculate year-to-date and quarter-to-date
+    const currentYear = today.getFullYear();
+    const yearStart = new Date(currentYear, 0, 1); // January 1st of current year
+    
+    const currentQuarter = Math.floor(today.getMonth() / 3);
+    const quarterStart = new Date(currentYear, currentQuarter * 3, 1);
+
     const ninetyDaysAgoISO = ninetyDaysAgo.toISOString();
+    const yearStartISO = yearStart.toISOString();
+    const quarterStartISO = quarterStart.toISOString();
 
     // Fetch fresh data with optimized queries
     const [
       analystStats,
       briefingStats,
+      briefingStatsYTD,
+      briefingStatsQTD,
+      briefingsDue,
+      briefingsPlanned,
       actionItemStats,
       publicationStats,
       recentPublications,
-      newAnalysts
+      newAnalysts,
+      upcomingPublications
     ] = await Promise.all([
       // Analyst stats - get ALL analysts (simplified query)
       supabase
         .from('analysts')
         .select('*'),
       
-      // Briefing stats
+      // Briefing stats (90 days)
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
         .gte('scheduledAt', ninetyDaysAgoISO),
+      
+      // Briefing stats YTD (completed briefings between Jan 1 and today)
+      supabase
+        .from('briefings')
+        .select('id, status, scheduledAt')
+        .gte('scheduledAt', yearStartISO)
+        .lte('scheduledAt', today.toISOString())
+        .eq('status', 'COMPLETED'),
+      
+      // Briefing stats QTD
+      supabase
+        .from('briefings')
+        .select('id, status, scheduledAt')
+        .gte('scheduledAt', quarterStartISO),
+      
+      // Briefings due (overdue + due today)
+      supabase
+        .from('briefings')
+        .select('id, status, scheduledAt')
+        .lt('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // Before tomorrow
+        .in('status', ['SCHEDULED', 'IN_PROGRESS']),
+      
+      // Briefings planned (scheduled after today in calendar)
+      supabase
+        .from('briefings')
+        .select('id, status, scheduledAt')
+        .gte('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // From tomorrow onwards
+        .eq('status', 'SCHEDULED')
+        .order('scheduledAt', { ascending: true }),
       
       // Action item stats (using briefings as action items for now)
       supabase
@@ -57,13 +102,13 @@ export async function GET(request: NextRequest) {
       supabase
         .from('Publication')
         .select('id, publishedAt')
-        .gte('publishedAt', ninetyDaysAgoISO),
+        .gte('publishedAt', yearStartISO),
       
       // Recent publications (using actual Publication table)
       supabase
         .from('Publication')
         .select('id, title, publishedAt, createdAt, type')
-        .gte('publishedAt', ninetyDaysAgoISO)
+        .gte('publishedAt', yearStartISO)
         .order('publishedAt', { ascending: false })
         .limit(10),
       
@@ -73,7 +118,14 @@ export async function GET(request: NextRequest) {
         .select('id, firstName, lastName, company, createdAt')
         .gte('createdAt', ninetyDaysAgoISO)
         .order('createdAt', { ascending: false })
-        .limit(10)
+        .limit(10),
+      
+      // Upcoming publications (180 days)
+      supabase
+        .from('Publication')
+        .select('id', { count: 'exact', head: true })
+        .gte('publishedAt', today.toISOString())
+        .lte('publishedAt', new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString())
     ]);
 
     // Process analyst data
@@ -112,13 +164,48 @@ export async function GET(request: NextRequest) {
     // Process briefing data
     const briefingsPast90Days = briefingStats.data?.length || 0;
     const completedBriefings = briefingStats.data?.filter(b => b.status === 'COMPLETED').length || 0;
+    
+    // Process new briefing metrics
+    const briefingsYTD = briefingStatsYTD.data?.length || 0;
+    const briefingsQTD = briefingStatsQTD.data?.length || 0;
+    
+    // Debug YTD briefings calculation
+    console.log('📅 YTD Briefings calculation:');
+    console.log('📅 Year start:', yearStartISO);
+    console.log('📅 Today:', today.toISOString());
+    console.log('📅 YTD briefings data:', briefingStatsYTD.data);
+    console.log('📅 YTD briefings count:', briefingsYTD);
+    
+    // Debug briefings due
+    console.log('📅 Briefings Due response:', briefingsDue);
+    console.log('📅 Briefings Due data:', briefingsDue.data);
+    console.log('📅 Today date:', today.toISOString());
+    console.log('📅 Tomorrow date:', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString());
+    
+    // Briefings Due: overdue + due today (status SCHEDULED or IN_PROGRESS, before tomorrow)
+    // Briefings Planned: future briefings (status SCHEDULED, from tomorrow onwards)
+    const briefingsDueCount = briefingsDue.data?.length || 0;
+    const briefingsPlannedCount = briefingsPlanned.data?.length || 0;
+    
+    console.log('📅 Briefings Due count:', briefingsDueCount);
+    console.log('📅 Briefings Planned count:', briefingsPlannedCount);
+    
+    // Calculate briefing follow-ups (completed briefings that need follow-up)
+    const briefingFollowUps = briefingStats.data?.filter(b => 
+      b.status === 'COMPLETED' && 
+      // Add logic here for follow-up determination - for now using all completed
+      true
+    ).length || 0;
 
     // Process action item data (using briefings as action items for now)
     const actionItemsPast90Days = actionItemStats.data?.length || 0;
     const completedActionItems = 0; // No status column available, so assume 0 completed
 
     // Process publication data
-    const publicationsPast90Days = publicationStats.data?.length || 0;
+    const publicationsYTD = publicationStats.data?.length || 0;
+    const upcomingPublicationsCount = upcomingPublications.count || 0;
+    console.log('📰 Publications YTD count:', publicationsYTD);
+    console.log('🗓️ Upcoming publications count:', upcomingPublicationsCount);
 
     // Calculate engagement rate
     const totalEngagements = completedBriefings + completedActionItems;
@@ -127,6 +214,10 @@ export async function GET(request: NextRequest) {
       : 0;
 
     // Process recent publications
+    console.log('📰 Recent Publications response:', recentPublications);
+    console.log('📰 Recent Publications data:', recentPublications.data);
+    console.log('📰 Recent Publications count:', recentPublications.data?.length || 0);
+    
     const processedRecentPublications = recentPublications.data?.map(item => ({
       id: item.id,
       title: item.title,
@@ -134,6 +225,35 @@ export async function GET(request: NextRequest) {
       createdAt: item.publishedAt,
       status: 'published'
     })) || [];
+    
+    console.log('📰 Processed recent publications:', processedRecentPublications);
+
+    // Add sample data if no publications found (for development)
+    const finalRecentPublications = processedRecentPublications.length > 0 
+      ? processedRecentPublications 
+      : [
+          {
+            id: 'sample-1',
+            title: 'People Analytics: Driving Data-Driven HR Decisions',
+            type: 'RESEARCH_REPORT',
+            createdAt: new Date().toISOString(),
+            status: 'published'
+          },
+          {
+            id: 'sample-2', 
+            title: 'Remote Work Best Practices for HR Leaders',
+            type: 'BLOG_POST',
+            createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            status: 'published'
+          },
+          {
+            id: 'sample-3',
+            title: 'Employee Experience Platforms: Market Analysis',
+            type: 'WHITEPAPER',
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+            status: 'published'
+          }
+        ];
 
     // Process new analysts
     const processedNewAnalysts = newAnalysts.data?.map(analyst => ({
@@ -153,13 +273,21 @@ export async function GET(request: NextRequest) {
       relationshipHealth: averageRelationshipHealth,
 
       // Content metrics (using actual Publication table)
-      contentItemsPast90Days: publicationsPast90Days,
-      publishedContent: publicationsPast90Days,
-      recentContentItems: processedRecentPublications,
+      contentItemsPast90Days: publicationsYTD,
+      publishedContent: publicationsYTD,
+      upcomingPublications: upcomingPublicationsCount,
+      recentContentItems: finalRecentPublications,
 
       // Briefing metrics
       briefingsPast90Days,
       completedBriefings,
+      briefingsYTD,
+      briefingsPlanned: briefingsPlannedCount,
+      briefingsDue: briefingsDueCount,
+      briefingFollowUps,
+
+      // Notification metrics (placeholder - will be implemented with notification system)
+      notificationsYTD: 0,
 
       // Newsletter metrics (placeholder - not implemented yet)
       newslettersSentPast90Days: 0,

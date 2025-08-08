@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const upcoming = searchParams.get('upcoming') === 'true'
     const analystId = searchParams.get('analystId')
-    const limit = parseInt(searchParams.get('limit') || '10', 10)
+    const limit = parseInt(searchParams.get('limit') || '1000', 10)
 
     const supabase = await createClient()
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     if (briefingsError) {
       console.error('Error fetching briefings:', briefingsError)
       return NextResponse.json(
-        { error: 'Failed to fetch briefings' },
+        { success: false, error: 'Failed to fetch briefings' },
         { status: 500 }
       )
     }
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
       if (baError) {
         console.error('Error fetching briefing analysts:', baError)
         return NextResponse.json(
-          { error: 'Failed to fetch briefing analysts' },
+          { success: false, error: 'Failed to fetch briefing analysts' },
           { status: 500 }
         )
       }
@@ -101,12 +101,18 @@ export async function GET(request: NextRequest) {
     )
 
     console.log(`📊 Found ${briefingsWithAnalysts.length} briefings`)
-    return NextResponse.json(briefingsWithAnalysts)
+    return NextResponse.json({
+      success: true,
+      data: briefingsWithAnalysts,
+      total: briefingsWithAnalysts.length,
+      hasMore: false,
+      nextCursor: null
+    })
 
   } catch (error) {
     console.error('Error in briefings GET:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }

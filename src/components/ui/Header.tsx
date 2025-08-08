@@ -49,13 +49,10 @@ const Header: React.FC<HeaderProps> = ({
     }
   }, [bannerImage])
 
-  // Don't render header until settings are initialized
-  if (!isInitialized || !settings) {
-    return null;
-  }
+  // Use settings if available, otherwise use fallbacks
+  const industryName = settings?.industryName || 'Industry';
 
-  // Use actual settings - no fallbacks
-  const industryName = settings.industryName;
+
 
   // Create banner style with image or gradient fallback
   const bannerStyle = bannerImage && !bannerError
@@ -71,13 +68,7 @@ const Header: React.FC<HeaderProps> = ({
         border: 'none' // Remove debug border
       }
 
-  // Debug logging
-  console.log('Banner debug:', {
-    bannerImage,
-    bannerError,
-    bannerStyle,
-    hasImage: bannerImage && !bannerError
-  })
+
 
 
 
@@ -105,6 +96,6 @@ const Header: React.FC<HeaderProps> = ({
       </div>
     </header>
   );
-};
+}
 
 export default Header;

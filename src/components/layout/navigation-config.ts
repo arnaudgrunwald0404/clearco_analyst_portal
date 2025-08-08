@@ -10,7 +10,8 @@ import {
   Award,
   CalendarDays,
   Clock,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react'
 
 export interface NavigationItem {
@@ -24,13 +25,14 @@ export interface NavigationItem {
 export const mainNavigation: NavigationItem[] = [
   { name: 'Overview', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
-  { name: 'Publications', href: '/publications', icon: FileText },
   { name: 'Briefings', href: '/briefings', icon: Calendar },
   { name: 'Briefings due', href: '/briefings/due', icon: Clock },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
+  { name: 'Publications', href: '/publications', icon: FileText },
   { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Events', href: '/events', icon: CalendarDays },
+
   { name: 'Analytics (coming soon)', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]

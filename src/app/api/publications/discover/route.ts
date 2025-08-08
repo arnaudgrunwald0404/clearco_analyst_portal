@@ -39,7 +39,15 @@ function generatePotentialUrls(domain: string): string[] {
 
 async function checkUrl(url: string): Promise<boolean> {
   try {
-    const response = await fetch(url, { method: 'HEAD' })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+    
+    const response = await fetch(url, { 
+      method: 'HEAD',
+      signal: controller.signal
+    })
+    
+    clearTimeout(timeoutId)
     return response.ok
   } catch {
     return false
@@ -53,8 +61,15 @@ async function discoverPublications(source: AnalystSource): Promise<Publication[
     try {
       console.log(`Checking ${url} for ${source.analyst.firstName} ${source.analyst.lastName}...`)
       
-      // Try to fetch the webpage
-      const response = await fetch(url)
+      // Try to fetch the webpage with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
       if (!response.ok) continue
       const html = await response.text()
 
@@ -160,7 +175,7 @@ async function discoverPublications(source: AnalystSource): Promise<Publication[
 
 export async function GET() {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     // Get all analysts
     const { data: analysts, error: analystsError } = await supabase
@@ -237,9 +252,22 @@ export async function GET() {
 
   } catch (error) {
     console.error('Error in publication discovery:', error)
+    
+    // Return more detailed error information for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
     return NextResponse.json({
       success: false,
-      error: 'Failed to discover publications'
+      error: 'Failed to discover publications',
+      details: errorMessage,
+      debug: {
+        message: 'Check server logs for more details',
+        suggestions: [
+          'Verify API keys are configured (GOOGLE_SEARCH_API_KEY, TWITTER_BEARER_TOKEN)',
+          'Check network connectivity to external APIs',
+          'Ensure analyst data contains valid email domains and websites'
+        ]
+      }
     }, { status: 500 })
   }
 }

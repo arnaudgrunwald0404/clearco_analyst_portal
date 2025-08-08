@@ -2,36 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calendar, Clock, Users, Video, FileText, Bot, MessageSquare, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface Briefing {
-  id: string
-  title: string
-  description?: string
-  scheduledAt: string
-  completedAt?: string
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED'
-  agenda?: string[]
-  notes?: string
-  outcomes?: string[]
-  followUpActions?: string[]
-  recordingUrl?: string
-  transcript?: string
-  aiSummary?: string
-  followUpSummary?: string
-  duration?: number
-  attendeeEmails?: string[]
-  analysts: {
-    id: string
-    firstName: string
-    lastName: string
-    email: string
-    company?: string
-    title?: string
-    profileImageUrl?: string
-    role?: string
-  }[]
-  createdAt: string
-  updatedAt: string
-}
+
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -59,8 +30,8 @@ function formatDateTime(dateString: string) {
 }
 
 export default function BriefingSummary() {
-  const [latestBriefing, setLatestBriefing] = useState<Briefing | null>(null)
-  const [nextBriefing, setNextBriefing] = useState<Briefing | null>(null)
+  const [latestBriefing, setLatestBriefing] = useState<any | null>(null)
+const [nextBriefing, setNextBriefing] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 

@@ -13,14 +13,17 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname()
 
   // Pages that should not show the sidebar
-  const publicPages = ['/login', '/auth', '/auth/callback', '/auth/auth-code-error', '/auth/forgot-password', '/auth/reset-password', '/signup']
+  const publicPages = ['/login', '/auth', '/auth/callback', '/auth/auth-code-error', '/auth/forgot-password', '/auth/reset-password', '/signup', '/analyst-login']
   const isPublicPage = publicPages.some(page => pathname.startsWith(page))
+  
+  // 404 and error pages should also be public (no sidebar, no settings loading)
+  const isErrorPage = pathname === '/404' || !pathname || pathname.includes('/non-existent')
 
   // Analyst portal pages have their own layout
   const isAnalystPortal = pathname.startsWith('/portal')
 
-  // Public pages (login, auth) - no sidebar, no settings loading
-  if (isPublicPage) {
+  // Public pages (login, auth) and error pages - no sidebar, no settings loading
+  if (isPublicPage || isErrorPage) {
     return <>{children}</>
   }
 

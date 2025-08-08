@@ -30,13 +30,8 @@ async function checkTables() {
       'influence_tiers',
       'general_settings',
       
-      // Possible PascalCase (Prisma style)
-      'Analyst',
-      'SocialPost',
-      'Briefing',
-      'BriefingAnalyst',
-      'CalendarConnection',
-      'CalendarMeeting',
+      // Legacy PascalCase (for reference only)
+      'Publication',
       'ActionItem',
       'InfluenceTier',
       'GeneralSettings'

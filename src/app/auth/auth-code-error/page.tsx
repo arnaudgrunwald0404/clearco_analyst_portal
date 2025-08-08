@@ -1,19 +1,50 @@
+'use client'
+
 import Link from 'next/link'
-import { AlertTriangle } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { AlertTriangle, Shield } from 'lucide-react'
 
 export default function AuthCodeError() {
+  const searchParams = useSearchParams()
+  const error = searchParams.get('error')
+  
+  const getErrorContent = () => {
+    switch (error) {
+      case 'unauthorized':
+        return {
+          title: 'Access Denied',
+          message: 'This email address is not authorized for access to the system.',
+          icon: Shield
+        }
+      case 'domain_restricted':
+        return {
+          title: 'Domain Restricted',
+          message: 'Access is restricted to ClearCompany employees (@clearcompany.com) and registered industry analysts only.',
+          icon: Shield
+        }
+      default:
+        return {
+          title: 'Authentication Error',
+          message: 'Sorry, we couldn\'t authenticate your account. This could be due to an expired or invalid authentication link.',
+          icon: AlertTriangle
+        }
+    }
+  }
+  
+  const errorContent = getErrorContent()
+  const ErrorIcon = errorContent.icon
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-800 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4">
         <div className="text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
-            <AlertTriangle className="h-6 w-6 text-red-600" />
+            <ErrorIcon className="h-6 w-6 text-red-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Authentication Error
+            {errorContent.title}
           </h1>
           <p className="text-gray-600 mb-6">
-            Sorry, we couldn't authenticate your account. This could be due to an expired or invalid authentication link.
+            {errorContent.message}
           </p>
           <div className="space-y-3">
             <Link

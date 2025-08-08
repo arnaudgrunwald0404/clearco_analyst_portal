@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/supabase'
+import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
 
 type Analyst = Database['public']['Tables']['analysts']['Row']
 type AnalystInsert = Database['public']['Tables']['analysts']['Insert']
@@ -188,6 +189,19 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create analyst' },
         { status: 500 }
       )
+    }
+
+    // Sync social handles
+    try {
+      await syncAnalystSocialHandlesOnUpdate({
+        id: newAnalyst.id,
+        twitterHandle: newAnalyst.twitterHandle,
+        linkedinUrl: newAnalyst.linkedinUrl,
+        personalWebsite: newAnalyst.personalWebsite
+      })
+    } catch (syncError) {
+      console.error('Error syncing social handles:', syncError)
+      // Don't fail the analyst creation, just log the error
     }
 
     // Clear cache

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
+import { useSettings } from '@/contexts/SettingsContext'
 
 interface AnalystDrawerProps {
   isOpen: boolean
@@ -149,6 +150,7 @@ const mockBriefings = [
 ]
 
 export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawerProps) {
+  const { settings } = useSettings()
   const [activeTab, setActiveTab] = useState('overview')
   const [publications, setPublications] = useState([])
   const [socialPosts, setSocialPosts] = useState([])
@@ -326,10 +328,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       }
     }
 
-    // Fetch all data when drawer opens
-    fetchData('publications', setPublications, 'publications')
-    fetchData('social-posts', setSocialPosts, 'socialPosts')
-    fetchData('briefings', setBriefings, 'briefings')
+    // fetchData('publications', setPublications, 'publications')
+    // fetchData('social-posts', setSocialPosts, 'socialPosts')
+    // fetchData('briefings', setBriefings, 'briefings')
   }, [isOpen, analyst?.id])
 
   // Update edit data when analyst changes
@@ -483,13 +484,18 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     setProfilePictureModal(prev => ({ ...prev, loading: true, isOpen: true }))
     
     try {
+      const industryName = settings?.industryName || 'Technology'
+      
+      console.log(`🔍 Searching for headshots: "Headshot of ${industryName} analyst ${analyst.firstName} ${analyst.lastName}"`)
+      
       const response = await fetch('/api/analysts/search-profile-pictures', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analystName: `${analyst.firstName} ${analyst.lastName}`,
           company: analyst.company,
-          title: analyst.title
+          title: analyst.title,
+          industryName: industryName
         })
       })
       
@@ -794,9 +800,10 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   <button
                     onClick={searchProfilePictures}
                     className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                    title="Search Google Images for analyst headshots"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Select Photo</span>
+                    <span>Find Photo</span>
                   </button>
                   <button
                     onClick={handleCancelEdit}
@@ -1185,7 +1192,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   )}
                 </div>
 
-                {/* Social Media Activity */}
+                {/*
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-medium text-gray-900">Social Media Activity</h3>
@@ -1209,7 +1216,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                     <div className="space-y-3">
                       {socialPosts.slice(0, 5).map((post) => (
                         <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all">
-                          {/* Post Header */}
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center space-x-2">
                               {getPlatformIcon(post.platform)}
@@ -1236,10 +1242,8 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                             </div>
                           </div>
                           
-                          {/* Post Content */}
                           <p className="text-sm text-gray-800 mb-2 leading-relaxed line-clamp-3">{post.content}</p>
                           
-                          {/* Engagement Info */}
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <div className="flex items-center space-x-3">
                               <div className="flex items-center space-x-1">
@@ -1248,7 +1252,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               </div>
                             </div>
                             
-                            {/* Action Buttons */}
                             <div className="flex items-center space-x-1">
                               <button
                                 onClick={() => setEngagementModal({ isOpen: true, type: 'reply', post })}
@@ -1271,6 +1274,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                     </div>
                   )}
                 </div>
+                */
 
                 {/* Bio */}
                 {analyst.bio && (
@@ -1736,11 +1740,17 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <Camera className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Select Profile Picture for {analyst.firstName} {analyst.lastName}
-                  </h3>
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <Camera className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Select Profile Picture for {analyst.firstName} {analyst.lastName}
+                    </h3>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <Search className="w-4 h-4" />
+                    <span>Searching: "Headshot of {settings?.industryName || 'Technology'} analyst {analyst.firstName} {analyst.lastName}"</span>
+                  </div>
                 </div>
                 <button
                   onClick={() => setProfilePictureModal({ isOpen: false, pictures: [], loading: false })}
@@ -1755,7 +1765,10 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 {profilePictureModal.loading ? (
                   <div className="flex flex-col items-center justify-center py-12">
                     <Loader className="w-8 h-8 animate-spin text-blue-600 mb-4" />
-                    <p className="text-sm text-gray-600">Searching for profile pictures...</p>
+                    <p className="text-sm text-gray-600 mb-2">Searching Google Images via SerpApi...</p>
+                    <p className="text-xs text-gray-500">
+                      Query: "Headshot of {settings?.industryName || 'Technology'} analyst {analyst.firstName} {analyst.lastName}"
+                    </p>
                   </div>
                 ) : profilePictureModal.pictures.length === 0 ? (
                   <div className="text-center py-12">
@@ -1771,24 +1784,30 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    <p className="text-sm text-gray-600">
-                      Found {profilePictureModal.pictures.length} profile picture options. Click on an image to select it as the profile picture.
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-gray-600">
+                        Found {profilePictureModal.pictures.length} profile picture options from SerpApi Google Images.
+                      </p>
+                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                        <span>Powered by</span>
+                        <span className="font-medium">SerpApi</span>
+                      </div>
+                    </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-3 gap-4">
                       {profilePictureModal.pictures.map((picture, index) => (
                         <div 
                           key={index}
-                          className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                          className="border border-gray-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
                           onClick={() => selectProfilePicture(picture.url)}
                         >
                           <div className="aspect-square bg-gray-100 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
                             <img
-                              src={picture.url}
+                              src={picture.thumbnail || picture.url}
                               alt={picture.title || `Profile picture option ${index + 1}`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                               onError={(e) => {
-                                e.currentTarget.src = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="#f3f4f6"/><text x="100" y="110" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#9ca3af">Image not available</text></svg>')}`
+                                e.currentTarget.src = picture.url // Fallback to original if thumbnail fails
                               }}
                             />
                           </div>

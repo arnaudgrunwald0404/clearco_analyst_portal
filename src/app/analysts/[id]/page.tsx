@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Disclosure } from '@headlessui/react'
 import { 
   User, 
   Mail, 
@@ -24,7 +25,8 @@ import {
   Award,
   Briefcase,
   Search,
-  RefreshCw
+  RefreshCw,
+  ChevronUp
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -477,18 +479,39 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
               </div>
 
               {/* Covered Topics */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Covered Topics</h3>
-                <div className="flex flex-wrap gap-2">
-                  {analyst.coveredTopics?.map((topic, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                    >
-                      {topic.topic}
-                    </span>
-                  )) || <span className="text-gray-500">No topics assigned.</span>}
-                </div>
+              <div className="bg-white rounded-lg shadow">
+                <Disclosure defaultOpen>
+                  {({ open }) => (
+                    <>
+                      <Disclosure.Button className="flex justify-between w-full px-6 py-4 text-sm font-medium text-left text-gray-900 bg-gray-50 rounded-t-lg hover:bg-gray-100 focus:outline-none focus-visible:ring focus-visible:ring-blue-500 focus-visible:ring-opacity-75">
+                        <h3 className="text-lg font-medium">
+                          Covered Topics ({analyst.coveredTopics?.length || 0})
+                        </h3>
+                        <ChevronUp
+                          className={`${
+                            open ? 'transform rotate-180' : ''
+                          } w-5 h-5 text-gray-500`}
+                        />
+                      </Disclosure.Button>
+                      <Disclosure.Panel className="px-6 pt-4 pb-6 text-sm text-gray-500">
+                        <div className="flex flex-wrap gap-2">
+                          {analyst.coveredTopics?.length > 0 ? (
+                            analyst.coveredTopics.map((topic, index) => (
+                              <span
+                                key={index}
+                                className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                              >
+                                {topic.topic}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-500">No topics assigned.</span>
+                          )}
+                        </div>
+                      </Disclosure.Panel>
+                    </>
+                  )}
+                </Disclosure>
               </div>
 
               {/* Communication Timeline */}

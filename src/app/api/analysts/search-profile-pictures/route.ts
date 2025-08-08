@@ -4,6 +4,7 @@ interface SearchRequest {
   analystName: string
   company?: string
   title?: string
+  industryName?: string
 }
 
 interface ProfilePictureResult {
@@ -13,244 +14,157 @@ interface ProfilePictureResult {
   confidence: number
   width?: number
   height?: number
+  original_url?: string
+  thumbnail?: string
 }
 
-// Real web search for profile pictures using SerpApi
-async function searchWebForProfilePictures(analystName: string, company?: string, title?: string): Promise<ProfilePictureResult[]> {
+// SerpApi Google Images search for analyst headshots
+async function searchAnalystHeadshotsWithSerpApi(
+  analystName: string, 
+  industryName: string = 'Technology',
+  company?: string
+): Promise<ProfilePictureResult[]> {
   const results: ProfilePictureResult[] = []
   
   try {
-    const serpApiKey = process.env.SERPAPI_KEY
-    if (serpApiKey) {
-      const searchQueries = [
-        `${analystName} ${company || ''} headshot`,
-        `${analystName} ${title || ''} professional photo`,
-        `${analystName} ${company || ''} linkedin profile`,
-        `${analystName} ${company || ''} executive photo`
-      ].filter(query => query.trim().length > analystName.length + 1)
-
-      for (const query of searchQueries.slice(0, 2)) { // Limit to avoid rate limits
-        try {
-          const response = await fetch(
-            `https://serpapi.com/search.json?engine=google_images&q=${encodeURIComponent(query)}&api_key=${serpApiKey}&num=3&img_type=face&img_size=medium`,
-            {
-              headers: {
-                'User-Agent': 'AnalystPortal/1.0'
-              }
-            }
-          )
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.images_results && data.images_results.length > 0) {
-              for (const image of data.images_results.slice(0, 2)) {
-                results.push({
-                  url: image.original,
-                  source: image.source || 'Web Search',
-                  title: image.title || `${analystName} professional photo`,
-                  confidence: Math.floor(Math.random() * 25) + 75, // 75-100% confidence
-                  width: image.original_width,
-                  height: image.original_height
-                })
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`SerpApi search error for query "${query}":`, error)
-        }
-      }
+    const serpApiKey = process.env.SERP_API_KEY
+    if (!serpApiKey) {
+      console.warn('SERP_API_KEY not found in environment variables')
+      return results
     }
-  } catch (error) {
-    console.error('SerpApi error:', error)
-  }
-  
-  return results
-}
 
-// LinkedIn profile picture extraction (simulated - would need proper LinkedIn API access)
-async function searchLinkedInProfilePictures(analystName: string, company?: string): Promise<ProfilePictureResult[]> {
-  const results: ProfilePictureResult[] = []
-  
-  try {
-    // In a real implementation, you would:
-    // 1. Use LinkedIn's API to search for profiles
-    // 2. Extract profile picture URLs from the API response
-    // 3. Handle authentication and rate limiting
+    // Primary search query as requested: "Headshot of {industry name} analyst {analyst name}"
+    const primaryQuery = `Headshot of ${industryName} analyst ${analystName}`
     
-    // For now, we'll simulate finding LinkedIn-style professional photos
-    // This would be replaced with actual LinkedIn API calls
-    
-    const searchQuery = `${analystName} ${company || ''} linkedin`
-    
-    // Simulate finding a LinkedIn profile with a professional photo
-    // In production, this would be an actual API call to LinkedIn
-    const linkedInPhotoUrl = `https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face&auto=format`
-    
-    results.push({
-      url: linkedInPhotoUrl,
-      source: 'LinkedIn Profile',
-      title: `${analystName} - LinkedIn Profile Photo`,
-      confidence: 85,
-      width: 400,
-      height: 400
-    })
-    
-  } catch (error) {
-    console.error('LinkedIn profile search error:', error)
-  }
-  
-  return results
-}
+    // Additional fallback queries for better results
+    const searchQueries = [
+      primaryQuery,
+      `${analystName} ${industryName} analyst headshot`,
+      `${analystName} ${company || industryName} professional headshot`,
+      `${analystName} analyst profile picture`
+    ]
 
-// Real image search implementation using multiple free APIs
-async function searchRealImages(analystName: string, company?: string, title?: string): Promise<ProfilePictureResult[]> {
-  const results: ProfilePictureResult[] = []
-  
-  // First, try web search for real photos (most likely to find actual photos)
-  const webSearchResults = await searchWebForProfilePictures(analystName, company, title)
-  results.push(...webSearchResults)
-  
-  // Then try LinkedIn profile pictures (most relevant for professionals)
-  const linkedInResults = await searchLinkedInProfilePictures(analystName, company)
-  results.push(...linkedInResults)
-  
-  // Construct search queries for better results
-  const searchQueries = [
-    `${analystName} ${company || ''} headshot`,
-    `${analystName} ${title || ''} professional photo`,
-    `${analystName} ${company || ''} profile picture`,
-    `${analystName} linkedin photo`,
-    `${analystName} ${company || ''} executive photo`
-  ].filter(query => query.trim().length > analystName.length + 1)
+    console.log(`🔍 SerpApi Search Queries:`, searchQueries)
 
-  // Method 1: Unsplash API (free, high-quality professional photos)
-  try {
-    const unsplashAccessKey = process.env.UNSPLASH_ACCESS_KEY
-    if (unsplashAccessKey) {
-      for (const query of searchQueries.slice(0, 2)) { // Limit to first 2 queries to avoid rate limits
-        try {
-          const response = await fetch(
-            `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=portrait`,
-            {
-              headers: {
-                'Authorization': `Client-ID ${unsplashAccessKey}`,
-                'User-Agent': 'AnalystPortal/1.0'
-              }
-            }
-          )
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.results && data.results.length > 0) {
-              for (const photo of data.results.slice(0, 2)) {
-                results.push({
-                  url: photo.urls.regular,
-                  source: 'Unsplash',
-                  title: photo.description || `${analystName} professional photo`,
-                  confidence: Math.floor(Math.random() * 20) + 80, // 80-100% confidence
-                  width: photo.width,
-                  height: photo.height
-                })
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Unsplash search error for query "${query}":`, error)
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Unsplash API error:', error)
-  }
-
-  // Method 2: Pexels API (free, professional stock photos)
-  try {
-    const pexelsApiKey = process.env.PEXELS_API_KEY
-    if (pexelsApiKey) {
-      for (const query of searchQueries.slice(0, 2)) {
-        try {
-          const response = await fetch(
-            `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=3&orientation=portrait`,
-            {
-              headers: {
-                'Authorization': pexelsApiKey,
-                'User-Agent': 'AnalystPortal/1.0'
-              }
-            }
-          )
-          
-          if (response.ok) {
-            const data = await response.json()
-            if (data.photos && data.photos.length > 0) {
-              for (const photo of data.photos.slice(0, 2)) {
-                results.push({
-                  url: photo.src.medium,
-                  source: 'Pexels',
-                  title: photo.alt || `${analystName} professional photo`,
-                  confidence: Math.floor(Math.random() * 20) + 75, // 75-95% confidence
-                  width: photo.width,
-                  height: photo.height
-                })
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Pexels search error for query "${query}":`, error)
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Pexels API error:', error)
-  }
-
-  // Method 3: Web scraping approach for LinkedIn-style professional photos
-  // This is a fallback that tries to find professional headshots
-  if (results.length === 0) {
-    try {
-      // Use a simple web search approach to find professional photos
-      const professionalQueries = [
-        `${analystName} ${company || ''} professional headshot`,
-        `${analystName} ${title || ''} executive portrait`
-      ]
-      
-      for (const query of professionalQueries) {
-        // This would require a web scraping service or search API
-        // For now, we'll use a placeholder that looks more professional
-        results.push({
-          url: `https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face&auto=format`,
-          source: 'Professional Headshot',
-          title: `${analystName} - Professional Portrait`,
-          confidence: 70,
-          width: 400,
-          height: 400
+    // Search with multiple queries to get best results
+    for (const query of searchQueries.slice(0, 2)) { // Limit to 2 queries to avoid rate limits
+      try {
+        const searchParams = new URLSearchParams({
+          engine: 'google_images',
+          q: query,
+          api_key: serpApiKey,
+          google_domain: 'google.com',
+          hl: 'en',
+          gl: 'us',
+          device: 'desktop'
         })
-        break // Only add one fallback image
-      }
-    } catch (error) {
-      console.error('Fallback image search error:', error)
-    }
-  }
 
+        const searchUrl = `https://serpapi.com/search?${searchParams.toString()}`
+        console.log(`🌐 SerpApi URL: ${searchUrl.replace(serpApiKey, 'API_KEY_HIDDEN')}`)
+
+        const response = await fetch(searchUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'AnalystPortal/1.0'
+          }
+        })
+        
+        if (!response.ok) {
+          console.error(`SerpApi HTTP error: ${response.status} - ${response.statusText}`)
+          continue
+        }
+
+        const data = await response.json()
+        console.log(`📊 SerpApi response status:`, data.search_information?.image_results_state || 'Unknown')
+        
+        if (data.images_results && Array.isArray(data.images_results) && data.images_results.length > 0) {
+          console.log(`✅ Found ${data.images_results.length} images for query: "${query}"`)
+          
+          for (const image of data.images_results.slice(0, 6)) { // Take top 6 from each query
+            // Ensure we have required fields
+            if (image.original && image.thumbnail) {
+              // Calculate confidence based on relevance factors
+              let confidence = 70 // Base confidence
+              
+              // Boost confidence if analyst name appears in title
+              if (image.title && image.title.toLowerCase().includes(analystName.toLowerCase())) {
+                confidence += 15
+              }
+              
+              // Boost confidence if industry appears in title or source
+              if (image.title?.toLowerCase().includes(industryName.toLowerCase()) || 
+                  image.source?.toLowerCase().includes(industryName.toLowerCase())) {
+                confidence += 10
+              }
+              
+              // Boost confidence for professional sources
+              if (image.source && (
+                image.source.toLowerCase().includes('linkedin') ||
+                image.source.toLowerCase().includes('professional') ||
+                image.source.toLowerCase().includes('executive') ||
+                image.source.toLowerCase().includes('business')
+              )) {
+                confidence += 15
+              }
+              
+              // Cap confidence at 95%
+              confidence = Math.min(confidence, 95)
+
+              results.push({
+                url: image.original,
+                thumbnail: image.thumbnail,
+                source: image.source || 'Google Images',
+                title: image.title || `${analystName} - ${industryName} Analyst`,
+                confidence: confidence,
+                width: image.original_width || 400,
+                height: image.original_height || 400,
+                original_url: image.link || undefined
+              })
+            }
+          }
+        } else {
+          console.log(`❌ No images found for query: "${query}"`)
+          if (data.error) {
+            console.error(`SerpApi Error:`, data.error)
+          } else {
+            console.log(`🔍 Response structure:`, Object.keys(data))
+            console.log(`🔍 Search info:`, data.search_information)
+          }
+        }
+        
+        // Add delay between requests to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+      } catch (error) {
+        console.error(`SerpApi search error for query "${query}":`, error)
+      }
+    }
+  } catch (error) {
+    console.error('SerpApi Google Images search error:', error)
+  }
+  
   return results
 }
 
-// Fallback to professional-looking avatars if no real images found
-function generateProfessionalAvatars(analystName: string): ProfilePictureResult[] {
+// Generate professional avatars as fallback when no real photos are found
+async function generateProfessionalAvatars(analystName: string, industryName: string): Promise<ProfilePictureResult[]> {
   const initials = analystName.split(' ').map(n => n[0]).join('').toUpperCase()
   
   return [
     {
       url: `https://ui-avatars.com/api/?name=${encodeURIComponent(analystName)}&size=400&background=2563eb&color=fff&font-size=0.4&format=png&bold=true`,
+      thumbnail: `https://ui-avatars.com/api/?name=${encodeURIComponent(analystName)}&size=150&background=2563eb&color=fff&font-size=0.4&format=png&bold=true`,
       source: 'Professional Avatar',
-      title: `${analystName} - Professional Avatar`,
+      title: `${analystName} - ${industryName} Analyst Avatar`,
       confidence: 60,
       width: 400,
       height: 400
     },
     {
       url: `https://ui-avatars.com/api/?name=${encodeURIComponent(analystName)}&size=400&background=059669&color=fff&font-size=0.4&format=png&bold=true`,
+      thumbnail: `https://ui-avatars.com/api/?name=${encodeURIComponent(analystName)}&size=150&background=059669&color=fff&font-size=0.4&format=png&bold=true`,
       source: 'Executive Avatar',
-      title: `${analystName} - Executive Avatar`,
+      title: `${analystName} - ${industryName} Executive Avatar`,
       confidence: 55,
       width: 400,
       height: 400
@@ -260,7 +174,7 @@ function generateProfessionalAvatars(analystName: string): ProfilePictureResult[
 
 export async function POST(request: Request) {
   try {
-    const { analystName, company, title }: SearchRequest = await request.json()
+    const { analystName, company, title, industryName }: SearchRequest = await request.json()
     
     if (!analystName) {
       return NextResponse.json(
@@ -269,28 +183,40 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log(`🔍 Searching for real profile pictures for: ${analystName} at ${company || 'unknown company'}`)
+    // Use provided industry name or default to 'Technology'
+    const industry = industryName || 'Technology'
+    
+    console.log(`🔍 Searching SerpApi for analyst headshots: ${analystName} in ${industry} industry`)
 
-    // Try to find real images first
-    let results = await searchRealImages(analystName, company, title)
+    // Primary search using SerpApi Google Images
+    let results = await searchAnalystHeadshotsWithSerpApi(analystName, industry, company)
+    
+    // Remove duplicates based on URL
+    const uniqueResults = results.filter((result, index, self) => 
+      index === self.findIndex(r => r.url === result.url)
+    )
     
     // If no real images found, fall back to professional avatars
-    if (results.length === 0) {
-      console.log('No real images found, using professional avatars as fallback')
-      results = generateProfessionalAvatars(analystName)
+    if (uniqueResults.length === 0) {
+      console.log('No headshots found via SerpApi, using professional avatars as fallback')
+      const avatarResults = await generateProfessionalAvatars(analystName, industry)
+      uniqueResults.push(...avatarResults)
     }
 
-    // Sort by confidence and limit to 3 results
-    const sortedResults = results
+    // Sort by confidence and limit to 9 results (3 rows of 3)
+    const sortedResults = uniqueResults
       .sort((a, b) => b.confidence - a.confidence)
-      .slice(0, 3)
+      .slice(0, 9)
 
-    console.log(`✅ Found ${sortedResults.length} profile picture options`)
+    console.log(`✅ Returning ${sortedResults.length} profile picture options`)
+    console.log(`🎯 Primary search query: "Headshot of ${industry} analyst ${analystName}"`)
 
     return NextResponse.json({
       success: true,
       results: sortedResults,
-      searchQuery: `${analystName} ${company || ''} ${title || ''}`.trim()
+      searchQuery: `Headshot of ${industry} analyst ${analystName}`,
+      industryName: industry,
+      totalFound: uniqueResults.length
     })
 
   } catch (error) {

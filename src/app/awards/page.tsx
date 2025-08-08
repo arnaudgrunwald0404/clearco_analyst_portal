@@ -108,10 +108,10 @@ export default function AwardsPage() {
         ? award.productTopics.join(' ') 
         : (award.productTopics || '')
       
-      const matchesSearch = award.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        award.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (award.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (award.organization || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         productTopicsStr.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (award.owner && award.owner.toLowerCase().includes(searchTerm.toLowerCase()))
+        (award.owner || '').toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesPriority = filterPriority === 'ALL' || award.priority === filterPriority
       const matchesStatus = filterStatus === 'ALL' || award.status === filterStatus
@@ -127,8 +127,8 @@ export default function AwardsPage() {
 
         switch (sortField) {
           case 'name':
-            aValue = a.name.toLowerCase()
-            bValue = b.name.toLowerCase()
+            aValue = (a.name || '').toLowerCase()
+            bValue = (b.name || '').toLowerCase()
             break
           case 'publicationDate':
             aValue = new Date(a.publicationDate).getTime()
@@ -149,8 +149,8 @@ export default function AwardsPage() {
             bValue = statusOrder[b.status] || 0
             break
           case 'organization':
-            aValue = a.organization.toLowerCase()
-            bValue = b.organization.toLowerCase()
+            aValue = (a.organization || '').toLowerCase()
+            bValue = (b.organization || '').toLowerCase()
             break
           default:
             return 0
@@ -322,30 +322,30 @@ export default function AwardsPage() {
                   <tr key={award.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleRowClick(award)}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {award.awardName}
+                        {award.name || 'Unnamed Award'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {new Date(award.publicationDate).toLocaleDateString('en-US', {
+                        {award.publicationDate ? new Date(award.publicationDate).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
-                        })}
+                        }) : 'No date'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {new Date(award.processStartDate).toLocaleDateString('en-US', {
+                        {award.submissionDate ? new Date(award.submissionDate).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
-                        })}
+                        }) : 'No date'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs truncate">
-                        {award.contactInfo}
+                        {award.owner || award.organization || 'No contact info'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -358,13 +358,16 @@ export default function AwardsPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 max-w-xs truncate">
-                        {award.topics}
+                        {Array.isArray(award.productTopics) 
+                          ? award.productTopics.join(', ') 
+                          : (award.productTopics || 'No topics')
+                        }
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                       <AwardActionsMenu
                         awardId={award.id}
-                        awardName={award.awardName}
+                        awardName={award.name || 'Unnamed Award'}
                         onDelete={handleAwardDeleted}
                         onEdit={() => handleEditAward(award)}
                         onView={() => handleViewAward(award)}

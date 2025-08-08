@@ -8,19 +8,19 @@ import { Building, Globe, Image, Save, AlertCircle, CheckCircle, Upload, X } fro
 
 interface GeneralSettings {
   id: string
-  companyName: string
-  protectedDomain: string
-  logoUrl: string
-  industryName: string
-  createdAt: string
-  updatedAt: string
+  company_name: string
+  protected_domain: string
+  logo_url: string
+  industry_name: string
+  created_at: string
+  updated_at: string
 }
 
 interface FormData {
-  companyName: string
-  protectedDomain: string
-  logoUrl: string
-  industryName: string
+  company_name: string
+  protected_domain: string
+  logo_url: string
+  industry_name: string
 }
 
 interface HelpText {
@@ -36,10 +36,10 @@ interface GeneralSettingsFormProps {
 export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSettingsFormProps) {
   const [settings, setSettings] = useState<GeneralSettings | null>(null)
   const [formData, setFormData] = useState<FormData>({
-    companyName: '',
-    protectedDomain: '',
-    logoUrl: '',
-    industryName: 'HR Technology'
+    company_name: '',
+    protected_domain: '',
+    logo_url: '',
+    industry_name: 'HR Technology'
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,10 +62,10 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         const data = await response.json()
         setSettings(data)
         setFormData({
-          companyName: data.companyName || '',
-          protectedDomain: data.protectedDomain || '',
-          logoUrl: data.logoUrl || '',
-          industryName: data.industryName || 'HR Technology'
+          company_name: data.company_name || '',
+          protected_domain: data.protected_domain || '',
+          logo_url: data.logo_url || '',
+          industry_name: data.industry_name || 'HR Technology'
         })
       }
     } catch (error) {
@@ -135,7 +135,7 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         const result = await response.json()
         setFormData(prev => ({
           ...prev,
-          logoUrl: result.logoUrl
+          logo_url: result.logo_url
         }))
         setMessage({
           type: 'success',
@@ -212,15 +212,15 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         }, e.currentTarget)}
         onMouseLeave={() => hideHelp?.()}
       >
-        <Label htmlFor="companyName" className="text-base font-medium flex items-center gap-3">
+        <Label htmlFor="company_name" className="text-base font-medium flex items-center gap-3">
           <Building className="w-5 h-5" />
           Company Name *
         </Label>
         <Input
-          id="companyName"
+          id="company_name"
           type="text"
-          value={formData.companyName}
-          onChange={(e) => handleInputChange('companyName', e.target.value)}
+          value={formData.company_name}
+          onChange={(e) => handleInputChange('company_name', e.target.value)}
           placeholder="Enter your company name"
           required
           className="w-full py-2 ml-6 pl-2"
@@ -235,15 +235,15 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         }, e.currentTarget)}
         onMouseLeave={() => hideHelp?.()}
       >
-        <Label htmlFor="protectedDomain" className="text-base font-medium flex items-center gap-3">
+        <Label htmlFor="protected_domain" className="text-base font-medium flex items-center gap-3">
           <Globe className="w-5 h-5" />
           Protected Domain *
         </Label>
         <Input
-          id="protectedDomain"
+          id="protected_domain"
           type="text"
-          value={formData.protectedDomain}
-          onChange={(e) => handleInputChange('protectedDomain', e.target.value)}
+          value={formData.protected_domain}
+          onChange={(e) => handleInputChange('protected_domain', e.target.value)}
           placeholder="company.com"
           required
           className="w-full py-2 ml-6 mr-6 pl-2"
@@ -292,10 +292,10 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         {uploadMethod === 'url' ? (
           <div className="space-y-2">
             <Input
-              id="logoUrl"
+              id="logo_url"
               type="url"
-              value={formData.logoUrl}
-              onChange={(e) => handleInputChange('logoUrl', e.target.value)}
+              value={formData.logo_url}
+              onChange={(e) => handleInputChange('logo_url', e.target.value)}
               placeholder="https://example.com/logo.png"
               className="w-full py-2 ml-6 pl-2"
             />
@@ -320,11 +320,11 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
                 <Upload className="w-4 h-4" />
                 {uploading ? 'Uploading...' : 'Choose File'}
               </Button>
-              {formData.logoUrl && (
+              {formData.logo_url && (
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => setFormData(prev => ({ ...prev, logoUrl: '' }))}
+                  onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
                   className="flex items-center gap-2 text-red-600 hover:text-red-700"
                 >
                   <X className="w-4 h-4" />
@@ -336,11 +336,11 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         )}
 
         {/* Logo Preview */}
-        {formData.logoUrl && (
+        {formData.logo_url && (
           <div className="ml-8 mt-4">
             <p className="text-sm text-gray-600 mb-3">Preview:</p>
             <img
-              src={formData.logoUrl}
+              src={formData.logo_url}
               alt="Logo preview"
               className="max-w-32 max-h-16 object-contain border border-gray-200 rounded"
               onError={(e) => {
@@ -359,15 +359,15 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
         }, e.currentTarget)}
         onMouseLeave={() => hideHelp?.()}
       >
-        <Label htmlFor="industryName" className="text-base font-medium flex items-center gap-3">
+        <Label htmlFor="industry_name" className="text-base font-medium flex items-center gap-3">
           <Building className="w-5 h-5" />
           Industry Name *
         </Label>
         <Input
-          id="industryName"
+          id="industry_name"
           type="text"
-          value={formData.industryName}
-          onChange={(e) => handleInputChange('industryName', e.target.value)}
+          value={formData.industry_name}
+          onChange={(e) => handleInputChange('industry_name', e.target.value)}
           placeholder="HR Technology"
           required
           className="w-full pt-2 ml-6 pl-2"

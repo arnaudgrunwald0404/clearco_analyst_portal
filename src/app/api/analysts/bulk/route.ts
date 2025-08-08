@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
+import type { Database } from '@/types/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,6 +121,19 @@ export async function POST(request: NextRequest) {
       }
       
       createdAnalysts.push(analyst)
+      
+      // Sync social handles
+      try {
+        await syncAnalystSocialHandlesOnUpdate({
+          id: analyst.id,
+          twitterHandle: analyst.twitterHandle,
+          linkedinUrl: analyst.linkedinUrl,
+          personalWebsite: analyst.personalWebsite
+        })
+      } catch (syncError) {
+        console.error('Error syncing social handles for bulk create:', syncError)
+        // Don't fail the bulk creation, just log the error
+      }
       
       // Create covered topics if provided
       if (analystData.coveredTopics && analystData.coveredTopics.length > 0) {
@@ -298,6 +314,73 @@ export async function PATCH(request: NextRequest) {
         }
         break
 
+      case 'hardDelete':
+        // Hard delete - permanently remove analysts from database
+        console.log(`🗑️ Hard deleting ${analystIds.length} analysts:`, analystIds)
+        
+        // Use service role client to bypass RLS for hard delete operations
+        const adminSupabase = createServiceClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        
+        // First, delete publications that reference these analysts
+        // Try both table name variations (Publication and publications)
+        const { error: publicationsError1 } = await adminSupabase
+          .from('Publication')
+          .delete()
+          .in('analystId', analystIds)
+        
+        if (publicationsError1) {
+          console.log('Failed to delete from Publication table, trying publications:', publicationsError1.message)
+          
+          const { error: publicationsError2 } = await adminSupabase
+            .from('publications')
+            .delete()
+            .in('analystId', analystIds)
+          
+          if (publicationsError2) {
+            console.error('Error deleting publications:', publicationsError2)
+            // Continue anyway - might not be critical
+          }
+        }
+        
+        // Delete from other related tables that might not have CASCADE
+        const { error: newsletterSubsError } = await adminSupabase
+          .from('newsletter_subscriptions')
+          .delete()
+          .in('analystId', analystIds)
+        
+        if (newsletterSubsError) {
+          console.error('Error deleting newsletter subscriptions:', newsletterSubsError)
+        }
+        
+        const { error: coveredTopicsError } = await adminSupabase
+          .from('covered_topics')
+          .delete()
+          .in('analystId', analystIds)
+        
+        if (coveredTopicsError) {
+          console.error('Error deleting covered topics:', coveredTopicsError)
+        }
+        
+        // Finally, delete the analysts themselves
+        const { error: deleteError, count: deletedCount } = await adminSupabase
+          .from('analysts')
+          .delete()
+          .in('id', analystIds)
+        
+        if (deleteError) {
+          console.error('Error hard deleting analysts:', deleteError)
+          return NextResponse.json(
+            { error: `Failed to permanently delete analysts: ${deleteError.message}` },
+            { status: 500 }
+          )
+        }
+        
+        console.log(`✅ Successfully hard deleted ${deletedCount} analysts and their related data`)
+        break
+
       default:
         return NextResponse.json(
           { error: 'Invalid action' },
@@ -307,7 +390,11 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Successfully ${action === 'archive' ? 'archived' : 'updated influence for'} ${analystIds.length} analyst(s)`
+      message: `Successfully ${
+        action === 'archive' ? 'archived' : 
+        action === 'hardDelete' ? 'permanently deleted' : 
+        'updated influence for'
+      } ${analystIds.length} analyst(s)`
     })
 
   } catch (error) {

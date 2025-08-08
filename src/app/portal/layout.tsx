@@ -24,7 +24,7 @@ export default function PortalLayout({
   // Redirect if not authenticated or not an analyst
   useEffect(() => {
     if (!user) {
-      router.push('/auth')
+      router.push('/analyst-login')
       return
     }
     

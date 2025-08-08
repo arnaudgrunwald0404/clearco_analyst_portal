@@ -14,9 +14,9 @@ export async function GET() {
     const supabase = await createClient()
 
     const { data: awards, error } = await supabase
-      .from('"Award"')
+      .from('awards')
       .select('*')
-      .order('submissionDate', { ascending: false })
+      .order('processStartDate', { ascending: false })
 
     if (error) {
       console.error('Error fetching awards:', error)
@@ -72,23 +72,18 @@ export async function POST(request: NextRequest) {
     // Create the award
     const awardData = {
       id: generateId(),
-      name,
-      link: link || null,
-      organization,
-      productTopics: productTopics ? JSON.stringify(Array.isArray(productTopics) ? productTopics : [productTopics]) : null,
+      awardName: name,
+      contactInfo: organization,
+      topics: productTopics ? (Array.isArray(productTopics) ? productTopics.join(', ') : productTopics) : null,
       priority: priority || 'MEDIUM',
-      submissionDate: new Date(submissionDate).toISOString(),
+      processStartDate: new Date(submissionDate).toISOString(),
       publicationDate: new Date(publicationDate).toISOString(),
-      owner: owner || null,
-      status: status || 'EVALUATING',
-      cost: cost || null,
-      notes: notes || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
 
     const { data: award, error } = await supabase
-      .from('"Award"')
+      .from('awards')
       .insert(awardData)
       .select()
       .single()

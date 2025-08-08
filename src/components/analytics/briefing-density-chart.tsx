@@ -19,7 +19,13 @@ const BriefingDensityChart = () => {
         const response = await fetch('/api/analytics/briefing-density')
         if (response.ok) {
           const result = await response.json()
-          setData(result)
+          // Handle both direct array and object with data property
+          const dataArray = Array.isArray(result) ? result : (result.data || [])
+          console.log('📊 Briefing density data:', { result, dataArray })
+          setData(dataArray)
+        } else {
+          console.error('Failed to fetch briefing density data:', response.status, response.statusText)
+          setData([])
         }
       } catch (error) {
         console.error('Error fetching briefing density data:', error)
@@ -41,7 +47,7 @@ const BriefingDensityChart = () => {
     return date
   })
 
-  const contributionsByDate = data.reduce((acc, curr) => {
+  const contributionsByDate = (Array.isArray(data) ? data : []).reduce((acc, curr) => {
     acc[curr.date] = curr.count
     return acc
   }, {} as Record<string, number>)

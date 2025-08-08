@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { syncAnalystSocialHandlesOnUpdate, removeAnalystSocialHandlesOnDelete } from '@/lib/social-sync'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -188,7 +189,7 @@ export async function PATCH(
     const allowedFields = [
       'firstName', 'lastName', 'email', 'company', 'title', 'bio',
       'profileImageUrl', 'influence', 'relationshipHealth', 'status',
-      'lastContactDate', 'keyThemes'
+      'lastContactDate', 'keyThemes', 'twitterHandle', 'linkedinUrl', 'personalWebsite'
     ]
 
     allowedFields.forEach(field => {
@@ -232,6 +233,24 @@ export async function PATCH(
         await supabase
           .from('covered_topics')
           .insert(topicData)
+      }
+    }
+
+    // Sync social handles if social media fields were updated
+    const socialFields = ['twitterHandle', 'linkedinUrl', 'personalWebsite']
+    const hasSocialUpdates = socialFields.some(field => body[field] !== undefined)
+    
+    if (hasSocialUpdates) {
+      try {
+        await syncAnalystSocialHandlesOnUpdate({
+          id: updatedAnalyst.id,
+          twitterHandle: updatedAnalyst.twitterHandle,
+          linkedinUrl: updatedAnalyst.linkedinUrl,
+          personalWebsite: updatedAnalyst.personalWebsite
+        })
+      } catch (syncError) {
+        console.error('Error syncing social handles:', syncError)
+        // Don't fail the analyst update, just log the error
       }
     }
 

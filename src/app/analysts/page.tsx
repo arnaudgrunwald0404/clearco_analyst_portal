@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Check, ChevronDown } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Check, ChevronDown, Trash2, AlertTriangle } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 import AnalystDrawer from '@/components/drawers/analyst-drawer'
 import AddAnalystModal from '@/components/modals/add-analyst-modal'
@@ -30,11 +31,14 @@ interface Analyst {
 }
 
 export default function AnalystsPage() {
+  const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ACTIVE')
   const [filterInfluence, setFilterInfluence] = useState('ALL')
   const [filterType, setFilterType] = useState('ALL')
   const [filterTopics, setFilterTopics] = useState<string[]>([])
+  const [filterRecent, setFilterRecent] = useState(false)
+  const [topicsExpanded, setTopicsExpanded] = useState(false)
   const [sortField, setSortField] = useState<string>('')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [selectedAnalyst, setSelectedAnalyst] = useState<Analyst | null>(null)
@@ -50,6 +54,7 @@ export default function AnalystsPage() {
   const [showBulkActions, setShowBulkActions] = useState(false)
   const [bulkActionDropdownOpen, setBulkActionDropdownOpen] = useState(false)
   const [influenceDropdownOpen, setInfluenceDropdownOpen] = useState(false)
+  const [showHardDeleteConfirm, setShowHardDeleteConfirm] = useState(false)
 
   // Fetch analysts from database
   const fetchAnalysts = async () => {
@@ -81,6 +86,16 @@ export default function AnalystsPage() {
   useEffect(() => {
     fetchAnalysts()
   }, [])
+
+  // Check URL parameters on mount
+  useEffect(() => {
+    const filter = searchParams.get('filter')
+    if (filter === 'recent') {
+      setFilterRecent(true)
+      setSortField('createdAt')
+      setSortDirection('desc')
+    }
+  }, [searchParams])
 
   // Handle clicking outside dropdowns
   useEffect(() => {
@@ -151,6 +166,11 @@ export default function AnalystsPage() {
       analyst.keyThemes && analyst.keyThemes.split(',').some(t => t.trim() === topic)
     ).length
   }, [analysts])
+
+  // Calculate total topics count
+  const totalTopicsCount = useMemo(() => {
+    return allTopics?.length || 0
+  }, [allTopics])
 
   // Handle sorting
   const handleSort = (field: string) => {
@@ -258,6 +278,41 @@ export default function AnalystsPage() {
     }
   }
 
+  const handleBulkHardDelete = async () => {
+    if (selectedAnalysts.size === 0) return
+
+    try {
+      const response = await fetch('/api/analysts/bulk', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analystIds: Array.from(selectedAnalysts),
+          action: 'hardDelete'
+        })
+      })
+
+      if (response.ok) {
+        addToast({ 
+          type: 'success', 
+          message: `Permanently deleted ${selectedAnalysts.size} analyst(s)` 
+        })
+        clearSelection()
+        fetchAnalysts() // Refresh the list
+        setShowHardDeleteConfirm(false)
+      } else {
+        throw new Error('Failed to delete analysts')
+      }
+    } catch (error) {
+      addToast({ type: 'error', message: 'Failed to delete analysts' })
+      setShowHardDeleteConfirm(false)
+    }
+  }
+
+  const openHardDeleteConfirm = () => {
+    setBulkActionDropdownOpen(false)
+    setShowHardDeleteConfirm(true)
+  }
+
   // Enhanced filtering and sorting
   const filteredAndSortedAnalysts = useMemo(() => {
     if (!analysts || !Array.isArray(analysts)) {
@@ -285,7 +340,14 @@ export default function AnalystsPage() {
       const matchesTopics = filterTopics.length === 0 || 
         (analyst.keyThemes && analyst.keyThemes.split(',').some(t => filterTopics.some(topic => t.trim() === topic)))
       
-      return matchesSearch && matchesStatus && matchesInfluence && matchesType && matchesTopics
+      // Filter for recently added (last 30 days)
+      const matchesRecent = !filterRecent || (() => {
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        return new Date(analyst.createdAt) >= thirtyDaysAgo
+      })()
+      
+      return matchesSearch && matchesStatus && matchesInfluence && matchesType && matchesTopics && matchesRecent
     })
 
     // Apply sorting
@@ -312,6 +374,10 @@ export default function AnalystsPage() {
             aValue = new Date(a.updatedAt).getTime()
             bValue = new Date(b.updatedAt).getTime()
             break
+          case 'createdAt':
+            aValue = new Date(a.createdAt).getTime()
+            bValue = new Date(b.createdAt).getTime()
+            break
           default:
             return 0
         }
@@ -325,7 +391,7 @@ export default function AnalystsPage() {
     }
 
     return filtered
-  }, [analysts, searchTerm, filterStatus, filterInfluence, filterType, filterTopics, sortField, sortDirection])
+  }, [analysts, searchTerm, filterStatus, filterInfluence, filterType, filterTopics, filterRecent, sortField, sortDirection])
 
   // Get sort icon for column headers
   const getSortIcon = (field: string) => {
@@ -405,6 +471,18 @@ export default function AnalystsPage() {
                             </div>
                           )}
                         </div>
+                        
+                        {/* Divider */}
+                        <div className="border-t border-gray-200 my-1"></div>
+                        
+                        {/* Hard Delete - Dangerous Action */}
+                        <button
+                          onClick={openHardDeleteConfirm}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Permanently Delete</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -492,44 +570,89 @@ export default function AnalystsPage() {
         </div>
         
         {/* Topic Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Topics:</span>
-          {allTopics && Array.isArray(allTopics) && allTopics.map(topic => {
-            const count = getTopicCount(topic)
-            return (
-              <button
-                key={topic}
-                onClick={() => toggleTopicFilter(topic)}
-                className={cn(
-                  'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                  filterTopics.includes(topic)
-                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                )}
-              >
-                <span>{topic}</span>
-                <span className="ml-1 text-xs opacity-75">({count})</span>
-                {filterTopics.includes(topic) && (
-                  <X className="w-3 h-3 ml-1" />
-                )}
-              </button>
-            )
-          })}
-          
-          {filterTopics.length > 0 && (
+        <div className="space-y-2">
+          {/* Topics Header - Always Visible */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={clearTopicFilters}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium ml-2"
+              onClick={() => setTopicsExpanded(!topicsExpanded)}
+              className="flex items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
-              Clear all topics
+              <span>Topics ({totalTopicsCount})</span>
+              <ChevronDown className={cn(
+                "w-4 h-4 transition-transform duration-200",
+                topicsExpanded ? "rotate-180" : ""
+              )} />
             </button>
+            
+            {/* Show active topic filters when collapsed */}
+            {!topicsExpanded && filterTopics.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {filterTopics.map(topic => (
+                  <button
+                    key={topic}
+                    onClick={() => toggleTopicFilter(topic)}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+                  >
+                    <span>{topic}</span>
+                    <X className="w-3 h-3 ml-1" />
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {filterTopics.length > 0 && (
+              <button
+                onClick={clearTopicFilters}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                Clear all topics
+              </button>
+            )}
+          </div>
+
+          {/* Topics List - Collapsible */}
+          {topicsExpanded && (
+            <div className="flex flex-wrap items-center gap-2 pl-6">
+              {allTopics && Array.isArray(allTopics) && allTopics.map(topic => {
+                const count = getTopicCount(topic)
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => toggleTopicFilter(topic)}
+                    className={cn(
+                      'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors',
+                      filterTopics.includes(topic)
+                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    )}
+                  >
+                    <span>{topic}</span>
+                    <span className="ml-1 text-xs opacity-75">({count})</span>
+                    {filterTopics.includes(topic) && (
+                      <X className="w-3 h-3 ml-1" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           )}
         </div>
         
         {/* Active Filters Summary */}
-        {(filterTopics.length > 0 || filterStatus !== 'ALL' || filterInfluence !== 'ALL' || filterType !== 'ALL') && (
+        {(filterTopics.length > 0 || filterStatus !== 'ALL' || filterInfluence !== 'ALL' || filterType !== 'ALL' || filterRecent) && (
           <div className="text-sm text-gray-600">
             Showing {filteredAndSortedAnalysts.length} of {analysts?.length || 0} analysts
+            {filterRecent && (
+              <span className="inline-flex items-center ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                Recently Added (30 days)
+                <button
+                  onClick={() => setFilterRecent(false)}
+                  className="ml-1 text-blue-600 hover:text-blue-800"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
             {filterTopics.length > 0 && (
               <span> covering: {filterTopics.join(', ')}</span>
             )}
@@ -765,6 +888,86 @@ export default function AnalystsPage() {
           setIsAddModalOpen(false)
         }}
       />
+
+      {/* Hard Delete Confirmation Modal */}
+      {showHardDeleteConfirm && (
+        <>
+          {/* Modal Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={() => setShowHardDeleteConfirm(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Permanently Delete Analysts
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      This action cannot be undone
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowHardDeleteConfirm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <Trash2 className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="text-sm font-medium text-red-800">
+                          Warning: Permanent Deletion
+                        </h4>
+                        <p className="text-sm text-red-700 mt-1">
+                          You are about to permanently delete <strong>{selectedAnalysts.size}</strong> analyst(s). 
+                          This will also remove all associated data including topics, publications, and relationships.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-gray-600">
+                    Are you sure you want to proceed? This action cannot be reversed.
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowHardDeleteConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkHardDelete}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Permanently</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

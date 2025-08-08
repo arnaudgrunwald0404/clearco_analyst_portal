@@ -19,9 +19,9 @@ interface CalendarConnection {
   id: string
   title: string
   email: string
-  isActive: boolean
-  lastSyncAt: string | null
-  createdAt: string
+  is_active: boolean
+  last_sync_at: string | null
+  created_at: string
 }
 
 interface SyncProgress {
@@ -35,7 +35,10 @@ interface SyncProgress {
   completed?: boolean
 }
 
+import { useAuth } from '@/contexts/AuthContext'
+
 function SettingsPageContent() {
+  const { user } = useAuth()
   const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState('general')
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
@@ -52,9 +55,22 @@ function SettingsPageContent() {
   useEffect(() => {
     fetchCalendarConnections()
     
-    // Handle URL parameters for success/error messages
+    // Handle URL parameters for success/error messages and section/tab navigation
     const success = searchParams.get('success')
     const error = searchParams.get('error')
+    const section = searchParams.get('section')
+    const tab = searchParams.get('tab')
+    
+    // Set active section and tab based on URL parameters
+    if (section) {
+      setActiveSection(section)
+    }
+    
+    // For analyst portal section, set the tab if specified
+    if (section === 'analyst-portal' && tab) {
+      // This will be handled by the AnalystPortalSection component
+      // We'll pass the tab parameter to it
+    }
     
     if (success === 'calendar_connected') {
       // Get connection details from URL parameters for naming
@@ -114,33 +130,70 @@ function SettingsPageContent() {
   }, [])
 
   const fetchCalendarConnections = async () => {
+    console.log('\n' + '='.repeat(60))
+    console.log('🔄 [Client] fetchCalendarConnections started')
+    console.log('🕐 [Client] Timestamp:', new Date().toISOString())
+    console.log('👤 [Client] Current user:', user ? { id: user.id, email: user.email } : 'No user')
+    
     try {
+      console.log('📡 [Client] Making API request to /api/settings/calendar-connections')
       const response = await fetch('/api/settings/calendar-connections')
       
+      console.log('📊 [Client] Response received:')
+      console.log('  - Status:', response.status)
+      console.log('  - StatusText:', response.statusText)
+      console.log('  - Headers:', Object.fromEntries(response.headers.entries()))
+      console.log('  - OK:', response.ok)
+      console.log('  - Content-Type:', response.headers.get('content-type'))
+      
       if (response.ok) {
+        console.log('✅ [Client] Response is OK, parsing JSON...')
         const result = await response.json()
+        console.log('📊 [Client] Parsed result:')
+        console.log('  - Success:', result.success)
+        console.log('  - Data type:', typeof result.data)
+        console.log('  - Data length:', Array.isArray(result.data) ? result.data.length : 'Not array')
+        console.log('  - Full result:', JSON.stringify(result, null, 2))
+        
         if (result.success && result.data) {
+          console.log('✅ [Client] Setting calendar connections:', result.data)
           setCalendarConnections(result.data)
         } else {
+          console.log('⚠️ [Client] Result not successful or no data, setting empty array')
           setCalendarConnections([])
         }
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error('❌ [Client] Response not OK:')
+        console.error('  - Error body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
       }
     } catch (error) {
-      console.error('Failed to fetch calendar connections:', error)
+      console.error('💥 [Client] Failed to fetch calendar connections:')
+      console.error('  - Error type:', error instanceof Error ? error.constructor.name : typeof error)
+      console.error('  - Error message:', error instanceof Error ? error.message : String(error))
+      console.error('  - Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error('  - Full error:', error)
+      
       setNotification({
         type: 'error',
-        message: 'Failed to load calendar connections'
+        message: `Failed to load calendar connections: ${error instanceof Error ? error.message : String(error)}`
       })
     } finally {
+      console.log('🏁 [Client] fetchCalendarConnections completed, setting loading to false')
       setLoading(false)
     }
   }
 
   const handleAddConnection = async () => {
+    console.log('\n' + '='.repeat(60))
+    console.log('🔗 [Client] handleAddConnection started')
+    console.log('🕐 [Client] Timestamp:', new Date().toISOString())
+    console.log('👤 [Client] Current user:', user ? { id: user.id, email: user.email } : 'No user')
+    
     setAdding(true)
     try {
+      console.log('📡 [Client] Making POST request to initiate OAuth...')
       // Initiate Google OAuth without requiring a title first
       const response = await fetch('/api/settings/calendar-connections', {
         method: 'POST',
@@ -150,31 +203,56 @@ function SettingsPageContent() {
         body: JSON.stringify({}), // No title required initially
       })
 
+      console.log('📊 [Client] Response received:')
+      console.log('  - Status:', response.status)
+      console.log('  - StatusText:', response.statusText)
+      console.log('  - OK:', response.ok)
+      console.log('  - Content-Type:', response.headers.get('content-type'))
+      console.log('  - Headers:', Object.fromEntries(response.headers.entries()))
+
       if (response.ok) {
         const contentType = response.headers.get('content-type')
+        console.log('✅ [Client] Response OK, checking content type...')
         if (contentType && contentType.includes('application/json')) {
+          console.log('✅ [Client] Content type is JSON, parsing...')
           const result = await response.json()
+          console.log('📊 [Client] Parsed response:')
+          console.log('  - Success:', result.success)
+          console.log('  - Data keys:', result.data ? Object.keys(result.data) : 'No data')
+          console.log('  - Auth URL present:', !!result.data?.authUrl)
+          console.log('  - Full result:', JSON.stringify(result, null, 2))
+          
           if (result.success && result.data?.authUrl) {
+            console.log('✅ [Client] Auth URL received, redirecting to Google OAuth...')
+            console.log('🔗 [Client] Auth URL:', result.data.authUrl.substring(0, 100) + '...')
             // Redirect to Google OAuth
             window.location.href = result.data.authUrl
           } else {
+            console.error('❌ [Client] Invalid response format - missing success or authUrl')
             throw new Error('Invalid response format from server')
           }
         } else {
-          console.error('Expected JSON but received:', contentType)
+          console.error('❌ [Client] Expected JSON but received:', contentType)
           throw new Error('Invalid response format from server')
         }
       } else {
-        console.error('Failed to initiate calendar connection:', response.status, response.statusText)
+        console.error('❌ [Client] Response not OK:')
+        console.error('  - Status:', response.status)
+        console.error('  - StatusText:', response.statusText)
         const errorText = await response.text()
-        console.error('Response body:', errorText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        console.error('  - Response body:', errorText)
+        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
       }
     } catch (error) {
-      console.error('Failed to initiate calendar connection:', error)
+      console.error('💥 [Client] Failed to initiate calendar connection:')
+      console.error('  - Error type:', error instanceof Error ? error.constructor.name : typeof error)
+      console.error('  - Error message:', error instanceof Error ? error.message : String(error))
+      console.error('  - Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+      console.error('  - Full error:', error)
+      
       setNotification({
         type: 'error',
-        message: 'Failed to start calendar connection process'
+        message: `Failed to start calendar connection process: ${error instanceof Error ? error.message : String(error)}`
       })
       setAdding(false)
     }
@@ -233,14 +311,14 @@ function SettingsPageContent() {
     fetchCalendarConnections() // Refresh the list
   }
 
-  const handleToggleConnection = async (connectionId: string, isActive: boolean) => {
+  const handleToggleConnection = async (connectionId: string, is_active: boolean) => {
     try {
       const response = await fetch(`/api/settings/calendar-connections/${connectionId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ isActive }),
+        body: JSON.stringify({ is_active }),
       })
 
       if (response.ok) {
@@ -250,7 +328,7 @@ function SettingsPageContent() {
         }
         setCalendarConnections(connections =>
           connections.map(conn =>
-            conn.id === connectionId ? { ...conn, isActive } : conn
+            conn.id === connectionId ? { ...conn, is_active } : conn
           )
         )
       } else {
@@ -315,12 +393,12 @@ function SettingsPageContent() {
       }
     }
     
-    if (!connection.isActive) {
+    if (!connection.is_active) {
       return { icon: RefreshCw, text: 'Inactive', color: 'text-gray-500' }
     }
     
-    if (connection.lastSyncAt) {
-      const lastSync = new Date(connection.lastSyncAt)
+    if (connection.last_sync_at) {
+      const lastSync = new Date(connection.last_sync_at)
       const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60)
       if (hoursSinceSync < 24) {
         return { icon: RefreshCw, text: 'Connected', color: 'text-green-600' }
@@ -330,9 +408,9 @@ function SettingsPageContent() {
     return { icon: RefreshCw, text: 'Ready to sync', color: 'text-yellow-600' }
   }
 
-  const formatLastSync = (lastSyncAt: string | null) => {
-    if (!lastSyncAt) return 'Never'
-    const date = new Date(lastSyncAt)
+  const formatLastSync = (last_sync_at: string | null) => {
+    if (!last_sync_at) return 'Never'
+    const date = new Date(last_sync_at)
     const now = new Date()
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60)
     
@@ -342,6 +420,15 @@ function SettingsPageContent() {
   }
 
   const startCalendarSync = async (connectionId: string) => {
+    if (!user) {
+      console.error("User is not authenticated. Cannot start sync.");
+      setNotification({
+        type: 'error',
+        message: 'You must be logged in to sync a calendar.'
+      });
+      return;
+    }
+
     try {
       // Initialize progress state
       setSyncProgress(prev => new Map(prev.set(connectionId, {
@@ -351,17 +438,21 @@ function SettingsPageContent() {
         relevantMeetingsCount: 0
       })))
 
-      // Start the sync
+      // Start the sync by sending the user_id in the body
       const response = await fetch(`/api/settings/calendar-connections/${connectionId}/sync`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ user_id: user.id })
       })
 
       if (!response.ok) {
         throw new Error('Failed to start sync')
       }
 
-      // Connect to SSE for real-time updates
-      const eventSource = new EventSource(`/api/settings/calendar-connections/${connectionId}/sync`)
+      // Connect to SSE for real-time updates, passing user_id in the query
+      const eventSource = new EventSource(`/api/settings/calendar-connections/${connectionId}/sync?user_id=${user.id}`)
       
       eventSource.onmessage = (event) => {
         try {
@@ -401,7 +492,7 @@ function SettingsPageContent() {
               })
               
               if (data.completed) {
-                fetchCalendarConnections() // Refresh to show updated lastSyncAt
+                fetchCalendarConnections() // Refresh to show updated last_sync_at
                 // Clear progress after showing completion message briefly
                 setTimeout(() => {
                   setSyncProgress(prev => {
@@ -475,7 +566,11 @@ function SettingsPageContent() {
         <div className="w-6/12 space-y-8">
           {activeSection === 'general' && <GeneralSection showHelp={showHelp} hideHelp={hideHelp} />}
           {activeSection === 'topics' && <TopicsSection />}
-          {activeSection === 'analyst-portal' && <AnalystPortalSection />}
+          {activeSection === 'analyst-portal' && (
+            <AnalystPortalSection 
+              initialTab={searchParams.get('tab') as 'settings' | 'access' || 'settings'} 
+            />
+          )}
           {activeSection === 'calendar' && (
             <CalendarSection
               calendarConnections={calendarConnections}

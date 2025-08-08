@@ -20,6 +20,7 @@ interface AuthContextType {
   user: UserProfile | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string; redirectTo?: string }>
+  signInAnalyst: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signInWithGoogle: () => Promise<{ success: boolean; error?: string; redirect?: string }>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
@@ -80,20 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const timeoutId = setTimeout(() => {
       console.warn('Auth loading timeout - forcing loading to false')
       setLoading(false)
-      // Set a default user for development
-      if (!user) {
-        setUser({
-          id: 'dev-user',
-          email: 'dev@example.com',
-          name: 'Development User',
-          role: 'ADMIN',
-          company: 'ClearCompany',
-          profileImageUrl: null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        })
-      }
-    }, 5000) // 5 second timeout for faster development
+      // No automatic user creation - users must authenticate properly
+    }, 5000)
 
     loadUser()
 
@@ -131,38 +120,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const emailDomain = email.split('@')[1]?.toLowerCase()
         const emailName = email.split('@')[0]?.toLowerCase()
         
-        // Determine role based on email
-        let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
-        
-        if (emailDomain === 'clearcompany.com') {
-          // Check if it's a fake analyst email
-          if (emailName === 'sarah.chen' || emailName === 'mike.johnson' || emailName === 'lisa.wang') {
-            role = 'ANALYST'
-          } else {
-            role = 'ADMIN'
-          }
-        } else if (emailDomain === 'analystcompany.com') {
-          // All @analystcompany.com users are ANALYST
-          role = 'ANALYST'
-        }
-        
-        const defaultProfile = {
-          id: authUser.id,
-          role: role,
-          first_name: authUser.user_metadata?.first_name || 
-                     authUser.email?.split('@')[0] || 'User',
-          last_name: authUser.user_metadata?.last_name || '',
-          company: authUser.user_metadata?.company || 
-                  emailDomain || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+        // Apply domain validation - block unauthorized users
+        if (email.toLowerCase() === 'dev@example.com') {
+          throw new Error('This email is not authorized for access')
         }
 
-        // Use service role client to bypass RLS
+        // Use service role client to bypass RLS for database checks
         const serviceClient = createServiceClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.SUPABASE_SERVICE_ROLE_KEY!
         )
+
+        // Check if email is from authorized domain OR is a registered analyst
+        const isAuthorizedDomain = emailDomain === 'clearcompany.com'
+        
+        let isRegisteredAnalyst = false
+        if (!isAuthorizedDomain) {
+          // Check if email exists in analysts table
+          const { data: analyst, error: analystError } = await serviceClient
+            .from('analysts')
+            .select('id, email')
+            .eq('email', email.toLowerCase())
+            .single()
+          
+          isRegisteredAnalyst = !analystError && !!analyst
+        }
+
+        if (!isAuthorizedDomain && !isRegisteredAnalyst) {
+          throw new Error('Access restricted to ClearCompany employees and registered analysts only')
+        }
+
+        // Determine role based on validated authorization
+        let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
+        
+        if (isAuthorizedDomain) {
+          // All @clearcompany.com users are admins
+          role = 'ADMIN'
+        } else if (isRegisteredAnalyst) {
+          // Registered analysts get ANALYST role
+          role = 'ANALYST'
+        }
+        
+        const firstName = authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User'
+        const lastName = authUser.user_metadata?.last_name || ''
+        const fullName = firstName + (lastName ? ' ' + lastName : '')
+        
+        const defaultProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          name: fullName,
+          role: role,
+          company: authUser.user_metadata?.company || 
+                  (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
 
         const { error: createError } = await serviceClient
           .from('user_profiles')
@@ -178,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData: UserProfile = {
           id: authUser.id,
           email: authUser.email || '',
-          name: defaultProfile.first_name + ' ' + defaultProfile.last_name,
+          name: defaultProfile.name,
           role: defaultProfile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
           company: defaultProfile.company,
           profileImageUrl: authUser.user_metadata?.avatar_url || null,
@@ -193,12 +205,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userData: UserProfile = {
           id: authUser.id,
           email: authUser.email || '',
-          name: (profile.first_name || '') + ' ' + (profile.last_name || ''),
+          name: profile.name || profile.first_name + ' ' + profile.last_name || authUser.email?.split('@')[0] || 'User',
           role: profile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
           company: profile.company,
           profileImageUrl: authUser.user_metadata?.avatar_url || null,
           createdAt: authUser.created_at,
-          updatedAt: profile.updated_at
+          updatedAt: profile.updatedAt || profile.updated_at
         }
 
         setUser(userData)
@@ -250,6 +262,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const signInAnalyst = async (email: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/analyst', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.user) {
+        // Store user data in localStorage for persistence
+        localStorage.setItem('user', JSON.stringify(result.user))
+        setUser(result.user)
+        return { success: true }
+      } else {
+        return { 
+          success: false, 
+          error: result.error || 'Analyst login failed' 
+        }
+      }
+    } catch (error) {
+      console.error('Analyst sign in error:', error)
+      return { 
+        success: false, 
+        error: 'An unexpected error occurred' 
+      }
+    }
+  }
+
   const signInWithGoogle = async () => {
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -278,6 +322,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
+      console.log('🔄 Starting sign out process...')
+      
       // Start API call and Supabase signout in parallel
       const [apiResponse] = await Promise.all([
         fetch('/api/auth/logout', {
@@ -294,17 +340,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Clear all storage
       localStorage.removeItem('user')
       sessionStorage.clear()
+      
+      // Clear user state and wait for it to be processed
       setUser(null)
-
-      // Single redirect
-      window.location.replace('/auth')
+      
+      // Add a small delay to ensure state is cleared
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      console.log('✅ Sign out completed, redirecting to /auth')
+      
+      // Use window.location.href instead of replace for more reliable redirect
+      window.location.href = '/auth'
     } catch (error) {
       console.error('Sign out error:', error)
       // Emergency cleanup and redirect
       localStorage.removeItem('user')
       sessionStorage.clear()
       setUser(null)
-      window.location.replace('/auth')
+      window.location.href = '/auth'
     }
   }
 
@@ -326,6 +379,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     loading,
     signIn,
+    signInAnalyst,
     signInWithGoogle,
     signOut,
     refreshUser

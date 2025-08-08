@@ -67,11 +67,10 @@ This document summarizes the main data model for the Analyst Portal, based on th
 - `createdAt` (DateTime)
 - `updatedAt` (DateTime)
 
-### BriefingAnalyst
+### BriefingAnalyst (Many-to-Many Relationship)
 - `id` (String, PK)
-- `briefingId` (String, FK to Briefing)
-- `analystId` (String, FK to Analyst)
-- `role` (String) — e.g., "Lead", "Participant"
+- `briefingId` (String, FK to briefings)
+- `analystId` (String, FK to analysts)
 - `createdAt` (DateTime)
 
 ### InfluenceTier

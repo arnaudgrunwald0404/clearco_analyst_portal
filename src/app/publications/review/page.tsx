@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { DiscoveryProgress } from '@/components/publications/DiscoveryProgress'
 import { 
   Check,
   X,
@@ -49,17 +50,37 @@ const typeColors = {
 }
 
 export default function PublicationsReviewPage() {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [discovering, setDiscovering] = useState(false)
+  const [showProgress, setShowProgress] = useState(false)
   const [publications, setPublications] = useState<DiscoveredPublication[]>([])
   const [decisions, setDecisions] = useState<Record<string, ReviewDecision>>({})
   const [selectedPublication, setSelectedPublication] = useState<DiscoveredPublication | null>(null)
 
-  useEffect(() => {
-    discoverPublications()
-  }, [])
+  // Remove auto-discovery on mount, let user trigger it manually
 
+  const handleDiscoveryComplete = (publications: any[]) => {
+    setPublications(publications)
+    setShowProgress(false)
+    setDiscovering(false)
+    setError(null)
+  }
+
+  const handleDiscoveryError = (errorMessage: string) => {
+    setError(errorMessage)
+    setShowProgress(false)
+    setDiscovering(false)
+  }
+
+  const startDiscovery = () => {
+    setShowProgress(true)
+    setDiscovering(true)
+    setError(null)
+    setPublications([])
+  }
+
+  // Legacy function kept for backward compatibility with existing button
   const discoverPublications = async () => {
     try {
       setDiscovering(true)
@@ -81,7 +102,7 @@ export default function PublicationsReviewPage() {
   }
 
   const makeDecision = async (publication: DiscoveredPublication, decision: 'keep' | 'reject' | 'archive') => {
-    const publicationId = publication.url // Use URL as temporary ID
+    const publicationId = `${publication.url}#${publication.title}#${publication.publishedAt}` // Create unique ID
     
     // Update local state
     setDecisions(prev => ({
@@ -134,118 +155,136 @@ export default function PublicationsReviewPage() {
     }
   }
 
-  if (loading) {
+  // Show progress tracker if discovery is running
+  if (showProgress) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Discovering publications...</p>
-        </div>
-      </div>
+      <DiscoveryProgress 
+        onComplete={handleDiscoveryComplete}
+        onError={handleDiscoveryError}
+        autoStart={true}
+      />
     )
   }
 
   if (error) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Publication Discovery</h1>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <div className="flex items-center text-red-800 mb-2">
-            <AlertCircle className="h-5 w-5 mr-2" />
-            <p className="font-medium">Error discovering publications</p>
-          </div>
-          <p className="text-red-600">{error}</p>
+      <div className="p-6 space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Publication Discovery</h1>
+          <p className="mt-1 text-gray-600">Review and import discovered analyst publications</p>
         </div>
-        <Button 
-          onClick={discoverPublications}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Retry Discovery
-        </Button>
+        <div className="bg-white rounded-lg border border-red-200 overflow-hidden">
+          <div className="bg-red-50 border-b border-red-200">
+            <div className="px-4 py-3">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertCircle className="h-5 w-5" />
+                <h3 className="font-medium">Error discovering publications</h3>
+              </div>
+            </div>
+          </div>
+          <div className="p-4">
+            <p className="text-red-600 text-sm mb-4">{error}</p>
+            <Button 
+              onClick={discoverPublications}
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Retry Discovery
+            </Button>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="p-8">
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Publication Discovery</h1>
-            <p className="text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-900">Publication Discovery</h1>
+            <p className="mt-1 text-gray-600">
               Review and import discovered analyst publications
             </p>
           </div>
-          <Button 
-            onClick={discoverPublications}
-            disabled={discovering}
-            className="flex items-center gap-2"
-          >
-            <Bot className="h-4 w-4" />
-            {discovering ? 'Discovering...' : 'Discover New'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={startDiscovery}
+              disabled={discovering}
+              className="flex items-center gap-2"
+            >
+              <Bot className="h-4 w-4" />
+              {discovering ? 'Discovering...' : 'Start Discovery'}
+            </Button>
+            <Button 
+              onClick={discoverPublications}
+              disabled={discovering}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Quick Discover
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Discovered</CardTitle>
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{publications.length}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Kept</CardTitle>
-            <ThumbsUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(decisions).filter(d => d.decision === 'keep').length}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center">
+            <Bot className="w-8 h-8 text-blue-500" />
+            <div className="ml-3">
+              <p className="text-2xl font-bold text-gray-900">{publications.length}</p>
+              <p className="text-sm text-gray-600">Total Discovered</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-            <ThumbsDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Object.values(decisions).filter(d => d.decision === 'reject').length}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center">
+            <ThumbsUp className="w-8 h-8 text-green-500" />
+            <div className="ml-3">
+              <p className="text-2xl font-bold text-gray-900">
+                {Object.values(decisions).filter(d => d.decision === 'keep').length}
+              </p>
+              <p className="text-sm text-gray-600">Kept</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Review</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {publications.length - Object.keys(decisions).length}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center">
+            <ThumbsDown className="w-8 h-8 text-red-500" />
+            <div className="ml-3">
+              <p className="text-2xl font-bold text-gray-900">
+                {Object.values(decisions).filter(d => d.decision === 'reject').length}
+              </p>
+              <p className="text-sm text-gray-600">Rejected</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-8 h-8 text-orange-500" />
+            <div className="ml-3">
+              <p className="text-2xl font-bold text-gray-900">
+                {publications.length - Object.keys(decisions).length}
+              </p>
+              <p className="text-sm text-gray-600">Pending Review</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Publications List */}
       <div className="space-y-4">
         {publications.map((publication) => {
-          const decision = decisions[publication.url]
+          const publicationId = `${publication.url}#${publication.title}#${publication.publishedAt}`
+          const decision = decisions[publicationId]
           
           return (
             <Card 
-              key={publication.url}
+              key={publicationId}
               className={`transition-colors ${
                 decision?.decision === 'keep' ? 'bg-green-50' :
                 decision?.decision === 'reject' ? 'bg-red-50' :

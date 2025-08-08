@@ -19,6 +19,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate email domain and block unauthorized users
+    const emailDomain = email.split('@')[1]?.toLowerCase()
+    
+    // Block dev@example.com specifically
+    if (email.toLowerCase() === 'dev@example.com') {
+      return NextResponse.json(
+        { success: false, error: 'This email is not authorized for access' },
+        { status: 403 }
+      )
+    }
+
+    // Check if email is from authorized domain OR is a registered analyst
+    const isAuthorizedDomain = emailDomain === 'clearcompany.com'
+    
+    let isRegisteredAnalyst = false
+    if (!isAuthorizedDomain) {
+      // Check if email exists in analysts table
+      const supabaseServiceRole = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+      
+      const { data: analyst, error: analystError } = await supabaseServiceRole
+        .from('analysts')
+        .select('id, email')
+        .eq('email', email.toLowerCase())
+        .single()
+      
+      isRegisteredAnalyst = !analystError && !!analyst
+    }
+
+    if (!isAuthorizedDomain && !isRegisteredAnalyst) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Access restricted to ClearCompany employees and registered analysts only' 
+        },
+        { status: 403 }
+      )
+    }
+
     const supabase = await createClient()
 
     // Handle Google OAuth (redirects to OAuth flow)
@@ -66,21 +107,14 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Authentication successful for:', authData.user.email)
 
-    // TEMPORARY: Skip profile check and return basic user data
-    const emailDomain = authData.user.email?.split('@')[1]?.toLowerCase()
-    const emailName = authData.user.email?.split('@')[0]?.toLowerCase()
-    
-    // Determine role based on email
+    // Determine role based on validated authorization
     let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
     
-    if (emailDomain === 'clearcompany.com') {
-      if (emailName === 'sarah.chen' || emailName === 'mike.johnson' || emailName === 'lisa.wang') {
-        role = 'ANALYST'
-      } else {
-        role = 'ADMIN'
-      }
-    } else if (emailDomain === 'analystcompany.com') {
-      // All @analystcompany.com users are ANALYST
+    if (isAuthorizedDomain) {
+      // All @clearcompany.com users are admins
+      role = 'ADMIN'
+    } else if (isRegisteredAnalyst) {
+      // Registered analysts get ANALYST role
       role = 'ANALYST'
     }
 
@@ -92,7 +126,7 @@ export async function POST(request: NextRequest) {
             authData.user.user_metadata?.name || 
             authData.user.email?.split('@')[0] || 'User',
       role: role,
-      company: authData.user.user_metadata?.company || emailDomain || null,
+      company: authData.user.user_metadata?.company || (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
       profileImageUrl: authData.user.user_metadata?.avatar_url || null,
       createdAt: authData.user.created_at,
       updatedAt: new Date().toISOString()

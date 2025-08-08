@@ -143,8 +143,8 @@ export async function GET(request: NextRequest) {
 
     // Get user ID from session/auth or use fallback
     // TODO: Replace with proper session management
-    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
-    console.log('👤 [CALENDAR OAUTH] Using userId:', userId)
+    const user_id = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+    console.log('👤 [CALENDAR OAUTH] Using user_id:', user_id)
     console.log('⚠️  [CALENDAR OAUTH] WARNING: Using hardcoded user ID - should be from session in production')
 
     // Ensure user exists in database
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
       let { data: user, error: userError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user_id)
         .single()
 
       // PGRST116 means no rows found, which is expected for new users
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
         const { data: newUser, error: createError } = await supabase
           .from('user_profiles')
           .insert({
-            id: userId,
+            id: user_id,
             first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
             last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
             company: userInfo.data.hd || null, // Google hosted domain (company)
@@ -194,8 +194,8 @@ export async function GET(request: NextRequest) {
 
     // Check if this Google account is already connected
     console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
-    console.log('🔑 [CALENDAR OAUTH] Looking for userId:', userId)
-    console.log('🔑 [CALENDAR OAUTH] Looking for googleAccountId:', userInfo.data.id)
+    console.log('🔑 [CALENDAR OAUTH] Looking for user_id:', user_id)
+    console.log('🔑 [CALENDAR OAUTH] Looking for google_account_id:', userInfo.data.id)
     
     const supabase = await createClient()
     let existingConnection
@@ -203,10 +203,10 @@ export async function GET(request: NextRequest) {
       console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
       
       const { data: connection, error: connectionError } = await supabase
-        .from('CalendarConnection')
+        .from('calendar_connections')
         .select('*')
-        .eq('userId', userId)
-        .eq('googleAccountId', userInfo.data.id!)
+        .eq('user_id', user_id)
+        .eq('google_account_id', userInfo.data.id!)
         .single()
       
       if (connectionError && connectionError.code !== 'PGRST116') { // PGRST116 is "not found"
@@ -220,7 +220,7 @@ export async function GET(request: NextRequest) {
           id: existingConnection.id,
           title: existingConnection.title,
           email: existingConnection.email,
-          isActive: existingConnection.isActive
+          is_active: existingConnection.is_active
         })
       }
     } catch (dbError) {
@@ -235,14 +235,14 @@ export async function GET(request: NextRequest) {
     if (existingConnection) {
       // Update existing connection with new tokens
       const { data: updatedConnection, error: updateError } = await supabase
-        .from('CalendarConnection')
+        .from('calendar_connections')
         .update({
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
-          accessToken: encryptToken(tokens.access_token),
-          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-          expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
-          isActive: true,
-          updatedAt: new Date().toISOString(),
+          access_token: encryptToken(tokens.access_token),
+          refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+          expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          is_active: true,
+          updated_at: new Date().toISOString(),
         })
         .eq('id', existingConnection.id)
         .select()
@@ -256,18 +256,18 @@ export async function GET(request: NextRequest) {
     } else {
       // Create new calendar connection with calendar name as default title
       const { data: newConnection, error: createError } = await supabase
-        .from('CalendarConnection')
+        .from('calendar_connections')
         .insert({
-          userId: userId,
+          user_id: user_id,
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
           email: userInfo.data.email,
-          googleAccountId: userInfo.data.id!,
-          accessToken: encryptToken(tokens.access_token),
-          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
-          expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          google_account_id: userInfo.data.id!,
+          access_token: encryptToken(tokens.access_token),
+          refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+          expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .select()
         .single()

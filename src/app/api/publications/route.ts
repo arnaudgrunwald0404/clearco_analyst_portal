@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const analystId = searchParams.get('analystId')
     const type = searchParams.get('type')
     const isTracked = searchParams.get('isTracked')
+    const filter = searchParams.get('filter')
 
     const supabase = createClient()
 
@@ -38,6 +39,12 @@ export async function GET(request: NextRequest) {
     
     if (isTracked !== null) {
       query = query.eq('isTracked', isTracked === 'true')
+    }
+
+    if (filter === 'upcoming') {
+      const today = new Date().toISOString()
+      const in180Days = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString()
+      query = query.gte('publishedAt', today).lte('publishedAt', in180Days)
     }
 
     // Order by published date (newest first)

@@ -1,25 +1,30 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
-import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2 } from 'lucide-react'
-import SocialMediaActivity from '@/components/features/social-media-activity'
+import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2, BookOpen, File } from 'lucide-react'
+// import SocialMediaActivity from '@/components/features/social-media-activity'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { handleAbortError } from '@/lib/utils/abort-error-handler'
 
 interface DashboardMetrics {
   totalAnalysts: number
   activeAnalysts: number
   analystsAddedPast90Days: number
-  newslettersSentPast90Days: number
   contentItemsPast90Days: number
   engagementRate: number
-  activeAlerts: number
   briefingsPast90Days: number
+  briefingsYTD: number
+  briefingsPlanned: number
+  briefingsDue: number
+  briefingFollowUps: number
+  newslettersYTD: number
   relationshipHealth: number
+  upcomingPublications: number
   recentContentItems: ContentItem[]
   newAnalysts: NewAnalyst[]
 }
@@ -87,7 +92,8 @@ const iconMap: { [key: string]: any } = {
 
 function DashboardContent() {
   const searchParams = useSearchParams()
-  const { user, profile, loading: authLoading } = useAuth()
+  const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const { settings, loading: settingsLoading } = useSettings()
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
@@ -102,10 +108,18 @@ function DashboardContent() {
   } | null>(null)
 
   const fetchDashboardData = async () => {
+    let controller: AbortController | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     try {
       // Add timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      controller = new AbortController();
+      timeoutId = setTimeout(() => {
+        if (controller) {
+          console.log('⏰ Request timeout - aborting dashboard data fetch');
+          controller.abort();
+        }
+      }, 15000); // Increased to 15 seconds
       
       // Use Promise.allSettled to handle failures gracefully
       const results = await Promise.allSettled([
@@ -114,7 +128,11 @@ function DashboardContent() {
         fetch('/api/action-items?status=pending', { signal: controller.signal })
       ]);
 
-      clearTimeout(timeoutId);
+      // Clear timeout if all requests completed
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
 
       // Process results with better error handling
       const [metricsResult, activityResult, actionItemsResult] = results;
@@ -165,10 +183,36 @@ function DashboardContent() {
       }
       
     } catch (error) {
+      // Clear timeout if it exists
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+      
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('Request timeout - dashboard data fetch took too long');
+        console.error('⏰ Request timeout - dashboard data fetch took too long');
+        // Set default values for timeout
+        setMetrics({
+          totalAnalysts: 0,
+          activeAnalysts: 0,
+          analystsAddedPast90Days: 0,
+          contentItemsPast90Days: 0,
+          engagementRate: 0,
+          briefingsPast90Days: 0,
+          briefingsYTD: 0,
+          briefingsPlanned: 0,
+          briefingsDue: 0,
+          briefingFollowUps: 0,
+          newslettersYTD: 0,
+          relationshipHealth: 0,
+          upcomingPublications: 0,
+          recentContentItems: [],
+          newAnalysts: []
+        });
+        setRecentActivity([]);
+        setActionItems([]);
       } else {
-        console.error('Error fetching dashboard data:', error);
+        console.error('❌ Error fetching dashboard data:', error);
       }
     } finally {
       setLoading(false);
@@ -189,7 +233,7 @@ function DashboardContent() {
       setBannerImage(adminBanner)
     }
 
-    // Check for URL parameters for notifications
+    // Check for URL parameters for newsletters
     const success = searchParams.get('success')
     const error = searchParams.get('error')
     
@@ -211,7 +255,21 @@ function DashboardContent() {
       window.history.replaceState({}, '', '/')
     }
 
-    fetchDashboardData()
+    // Create a flag to track if component is still mounted
+    let isMounted = true;
+    
+    const loadDashboardData = async () => {
+      if (isMounted) {
+        await fetchDashboardData();
+      }
+    };
+    
+    loadDashboardData();
+
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+    };
   }, [searchParams])
 
   // Test if banner image loads successfully
@@ -234,11 +292,8 @@ function DashboardContent() {
     // Get the user's display name for completed by field
     const getUserName = () => {
       if (completedBy) return completedBy
-      if (profile?.first_name && profile?.last_name) {
-        return `${profile.first_name} ${profile.last_name}`
-      }
-      if (profile?.first_name) {
-        return profile.first_name
+      if (user?.name) {
+        return user.name
       }
       if (user?.email) {
         return user.email.split('@')[0]
@@ -259,16 +314,20 @@ function DashboardContent() {
       
       if (response.ok) {
         // Refresh action items
-        const actionItemsRes = await fetch('/api/action-items?status=pending')
-        if (actionItemsRes.ok) {
-          const actionItemsData = await actionItemsRes.json()
-          if (actionItemsData.success) {
-            setActionItems(actionItemsData.data)
+        try {
+          const actionItemsRes = await fetch('/api/action-items?status=pending')
+          if (actionItemsRes.ok) {
+            const actionItemsData = await actionItemsRes.json()
+            if (actionItemsData.success) {
+              setActionItems(actionItemsData.data)
+            }
           }
+        } catch (refreshError) {
+          handleAbortError(refreshError, 'Action items refresh');
         }
       }
     } catch (error) {
-      console.error('Error completing action item:', error)
+      handleAbortError(error, 'Action item completion');
     }
   }
 
@@ -342,22 +401,7 @@ function DashboardContent() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Total Analysts */}
             <Card
-  
-              title={
-                !Array.isArray(recentActivity) || recentActivity.length === 0 
-                  ? "No recent updates in the last 90 days"
-                  : `Recent updates (last 90 days):\n${recentActivity.slice(0, 8).map(activity => {
-                      if (activity.type === 'analyst_updated') {
-                        const match = activity.message.match(/^(.*?) (\((.*?)\) )?profile updated$/)
-                        if (match) {
-                          const name = match[1]
-                          const company = match[3]
-                          return `${name}${company ? ` • ${company}` : ''} profile updated (${activity.time})`
-                        }
-                      }
-                      return `${activity.message} (${activity.time})`
-                    }).join('\n')}${recentActivity.length > 8 ? `\n+${recentActivity.length - 8} more` : ''}`
-              }
+              title={recentActivity.length === 0 ? "No recent updates in the last 90 days" : "Recent analyst updates (last 90 days)"}
             >
               <CardContent className="p-5">
                 <div className="flex items-center mb-0">
@@ -365,36 +409,23 @@ function DashboardContent() {
                     <Users className="h-6 w-6 text-blue-400" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Total Analysts
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.totalAnalysts || 0}
-                      </dd>
-                    </dl>
+                    <div className="flex items-start justify-between">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Total Analysts
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.totalAnalysts || 0}
+                        </dd>
+                      </dl>
+                      <TotalAnalystsNewlyAdded newAnalysts={metrics?.newAnalysts || []} router={router} />
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Newly Added Analysts */}
-            <Card >
-              <CardContent className="p-5">
-                <NewAnalystsWidget newAnalysts={metrics?.newAnalysts || []} />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Band 2: Coverage */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <TrendingUp className="h-5 w-5 text-blue-600 mr-2" />
-            Coverage
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Engagement % */}
+            {/* Coverage % */}
             <Card>
               <CardContent className="p-5">
                 <div className="flex items-center">
@@ -402,33 +433,39 @@ function DashboardContent() {
                     <TrendingUp className="h-6 w-6 text-green-400" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Engagement %
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.engagementRate ? `${metrics.engagementRate}%` : '0%'}
-                      </dd>
-                    </dl>
+                    <div className="flex items-start justify-between">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Coverage %
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.engagementRate ? `${metrics.engagementRate}%` : '0%'}
+                        </dd>
+                      </dl>
+                      <CoverageSparkline />
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Briefings */}
-            <Card>
+            {/* Upcoming Publications */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => router.push('/publications?filter=upcoming')}
+            >
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-indigo-400" />
+                    <BookOpen className="h-6 w-6 text-indigo-400" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Briefings
+                        Upcoming Publications (180 days)
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsPast90Days || 0}
+                        {metrics?.upcomingPublications || 0}
                       </dd>
                     </dl>
                   </div>
@@ -436,86 +473,124 @@ function DashboardContent() {
               </CardContent>
             </Card>
 
-            {/* Briefing Follow-ups - spans 2 rows */}
-            <Card className="lg:row-span-2">
-              <CardContent className="p-5">
-                <ActionItemsWidget
-                  actionItems={actionItems}
-                  loading={actionItemsLoading}
-                  onComplete={handleCompleteActionItem}
-                  tall={true}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Active Alerts */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <AlertTriangle className="h-6 w-6 text-orange-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Active Alerts
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.activeAlerts || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Newsletters Sent */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Mail className="h-6 w-6 text-green-400" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Newsletters Sent
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.newslettersSentPast90Days || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
 
-        {/* Band 3: Listening */}
+        {/* Band 2: Briefings */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <MessageSquare className="h-5 w-5 text-purple-600 mr-2" />
-            Listening
+            <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+            Briefings
           </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Social Media Activity */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Briefings YTD */}
             <Card>
-              <CardContent className="p-6">
-                <Suspense fallback={<div className="p-6">Loading social media activity...</div>}>
-                  <SocialMediaActivity />
-                </Suspense>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Calendar className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Briefings (YTD)
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsYTD || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Publications (Content Items) */}
+            {/* Newsletters YTD */}
             <Card>
-              <CardContent className="p-6">
-                <ContentItemsWidget contentItems={metrics?.recentContentItems || []} title="Publications" />
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Mail className="h-6 w-6 text-indigo-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Newsletters (YTD)
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.newslettersYTD || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Briefing Follow Ups - spans 2 rows */}
+            <Card className="lg:row-span-2">
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <MessageSquare className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Follow Ups
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingFollowUps || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Briefings Due */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Clock className="h-6 w-6 text-orange-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Briefings Due
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsDue || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Briefings Planned */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Calendar className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Briefings Planned
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsPlanned || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
+
+        {/* Social Media Activity section temporarily disabled */}
       </div>
     </div>
   )
@@ -541,6 +616,91 @@ export default function Dashboard() {
     </Suspense>
   )
 }
+
+// CoverageSparkline Component
+function CoverageSparkline() {
+  // Mock data for sparkline - this will be replaced with real historical data
+  const mockData = [45, 52, 48, 61, 55, 67, 73, 69, 76, 82, 78, 85, 88, 84, 92, 87, 94, 91, 96, 93]
+  
+  const maxValue = Math.max(...mockData)
+  const minValue = Math.min(...mockData)
+  const range = maxValue - minValue || 1
+
+  // Create SVG path for sparkline
+  const pathData = mockData.map((value, index) => {
+    const x = (index / (mockData.length - 1)) * 100
+    const y = 100 - ((value - minValue) / range) * 100
+    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
+  }).join(' ')
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-500">Trend (Last 20 periods)</span>
+        <span className="text-xs text-green-600 font-medium">↗ +8.2%</span>
+      </div>
+      <div className="mt-1">
+        <svg
+          width="120"
+          height="20"
+          viewBox="0 0 100 100"
+          className="text-green-500"
+          preserveAspectRatio="none"
+        >
+          <path
+            d={pathData}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+          />
+          {/* Add gradient fill under the line */}
+          <defs>
+            <linearGradient id="sparklineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.2"/>
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+          <path
+            d={`${pathData} L 100 100 L 0 100 Z`}
+            fill="url(#sparklineGradient)"
+          />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+// TotalAnalystsNewlyAdded Component  
+function TotalAnalystsNewlyAdded({ newAnalysts, router }: { newAnalysts: NewAnalyst[]; router: any }) {
+  
+  const handleClick = () => {
+    // Navigate to analysts page with filter for recently added
+    router.push('/analysts?filter=recent')
+  }
+
+  if (newAnalysts.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="text-right">
+      <button
+        onClick={handleClick}
+        className="text-right transition-colors cursor-pointer hover:opacity-80"
+        title="View analysts added in the past 30 days"
+      >
+        <div className="text-xs text-gray-400">
+          Newly Added (30 days)
+        </div>
+        <div className="text-lg font-semibold text-gray-900 mt-1">
+          {newAnalysts.length}
+        </div>
+      </button>
+    </div>
+  )
+}
+
 
 // NewAnalystsWidget Component
 function NewAnalystsWidget({ newAnalysts }: { newAnalysts: NewAnalyst[] }) {
@@ -600,6 +760,13 @@ function ContentItemsWidget({ contentItems, title = "Content Items Added" }: { c
         return <Mail className="w-4 h-4 text-green-500" />
       case 'briefing':
         return <Calendar className="w-4 h-4 text-purple-500" />
+      case 'publication':
+      case 'research_report':
+        return <BookOpen className="w-4 h-4 text-indigo-500" />
+      case 'blog_post':
+        return <FileText className="w-4 h-4 text-blue-500" />
+      case 'whitepaper':
+        return <File className="w-4 h-4 text-green-600" />
       default:
         return <FileText className="w-4 h-4 text-gray-500" />
     }

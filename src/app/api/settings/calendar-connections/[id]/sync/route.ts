@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/supabase'
 import CryptoJS from 'crypto-js'
 
-type CalendarConnection = Database['public']['Tables']['CalendarConnection']['Row']
+type calendar_connections = Database['public']['Tables']['calendar_connections']['Row']
 type CalendarMeeting = Database['public']['Tables']['calendar_meetings']['Row']
 type CalendarMeetingInsert = Database['public']['Tables']['calendar_meetings']['Insert']
 type BriefingInsert = Database['public']['Tables']['briefings']['Insert']
@@ -35,43 +35,43 @@ function generateId(): string {
 // Store for SSE connections
 const syncConnections = new Map<string, any>()
 
-// Store for active sync locks (userId -> { connectionId, startTime, isActive })
-const syncLocks = new Map<string, { connectionId: string; startTime: Date; isActive: boolean }>()
+// Store for active sync locks (user_id -> { connectionId, start_time, is_active })
+const syncLocks = new Map<string, { connectionId: string; start_time: Date; is_active: boolean }>()
 
 // Function to check if a sync is already in progress for a user
-function isSyncInProgress(userId: string): boolean {
-  const lock = syncLocks.get(userId)
+function isSyncInProgress(user_id: string): boolean {
+  const lock = syncLocks.get(user_id)
   
   if (!lock) return false
   
   // Check if the lock is still active and not older than 30 minutes
   const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
-  const isActive = lock.isActive && lock.startTime > thirtyMinutesAgo
+  const is_active = lock.is_active && lock.start_time > thirtyMinutesAgo
   
-  return isActive
+  return is_active
 }
 
 // Function to acquire a sync lock
-function acquireSyncLock(userId: string, connectionId: string): boolean {
-  if (isSyncInProgress(userId)) {
+function acquireSyncLock(user_id: string, connectionId: string): boolean {
+  if (isSyncInProgress(user_id)) {
     return false
   }
   
-  syncLocks.set(userId, {
+  syncLocks.set(user_id, {
     connectionId,
-    startTime: new Date(),
-    isActive: true
+    start_time: new Date(),
+    is_active: true
   })
   
   return true
 }
 
 // Function to release a sync lock
-function releaseSyncLock(userId: string) {
-  const lock = syncLocks.get(userId)
+function releaseSyncLock(user_id: string) {
+  const lock = syncLocks.get(user_id)
   if (lock) {
-    lock.isActive = false
-    syncLocks.delete(userId)
+    lock.is_active = false
+    syncLocks.delete(user_id)
   }
 }
 
@@ -112,7 +112,7 @@ function matchAnalystByEmail(email: string, analysts: any[]): any | null {
   return match || null
 }
 
-async function startCalendarSync(connectionId: string, userId: string, forceSync: boolean = false) {
+async function startCalendarSync(connectionId: string, user_id: string, forceSync: boolean = false) {
   const supabase = await createClient()
   
   try {
@@ -124,17 +124,17 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
 
     // Get calendar connection
     const { data: connection, error: connectionError } = await supabase
-      .from('CalendarConnection')
+      .from('calendar_connections')
       .select('*')
       .eq('id', connectionId)
-      .eq('userId', userId)
+      .eq('user_id', user_id)
       .single()
 
     if (connectionError || !connection) {
       throw new Error('Calendar connection not found')
     }
 
-    if (!connection.isActive) {
+    if (!connection.is_active) {
       throw new Error('Calendar connection is not active')
     }
 
@@ -145,8 +145,8 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
     })
 
     // Set up Google Calendar API
-    const accessToken = decryptToken(connection.accessToken)
-    oauth2Client.setCredentials({ access_token: accessToken })
+    const access_token = decryptToken(connection.access_token)
+    oauth2Client.setCredentials({ access_token: access_token })
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 
     sendSSEMessage(connectionId, { 
@@ -166,7 +166,7 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
       timeMin: thirtyDaysAgo.toISOString(),
       timeMax: thirtyDaysFromNow.toISOString(),
       singleEvents: true,
-      orderBy: 'startTime',
+      orderBy: 'start_time',
     })
 
     const events = response.data.items || []
@@ -211,12 +211,12 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
       try {
         if (!event.start?.dateTime || !event.end?.dateTime) continue
 
-        const startTime = new Date(event.start.dateTime)
-        const endTime = new Date(event.end.dateTime)
+        const start_time = new Date(event.start.dateTime)
+        const end_time = new Date(event.end.dateTime)
         const attendeeEmails = event.attendees?.map(a => a.email).filter(Boolean) || []
         
         // Check for duplicate briefing
-        const briefingKey = `${event.summary}|${startTime.toISOString()}`
+        const briefingKey = `${event.summary}|${start_time.toISOString()}`
         const isDuplicate = briefingSet.has(briefingKey)
 
         if (!isDuplicate) {
@@ -228,19 +228,19 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
                      // Create calendar meeting record
            const meetingData: CalendarMeetingInsert = {
              id: generateId(),
-             analystId: matchedAnalysts[0]?.id || '',
+             analyst_id: matchedAnalysts[0]?.id || '',
              calendarConnectionId: connection.id,
-             googleEventId: event.id || generateId(),
+             google_event_id: event.id || generateId(),
              title: event.summary || 'Untitled Meeting',
-             startTime: startTime.toISOString(),
-             endTime: endTime.toISOString(),
+             start_time: start_time.toISOString(),
+             end_time: end_time.toISOString(),
              attendees: JSON.stringify(attendeeEmails)
            }
 
           if (matchedAnalysts.length > 0) {
             const { error: meetingError } = await supabase
               .from('calendar_meetings')
-              .upsert(meetingData, { onConflict: 'googleEventId' })
+              .upsert(meetingData, { onConflict: 'google_event_id' })
 
             if (!meetingError) {
               createdMeetings++
@@ -252,8 +252,8 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
                 id: generateId(),
                 title: event.summary,
                 description: event.description || `Meeting with ${matchedAnalysts.map(a => `${a.firstName} ${a.lastName}`).join(', ')}`,
-                scheduledAt: startTime.toISOString(),
-                status: startTime > now ? 'SCHEDULED' : 'COMPLETED',
+                scheduledAt: start_time.toISOString(),
+                status: start_time > now ? 'SCHEDULED' : 'COMPLETED',
                 agenda: event.location ? `Location: ${event.location}` : null
               }
 
@@ -272,7 +272,7 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
                 const briefingAnalysts: BriefingAnalystInsert[] = matchedAnalysts.map(analyst => ({
                   id: generateId(),
                   briefingId: newBriefing.id,
-                  analystId: analyst.id
+                  analyst_id: analyst.id
                 }))
 
                 await supabase
@@ -301,8 +301,8 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
 
     // Update connection sync timestamp
     await supabase
-      .from('CalendarConnection')
-              .update({ lastSync: new Date().toISOString() })
+      .from('calendar_connections')
+              .update({ last_sync: new Date().toISOString() })
       .eq('id', connection.id)
 
     sendSSEMessage(connectionId, { 
@@ -330,7 +330,7 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
     })
   } finally {
-    releaseSyncLock(userId)
+    releaseSyncLock(user_id)
     setTimeout(() => {
       const connection = syncConnections.get(connectionId)
       if (connection) {
@@ -343,13 +343,14 @@ async function startCalendarSync(connectionId: string, userId: string, forceSync
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const connectionId = params.id
-    const { userId, forceSync } = await request.json()
+    const { id } = await params
+    const connectionId = id
+    const { user_id, forceSync } = await request.json()
 
-    if (!userId) {
+    if (!user_id) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
@@ -357,7 +358,7 @@ export async function POST(
     }
 
     // Check if sync is already in progress
-    if (!acquireSyncLock(userId, connectionId)) {
+    if (!acquireSyncLock(user_id, connectionId)) {
       return NextResponse.json(
         { error: 'Calendar sync already in progress' },
         { status: 409 }
@@ -365,7 +366,7 @@ export async function POST(
     }
 
     // Start the sync process asynchronously
-    startCalendarSync(connectionId, userId, forceSync)
+    startCalendarSync(connectionId, user_id, forceSync)
 
     return NextResponse.json({
       success: true,
@@ -386,13 +387,14 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const connectionId = params.id
+  const { id } = await params
+  const connectionId = id
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
+  const user_id = searchParams.get('user_id')
 
-  if (!userId) {
+  if (!user_id) {
     return new NextResponse('User ID is required', { status: 400 })
   }
 

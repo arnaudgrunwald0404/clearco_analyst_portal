@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/types/supabase'
 
 interface RouteParams {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 // PATCH - Update calendar connection (active status and/or title)
@@ -12,24 +12,25 @@ export async function PATCH(
   { params }: RouteParams
 ) {
   try {
-    console.log('🔍 [Calendar Connection] PATCH request started for ID:', params.id)
+    const { id } = await params
+    console.log('🔍 [Calendar Connection] PATCH request started for ID:', id)
     
     const body = await request.json()
-    const { isActive } = body // Remove title since it doesn't exist in the schema
-    const connectionId = params.id
+    const { is_active } = body // Remove title since it doesn't exist in the schema
+    const connectionId = id
 
     // For now, we'll use a hardcoded user ID
     // In production, this should come from the session/auth
-    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+    const user_id = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
 
     const supabase = await createClient()
 
     // Verify the connection belongs to the user
     const { data: connection, error: fetchError } = await supabase
-      .from('CalendarConnection')
+      .from('calendar_connections')
       .select('id')
       .eq('id', connectionId)
-      .eq('userId', userId)
+      .eq('user_id', user_id)
       .single()
 
     if (fetchError || !connection) {
@@ -44,17 +45,17 @@ export async function PATCH(
     }
 
     // Build update data object
-    const updateData: Partial<Database['public']['Tables']['CalendarConnection']['Update']> = {
-      updatedAt: new Date().toISOString()
+    const updateData: Partial<Database['public']['Tables']['calendar_connections']['Update']> = {
+      updated_at: new Date().toISOString()
     }
 
-    if (isActive !== undefined) {
-      updateData.isActive = isActive
+    if (is_active !== undefined) {
+      updateData.is_active = is_active
     }
 
     // Update the connection
     const { data: updatedConnection, error: updateError } = await supabase
-      .from('CalendarConnection')
+      .from('calendar_connections')
       .update(updateData)
       .eq('id', connectionId)
       .select()
@@ -90,25 +91,32 @@ export async function PATCH(
   }
 }
 
+import { requireAuth } from '@/lib/auth-utils'
+
 // DELETE - Remove calendar connection
 export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
   try {
-    console.log('🔍 [Calendar Connection] DELETE request started for ID:', params.id)
+    const user = await requireAuth();
+    if (user instanceof NextResponse) {
+      return user; // Return the error response
+    }
     
-    const connectionId = params.id
-    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
-
+    const { id } = await params
+    console.log('🔍 [Calendar Connection] DELETE request started for ID:', id)
+    
+    const connectionId = id
+    
     const supabase = await createClient()
 
     // Verify the connection belongs to the user before deleting
     const { data: connection, error: fetchError } = await supabase
-      .from('CalendarConnection')
+      .from('calendar_connections')
       .select('id, title')
       .eq('id', connectionId)
-      .eq('userId', userId)
+      .eq('user_id', user.id)
       .single()
 
     if (fetchError || !connection) {
@@ -123,7 +131,7 @@ export async function DELETE(
 
     // Delete the connection
     const { error: deleteError } = await supabase
-      .from('CalendarConnection')
+      .from('calendar_connections')
       .delete()
       .eq('id', connectionId)
 

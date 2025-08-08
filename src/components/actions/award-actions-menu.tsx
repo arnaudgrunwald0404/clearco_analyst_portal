@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { MoreVertical, Eye, Edit3, Trash2 } from 'lucide-react'
 import { useToast } from '@/components/ui/toast'
 
@@ -22,7 +22,32 @@ export default function AwardActionsMenu({
   const [isOpen, setIsOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 })
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const { addToast } = useToast()
+
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      const menuWidth = 120 // min-w-[120px]
+      const menuHeight = 150 // estimated height
+      
+      let top = rect.bottom + 4
+      let right = window.innerWidth - rect.right
+      
+      // Adjust if menu would go off bottom of screen
+      if (top + menuHeight > window.innerHeight) {
+        top = rect.top - menuHeight - 4 // Show above button instead
+      }
+      
+      // Adjust if menu would go off left side of screen
+      if (right + menuWidth > window.innerWidth) {
+        right = window.innerWidth - rect.left - menuWidth
+      }
+      
+      setMenuPosition({ top, right })
+    }
+  }, [isOpen])
 
   const handleDelete = async () => {
     if (!showDeleteConfirm) {
@@ -69,6 +94,7 @@ export default function AwardActionsMenu({
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="p-1 rounded hover:bg-gray-100 transition-colors"
         disabled={isDeleting}
@@ -80,7 +106,7 @@ export default function AwardActionsMenu({
         <>
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 z-10" 
+            className="fixed inset-0 z-40" 
             onClick={() => {
               setIsOpen(false)
               setShowDeleteConfirm(false)
@@ -88,7 +114,13 @@ export default function AwardActionsMenu({
           />
           
           {/* Menu */}
-          <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20 min-w-[120px]">
+          <div 
+            className="fixed bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[120px]"
+            style={{
+              top: `${menuPosition.top}px`,
+              right: `${menuPosition.right}px`
+            }}
+          >
             <button
               onClick={handleView}
               className="w-full flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"

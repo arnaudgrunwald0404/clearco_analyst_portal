@@ -3,6 +3,7 @@ import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
 import { encrypt, decrypt } from '@/lib/crypto'
 import { Pool } from 'pg'
+import { requireAuth } from '@/lib/auth-utils'
 
 // Initialize Google OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -19,15 +20,35 @@ function generateId(): string {
 
 // GET - Fetch all calendar connections for the user
 export async function GET() {
-  console.log('🔍 [Calendar Connections] GET request started')
+  console.log('\n' + '='.repeat(80))
+  console.log('🔍 [Calendar Connections GET] Request started')
+  console.log('🕐 [Calendar Connections GET] Timestamp:', new Date().toISOString())
+  console.log('📍 [Calendar Connections GET] Environment check:')
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing')
   
   try {
-    // For now, we'll use a hardcoded user ID
-    // In production, this should come from the session/auth
-    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0' // This should be replaced with actual user authentication
-    console.log('👤 [Calendar Connections] Using userId:', userId)
+    console.log('🔐 [Calendar Connections GET] Starting authentication check...')
+    // Check authentication first
+    const authResult = await requireAuth()
+    
+    // If it's a NextResponse (error), return it directly
+    if (authResult instanceof NextResponse) {
+      console.log('❌ [Calendar Connections GET] Authentication failed - returning error response')
+      return authResult
+    }
+    
+    console.log('✅ [Calendar Connections GET] Authentication successful')
+    // Otherwise it's the user
+    const user = authResult
+    const user_id = user.id
+    console.log('👤 [Calendar Connections GET] User authenticated - ID:', user_id)
+    console.log('👤 [Calendar Connections GET] User email:', user.email || 'No email')
+    console.log('👤 [Calendar Connections GET] User metadata:', JSON.stringify(user.user_metadata || {}, null, 2))
 
-    console.log('📊 [Calendar Connections] Querying calendar connections...')
+    console.log('🔗 [Calendar Connections GET] Initializing database connection...')
+    console.log('🔗 [Calendar Connections GET] Connection string preview:', process.env.DATABASE_URL?.substring(0, 30) + '...')
     
     // Use direct PostgreSQL connection to bypass Supabase RLS issues
     const pool = new Pool({
@@ -37,20 +58,44 @@ export async function GET() {
       }
     })
     
+    console.log('📡 [Calendar Connections GET] Attempting to connect to database...')
     const client = await pool.connect()
+    console.log('✅ [Calendar Connections GET] Database connection successful')
     
     try {
+      console.log('📊 [Calendar Connections GET] Executing query...')
+      console.log('📊 [Calendar Connections GET] Query parameters:')
+      console.log('  - user_id:', user_id)
+      
       const queryResult = await client.query(`
-        SELECT id, title, email, "isActive", "lastSyncAt", "createdAt"
-        FROM "CalendarConnection" 
-        WHERE "userId" = $1 
-        ORDER BY "createdAt" DESC
-      `, [userId])
+        SELECT id, title, email, "is_active", "last_sync_at", "created_at"
+        FROM "calendar_connections" 
+        WHERE "user_id" = $1 
+        ORDER BY "created_at" DESC
+      `, [user_id])
       
       const connections = queryResult.rows
       
-      console.log('📈 [Calendar Connections] Query successful')
-      console.log('📊 [Calendar Connections] Found connections:', connections?.length || 0)
+      console.log('✅ [Calendar Connections GET] Query executed successfully')
+      console.log('📈 [Calendar Connections GET] Query result details:')
+      console.log('  - Rows returned:', connections?.length || 0)
+      console.log('  - Row count from query:', queryResult.rowCount)
+      console.log('  - Command:', queryResult.command)
+      
+      if (connections && connections.length > 0) {
+        console.log('📊 [Calendar Connections GET] Connection details:')
+        connections.forEach((conn, index) => {
+          console.log(`  Connection ${index + 1}:`)
+          console.log(`    - ID: ${conn.id}`)
+          console.log(`    - Title: ${conn.title}`)
+          console.log(`    - Email: ${conn.email}`)
+          console.log(`    - Active: ${conn.is_active}`)
+          console.log(`    - Last sync: ${conn.last_sync_at || 'Never'}`)
+          console.log(`    - Created: ${conn.created_at}`)
+        })
+      } else {
+        console.log('📊 [Calendar Connections GET] No connections found for user')
+      }
 
       return NextResponse.json({
         success: true,
@@ -71,11 +116,45 @@ export async function GET() {
 
 // POST - Create a new calendar connection
 export async function POST(request: NextRequest) {
-  console.log('🔍 [Calendar Connections] POST request started')
+  console.log('\n' + '='.repeat(80))
+  console.log('🔍 [Calendar Connections POST] Request started')
+  console.log('🕐 [Calendar Connections POST] Timestamp:', new Date().toISOString())
+  console.log('🌍 [Calendar Connections POST] Request URL:', request.url)
+  console.log('📍 [Calendar Connections POST] Environment check:')
+  console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing')
+  console.log('  - GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI ? 'Present' : 'Missing')
+  console.log('  - ENCRYPTION_KEY:', process.env.ENCRYPTION_KEY ? 'Present' : 'Missing')
   
   try {
+    console.log('🔐 [Calendar Connections POST] Starting authentication check...')
+    // Check authentication first
+    const authResult = await requireAuth()
+    
+    // If it's a NextResponse (error), return it directly
+    if (authResult instanceof NextResponse) {
+      console.log('❌ [Calendar Connections POST] Authentication failed - returning error response')
+      return authResult
+    }
+    
+    console.log('✅ [Calendar Connections POST] Authentication successful')
+    // Otherwise it's the user
+    const user = authResult
+    console.log('👤 [Calendar Connections POST] User authenticated - ID:', user.id)
+    console.log('👤 [Calendar Connections POST] User email:', user.email || 'No email')
+    
+    console.log('📝 [Calendar Connections POST] Parsing request body...')
     const body = await request.json()
+    console.log('📝 [Calendar Connections POST] Request body keys:', Object.keys(body))
+    console.log('📝 [Calendar Connections POST] Body content:', JSON.stringify(body, null, 2))
+    
     const { code } = body
+    console.log('🔑 [Calendar Connections POST] Authorization code present:', !!code)
+    if (code) {
+      console.log('🔑 [Calendar Connections POST] Code length:', code.length)
+      console.log('🔑 [Calendar Connections POST] Code preview:', code.substring(0, 20) + '...')
+    }
     
     if (!code) {
       // Generate OAuth URL for initial authorization
@@ -132,7 +211,7 @@ export async function POST(request: NextRequest) {
     }
 
     // For now, use hardcoded user ID
-    const userId = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+    const user_id = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
 
     // Use direct PostgreSQL connection
     const pool = new Pool({
@@ -147,20 +226,20 @@ export async function POST(request: NextRequest) {
     try {
       // Check if connection already exists
       const existingResult = await client.query(`
-        SELECT id FROM "CalendarConnection" 
-        WHERE "userId" = $1 AND email = $2
-      `, [userId, userInfo.email])
+        SELECT id FROM "calendar_connections" 
+        WHERE "user_id" = $1 AND email = $2
+      `, [user_id, userInfo.email])
       
       const existingConnection = existingResult.rows[0]
 
       if (existingConnection) {
         // Update existing connection
         const updateResult = await client.query(`
-          UPDATE "CalendarConnection" 
-          SET "accessToken" = $1, "refreshToken" = $2, "tokenExpiry" = $3, 
-              "googleAccountId" = $4, "isActive" = $5, "updatedAt" = $6
+          UPDATE "calendar_connections" 
+          SET "access_token" = $1, "refresh_token" = $2, "token_expiry" = $3, 
+              "google_account_id" = $4, "is_active" = $5, "updated_at" = $6
           WHERE id = $7
-          RETURNING id, title, email, "isActive"
+          RETURNING id, title, email, "is_active"
         `, [
           encrypt(tokens.access_token || ''),
           tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
@@ -181,21 +260,21 @@ export async function POST(request: NextRequest) {
             id: updatedConnection.id,
             title: updatedConnection.title,
             email: updatedConnection.email,
-            isActive: updatedConnection.isActive
+            is_active: updatedConnection.is_active
           }
         })
       } else {
         // Create new connection
         const connectionId = generateId()
         const insertResult = await client.query(`
-          INSERT INTO "CalendarConnection" (
-            id, "userId", title, email, "googleAccountId", "accessToken", 
-            "refreshToken", "tokenExpiry", "isActive", "createdAt", "updatedAt"
+          INSERT INTO "calendar_connections" (
+            id, "user_id", title, email, "google_account_id", "access_token", 
+            "refresh_token", "token_expiry", "is_active", "created_at", "updated_at"
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          RETURNING id, title, email, "isActive"
+          RETURNING id, title, email, "is_active"
         `, [
           connectionId,
-          userId,
+          user_id,
           `${userInfo.data.name}'s Calendar`,
           userInfo.data.email || '',
           userInfo.data.id!,
@@ -217,7 +296,7 @@ export async function POST(request: NextRequest) {
             id: newConnection.id,
             title: newConnection.title,
             email: newConnection.email,
-            isActive: newConnection.isActive
+            is_active: newConnection.is_active
           }
         })
       }

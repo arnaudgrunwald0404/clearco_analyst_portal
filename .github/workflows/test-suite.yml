@@ -1,0 +1,382 @@
+name: 🧪 Comprehensive Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+env:
+  NODE_VERSION: '18'
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  install-dependencies:
+    name: 📦 Install Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Install dependencies
+        run: npm ci
+
+      - name: 🎭 Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: 💾 Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+  lint-and-typecheck:
+    name: 🔍 Lint & Type Check
+    runs-on: ubuntu-latest
+    needs: install-dependencies
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 🔍 Run ESLint
+        run: npm run lint
+
+      - name: 🏗️ Type check
+        run: npx tsc --noEmit
+
+  build-test:
+    name: 🏗️ Build Test
+    runs-on: ubuntu-latest
+    needs: install-dependencies
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 🏗️ Build application
+        run: npm run build
+
+      - name: 💾 Cache build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+  page-load-tests:
+    name: 📄 Page Load Tests
+    runs-on: ubuntu-latest
+    needs: [install-dependencies, build-test]
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 📥 Restore build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: 🧪 Run Page Load Tests
+        run: npm run test:pages
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: page-load-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  ux-pattern-tests:
+    name: 🎨 UX Pattern Tests
+    runs-on: ubuntu-latest
+    needs: [install-dependencies, build-test]
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 📥 Restore build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: 🧪 Run UX Pattern Tests
+        run: npm run test:ux
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ux-pattern-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  api-tests:
+    name: 🔌 API Tests
+    runs-on: ubuntu-latest
+    needs: [install-dependencies, build-test]
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 📥 Restore build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: 🧪 Run API Tests
+        run: npm run test:api
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  performance-tests:
+    name: ⚡ Performance Tests
+    runs-on: ubuntu-latest
+    needs: [install-dependencies, build-test]
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 📥 Restore build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: 🧪 Run Performance Tests
+        run: npm run test:performance
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: 📊 Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  comprehensive-test-suite:
+    name: 🏆 Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    needs: [install-dependencies, build-test]
+    if: github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-test]')
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 📥 Restore dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            ~/.cache/ms-playwright
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: 📥 Restore build
+        uses: actions/cache@v4
+        with:
+          path: .next
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: 🧪 Run All Tests
+        run: npm run test:all
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: 📊 Upload comprehensive test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: comprehensive-test-results
+          path: |
+            test-results/
+            test-reports/
+            playwright-report/
+          retention-days: 30
+
+  test-summary:
+    name: 📋 Test Summary
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, page-load-tests, ux-pattern-tests, api-tests, performance-tests]
+    if: always()
+    steps:
+      - name: 🛎️ Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          path: all-test-results
+
+      - name: 📊 Generate Test Summary
+        run: |
+          echo "# 🧪 Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📊 Test Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check job results
+          if [ "${{ needs.lint-and-typecheck.result }}" == "success" ]; then
+            echo "✅ **Lint & Type Check**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Lint & Type Check**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.page-load-tests.result }}" == "success" ]; then
+            echo "✅ **Page Load Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Page Load Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.ux-pattern-tests.result }}" == "success" ]; then
+            echo "✅ **UX Pattern Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **UX Pattern Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.api-tests.result }}" == "success" ]; then
+            echo "✅ **API Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **API Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.performance-tests.result }}" == "success" ]; then
+            echo "✅ **Performance Tests**: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Performance Tests**: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📈 Coverage & Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "- **Pages Tested**: All main application pages" >> $GITHUB_STEP_SUMMARY
+          echo "- **UX Patterns**: Modals, drawers, forms, actions" >> $GITHUB_STEP_SUMMARY
+          echo "- **API Endpoints**: Authentication, CRUD operations" >> $GITHUB_STEP_SUMMARY
+          echo "- **Performance**: Load times, bundle sizes, Web Vitals" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [Test Reports](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
