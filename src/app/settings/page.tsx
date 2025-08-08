@@ -12,6 +12,7 @@ import TopicsSection from './TopicsSection'
 import AnalystPortalSection from './AnalystPortalSection'
 import CalendarSection from './CalendarSection'
 import InfluenceTiersSection from './InfluenceTiersSection'
+import ContentSection from './ContentSection'
 import { FloatingHelpText } from '@/components/ui/floating-help-text'
 import { useHelpText } from '@/hooks/useHelpText'
 
@@ -543,6 +544,11 @@ function SettingsPageContent() {
     }
   }
 
+import { FileText } from 'lucide-react'
+
+// ... (keep existing imports)
+
+// ... (inside SettingsPageContent component)
   // Define menu sections
   const menuSections = [
     { id: 'general', label: 'General', icon: Settings },
@@ -550,6 +556,7 @@ function SettingsPageContent() {
     { id: 'topics', label: 'Topics', icon: Tags },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
+    { id: 'content', label: 'Content', icon: FileText },
   ]
 
   return (
@@ -584,6 +591,7 @@ function SettingsPageContent() {
             />
           )}
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
+          {activeSection === 'content' && <ContentSection />}
         </div>
       </div>
 
