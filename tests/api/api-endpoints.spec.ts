@@ -158,6 +158,33 @@ test.describe('Settings API Endpoints', () => {
     const data = await response.json()
     expect(data).toHaveProperty('error', 'Authentication required')
   })
+
+  test('GET /api/settings/calendar-connections - authenticated request', async ({ request }) => {
+    const authCookie = await getAuthCookie(request)
+
+    const response = await request.get(`${BASE_URL}/api/settings/calendar-connections`, {
+      headers: {
+        'Cookie': authCookie
+      }
+    })
+
+    expect(response.status()).toBe(200)
+
+    const body = await response.json()
+    expect(body).toHaveProperty('success', true)
+    expect(body).toHaveProperty('data')
+    expect(Array.isArray(body.data)).toBe(true)
+
+    if (body.data.length > 0) {
+      const connection = body.data[0]
+      expect(connection).toHaveProperty('id')
+      expect(connection).toHaveProperty('title')
+      expect(connection).toHaveProperty('email')
+      expect(connection).toHaveProperty('is_active')
+      expect(connection).toHaveProperty('last_sync_at')
+      expect(connection).toHaveProperty('created_at')
+    }
+  })
 })
 
 test.describe('Analysts API Endpoints', () => {

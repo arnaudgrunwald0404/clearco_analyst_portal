@@ -296,6 +296,27 @@ describe('Supabase API Tests', () => {
       expect(data.error).toContain('Invalid file type')
     })
   })
+
+  describe('Calendar Connections API (/api/settings/calendar-connections)', () => {
+    test('GET /api/settings/calendar-connections - should fetch connections successfully', async () => {
+      const response = await fetch(`${baseUrl}/api/settings/calendar-connections`)
+      const data = await response.json()
+
+      expect(response.status).toBe(200)
+      expect(data.success).toBe(true)
+      expect(Array.isArray(data.data)).toBe(true)
+
+      if (data.data.length > 0) {
+        const connection = data.data[0]
+        expect(connection).toHaveProperty('id')
+        expect(connection).toHaveProperty('title')
+        expect(connection).toHaveProperty('email')
+        expect(connection).toHaveProperty('is_active')
+        expect(connection).toHaveProperty('last_sync_at')
+        expect(connection).toHaveProperty('created_at')
+      }
+    })
+  })
 })
 
 // Helper function to clean up test data
