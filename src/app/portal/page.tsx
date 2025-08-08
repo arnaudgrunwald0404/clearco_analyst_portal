@@ -2,19 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useSettings } from '@/contexts/SettingsContext'
+import { useAuth } from '@/contexts/AuthContext'
 import { BriefingCard } from '@/components/portal/BriefingCard'
 import { PublicationsSection } from '@/components/portal/PublicationsSection'
 import { TestimonialsSection } from '@/components/portal/TestimonialsSection'
 import { QuoteDisplay } from '@/components/portal/QuoteDisplay'
+import { ProfileWidget } from '@/components/portal/ProfileWidget'
 
 export default function PortalPage() {
   const { settings } = useSettings()
+  const { user } = useAuth()
   const [lastBriefing, setLastBriefing] = useState<any>(null)
   const [nextBriefing, setNextBriefing] = useState<any>(null)
+  const [analystProfile, setAnalystProfile] = useState<any>(null)
 
-  // Fetch briefings data
+  // Fetch briefings and analyst data
   useEffect(() => {
-    const fetchBriefings = async () => {
+    const fetchData = async () => {
       try {
         // Fetch last briefing
         const lastResponse = await fetch('/api/briefings/last')
@@ -25,13 +29,30 @@ export default function PortalPage() {
         const nextResponse = await fetch('/api/briefings/next')
         const nextData = await nextResponse.json()
         setNextBriefing(nextData)
+
+        // Fetch analyst profile
+        if (user?.email) {
+          try {
+            const profileResponse = await fetch(`/api/analysts/by-email/${encodeURIComponent(user.email)}`)
+            const profileResult = await profileResponse.json()
+            if (profileResult.success) {
+              setAnalystProfile({
+                name: `${profileResult.data.firstName} ${profileResult.data.lastName}`,
+                profileImageUrl: profileResult.data.profileImageUrl,
+                topics: profileResult.data.topics || [],
+              })
+            }
+          } catch (e) {
+            console.error("Failed to fetch analyst profile for widget", e)
+          }
+        }
       } catch (error) {
-        console.error('Error fetching briefings:', error)
+        console.error('Error fetching portal data:', error)
       }
     }
 
-    fetchBriefings()
-  }, [])
+    fetchData()
+  }, [user])
 
   return (
     <div className="space-y-8">
@@ -42,6 +63,9 @@ export default function PortalPage() {
         </h1>
         <QuoteDisplay quote={settings?.analystQuote} />
       </section>
+
+      {/* Profile Widget */}
+      {analystProfile && <ProfileWidget analyst={analystProfile} />}
 
       {/* Briefings Section */}
       <div className="grid md:grid-cols-2 gap-6">
