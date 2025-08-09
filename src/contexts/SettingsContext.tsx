@@ -71,12 +71,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         // Convert snake_case API response to camelCase for frontend
         const settingsData: CompanySettings = {
           id: rawSettings.id,
-          companyName: rawSettings.companyName || rawSettings.company_name,
-          protectedDomain: rawSettings.protectedDomain || rawSettings.protected_domain,
-          logoUrl: rawSettings.logoUrl || rawSettings.logo_url,
-          industryName: rawSettings.industryName || rawSettings.industry_name,
-          createdAt: rawSettings.createdAt || rawSettings.created_at,
-          updatedAt: rawSettings.updatedAt || rawSettings.updated_at
+          companyName: rawSettings.company_name,
+          protectedDomain: rawSettings.protected_domain,
+          logoUrl: rawSettings.logo_url,
+          industryName: rawSettings.industry_name,
+          createdAt: rawSettings.created_at,
+          updatedAt: rawSettings.updated_at
         }
         
         setSettings(settingsData)

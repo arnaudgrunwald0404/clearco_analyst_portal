@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { syncAnalystSocialHandlesOnUpdate, removeAnalystSocialHandlesOnDelete } from '@/lib/social-sync'
+import { requireAuth } from '@/lib/auth-utils'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -12,7 +14,11 @@ export async function DELETE(
 ) {
   try {
     const { id: analystId } = await params
-    const supabase = await createClient()
+    // Prefer service-role client for write ops to avoid RLS blocking profile edits
+    const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
+      ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      : null
+    const supabase = adminSupabase || await createClient()
 
     // Check if analyst exists and is not already archived
     const { data: existingAnalyst, error: fetchError } = await supabase
@@ -162,15 +168,50 @@ export async function PATCH(
   { params }: RouteParams
 ) {
   try {
-    const { id: analystId } = await params
+    const { id: analystIdToUpdate } = await params
     const body = await request.json()
     const supabase = await createClient()
 
-    // Check if analyst exists
+    // 1. Authentication & Authorization
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) {
+      return authResult // User not authenticated
+    }
+    const authUser = authResult
+
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role, email')
+      .eq('id', authUser.id)
+      .single()
+
+    if (!userProfile) {
+      return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 403 })
+    }
+
+    if (userProfile.role !== 'ADMIN') {
+      // If user is not an Admin, they must be an Analyst updating their own profile
+      if (userProfile.role !== 'ANALYST') {
+        return NextResponse.json({ success: false, error: 'Permission denied.' }, { status: 403 })
+      }
+
+      // Find the analyst record associated with this user's email
+      const { data: analystRecord } = await supabase
+        .from('analysts')
+        .select('id')
+        .eq('email', userProfile.email)
+        .single()
+
+      if (!analystRecord || analystRecord.id !== analystIdToUpdate) {
+        return NextResponse.json({ success: false, error: 'You can only update your own profile.' }, { status: 403 })
+      }
+    }
+
+    // 2. Check if analyst exists
     const { data: existingAnalyst } = await supabase
       .from('analysts')
       .select('id, firstName, lastName')
-      .eq('id', analystId)
+      .eq('id', analystIdToUpdate)
       .single()
 
     if (!existingAnalyst) {
@@ -180,29 +221,68 @@ export async function PATCH(
       }, { status: 404 })
     }
 
-    // Prepare update data
+    // 3. Prepare and validate update data
     const updateData: any = {
       updatedAt: new Date().toISOString()
     }
 
-    // Map the allowed fields
-    const allowedFields = [
+    // Accept both legacy column names and new alias fields
+    // Columns in DB (see types): linkedIn, twitter, website, phone
+    const directFields = [
       'firstName', 'lastName', 'email', 'company', 'title', 'bio',
-      'profileImageUrl', 'influence', 'relationshipHealth', 'status',
-      'lastContactDate', 'keyThemes', 'twitterHandle', 'linkedinUrl', 'personalWebsite'
-    ]
+      'profileImageUrl', 'linkedIn', 'twitter', 'website', 'phone', 'notes'
+    ] as const
 
-    allowedFields.forEach(field => {
+    // Admin-only fields
+    const adminFields = ['influence', 'relationshipHealth', 'status', 'lastContactDate', 'keyThemes']
+
+    // Process direct fields
+    directFields.forEach((field) => {
       if (body[field] !== undefined) {
         updateData[field] = body[field]
       }
     })
 
-    // Update the analyst
+    // Process admin fields if user is admin
+    if (userProfile.role === 'ADMIN') {
+      adminFields.forEach(field => {
+        if (body[field] !== undefined) {
+          updateData[field] = body[field]
+        }
+      })
+    }
+
+    // Handle aliases from newer schema or UI
+    // linkedin (lowercase) may be string or array → map to linkedIn (first value if array)
+    if (body.linkedin !== undefined) {
+      updateData.linkedIn = Array.isArray(body.linkedin) ? body.linkedin[0] : body.linkedin
+    }
+    if (body.twitterHandle !== undefined) {
+      updateData.twitter = body.twitterHandle
+    }
+    if (body.linkedinUrl !== undefined) {
+      updateData.linkedIn = body.linkedinUrl
+    }
+    if (body.personalWebsite !== undefined) {
+      updateData.website = body.personalWebsite
+    }
+    // twitter/phone/website from selection modal may be arrays
+    if (body.twitter !== undefined && Array.isArray(body.twitter)) {
+      updateData.twitter = body.twitter[0]
+    }
+    if (body.phone !== undefined && Array.isArray(body.phone)) {
+      updateData.phone = body.phone[0]
+    }
+    // website from selection modal may be an array
+    if (body.website !== undefined && Array.isArray(body.website)) {
+      updateData.website = body.website[0]
+    }
+
+    // 4. Update the analyst
     const { data: updatedAnalyst, error: updateError } = await supabase
       .from('analysts')
       .update(updateData)
-      .eq('id', analystId)
+      .eq('id', analystIdToUpdate)
       .select()
       .single()
 
@@ -214,18 +294,18 @@ export async function PATCH(
       }, { status: 500 })
     }
 
-    // Handle topics updates if provided
+    // 5. Handle topics updates if provided
     if (body.topics && Array.isArray(body.topics)) {
       // Delete existing topics
       await supabase
         .from('covered_topics')
         .delete()
-        .eq('analystId', analystId)
+        .eq('analystId', analystIdToUpdate)
 
       // Insert new topics
       if (body.topics.length > 0) {
         const topicData = body.topics.map((topic: string) => ({
-          analystId,
+          analystId: analystIdToUpdate,
           topic,
           createdAt: new Date().toISOString()
         }))
@@ -236,17 +316,17 @@ export async function PATCH(
       }
     }
 
-    // Sync social handles if social media fields were updated
-    const socialFields = ['twitterHandle', 'linkedinUrl', 'personalWebsite']
+    // 6. Sync social handles if social media fields were updated
+    const socialFields = ['twitter', 'linkedIn', 'website', 'twitterHandle', 'linkedinUrl', 'personalWebsite']
     const hasSocialUpdates = socialFields.some(field => body[field] !== undefined)
     
     if (hasSocialUpdates) {
       try {
         await syncAnalystSocialHandlesOnUpdate({
           id: updatedAnalyst.id,
-          twitterHandle: updatedAnalyst.twitterHandle,
-          linkedinUrl: updatedAnalyst.linkedinUrl,
-          personalWebsite: updatedAnalyst.personalWebsite
+          twitterHandle: (updatedAnalyst as any).twitter || body.twitterHandle || null,
+          linkedinUrl: (updatedAnalyst as any).linkedIn || body.linkedinUrl || null,
+          personalWebsite: (updatedAnalyst as any).website || body.personalWebsite || null
         })
       } catch (syncError) {
         console.error('Error syncing social handles:', syncError)
@@ -254,7 +334,7 @@ export async function PATCH(
       }
     }
 
-    console.log(`📝 Updated analyst ${updatedAnalyst.firstName} ${updatedAnalyst.lastName}`)
+    console.log(`📝 Updated analyst ${updatedAnalyst.firstName} ${updatedAnalyst.lastName} by user ${authUser.email}`)
 
     return NextResponse.json({
       success: true,

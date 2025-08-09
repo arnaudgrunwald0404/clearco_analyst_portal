@@ -20,6 +20,9 @@ function formatLastContact(date: Date | string | null): string {
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return new Response(JSON.stringify({ success: false, error: 'Database not configured' }), { status: 500 })
+    }
     console.log('📊 [Dashboard] Fetching top analysts...')
     
     const supabase = await createClient()

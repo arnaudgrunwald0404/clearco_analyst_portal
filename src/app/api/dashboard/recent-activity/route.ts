@@ -30,6 +30,9 @@ function formatTimeAgo(date: Date): string {
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return new Response(JSON.stringify({ success: false, error: 'Database not configured' }), { status: 500 })
+    }
     const now = Date.now();
     
     // Return cached data if still valid

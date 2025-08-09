@@ -43,7 +43,7 @@ export function UserDropdown({ isOpen, onToggle, onClose }: UserDropdownProps) {
     if (user?.email) {
       return user.email.split('@')[0]
     }
-    return 'Admin User'
+    return 'User'
   }
 
   return (

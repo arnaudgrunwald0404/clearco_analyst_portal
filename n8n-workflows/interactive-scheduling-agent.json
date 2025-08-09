@@ -1,0 +1,202 @@
+{
+  "name": "Interactive Scheduling Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "interactive-scheduling-agent",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: Analyst Requests Slot",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": "public",
+        "table": "availability_slots",
+        "match": {
+          "id": "={{ $json.body.slot_id }}"
+        },
+        "columns": {
+          "is_booked": true,
+          "booked_by_analyst_id": "={{ $json.body.analyst_id }}"
+        },
+        "options": {}
+      },
+      "id": "update-slot",
+      "name": "Mark Slot as Booked",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabase": {
+          "id": "supabase-credentials",
+          "name": "Supabase Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": "public",
+        "table": "briefings",
+        "columns": {
+          "title": "Briefing Request from {{ $json.body.analyst_id }}",
+          "status": "REQUESTED",
+          "scheduledAt": "={{ $json.body.start_time }}"
+        },
+        "options": {}
+      },
+      "id": "create-briefing",
+      "name": "Create 'Requested' Briefing",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [700, 300],
+      "credentials": {
+        "supabase": {
+          "id": "supabase-credentials",
+          "name": "Supabase Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.RESEND_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "scheduling@clearcompany.com"
+            },
+            {
+              "name": "to",
+              "value": "={{ $json.body.analyst_email }}"
+            },
+            {
+              "name": "subject",
+              "value": "Briefing Request Received"
+            },
+            {
+              "name": "html",
+              "value": "Your request for a briefing at {{ $json.body.start_time }} has been received. We will confirm shortly."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-analyst-confirmation",
+      "name": "Send Analyst Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [950, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.resend.com/emails",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.RESEND_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "from",
+              "value": "noreply@clearcompany.com"
+            },
+            {
+              "name": "to",
+              "value": "admin@clearcompany.com"
+            },
+            {
+              "name": "subject",
+              "value": "New Briefing Request"
+            },
+            {
+              "name": "html",
+              "value": "New briefing requested by {{ $json.body.analyst_id }} for {{ $json.body.start_time }}. Please approve in the admin dashboard."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-admin-notification",
+      "name": "Send Admin Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [950, 400]
+    }
+  ],
+  "connections": {
+    "Webhook: Analyst Requests Slot": {
+      "main": [
+        [
+          {
+            "node": "Mark Slot as Booked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Slot as Booked": {
+      "main": [
+        [
+          {
+            "node": "Create 'Requested' Briefing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create 'Requested' Briefing": {
+      "main": [
+        [
+          {
+            "node": "Send Analyst Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Admin Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-08-08T20:30:00.000Z",
+  "versionId": "1"
+}

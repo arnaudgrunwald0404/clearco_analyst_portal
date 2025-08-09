@@ -141,6 +141,22 @@ export default function PublicationsReviewPage() {
         })
       }
     }
+
+    if (decision === 'reject' || decision === 'archive') {
+      // Try to delete if this publication already exists in DB (we need an id; attempt to find by url)
+      try {
+        const getRes = await fetch(`/api/publications?analystId=${encodeURIComponent(publication.analyst.id)}`)
+        if (getRes.ok) {
+          const { data } = await getRes.json()
+          const match = (data || []).find((p: any) => p.url === publication.url)
+          if (match?.id) {
+            await fetch(`/api/publications/${match.id}`, { method: 'DELETE' })
+          }
+        }
+      } catch (e) {
+        // non-fatal
+      }
+    }
   }
 
   const getDecisionIcon = (decision?: ReviewDecision) => {

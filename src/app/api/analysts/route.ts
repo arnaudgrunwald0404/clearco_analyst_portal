@@ -6,6 +6,11 @@ import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
 type Analyst = Database['public']['Tables']['analysts']['Row']
 type AnalystInsert = Database['public']['Tables']['analysts']['Insert']
 
+// Fail fast if required Supabase env vars are missing (tests expect this throw on import)
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing')
+}
+
 // Simple CUID-like ID generator
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -26,6 +31,12 @@ let cache: {
 
 export async function GET(request: NextRequest) {
   try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json(
+        { success: false, error: 'Supabase not configured' },
+        { status: 500 }
+      )
+    }
     const { searchParams } = new URL(request.url)
     const topics = searchParams.getAll('topic')
     const status = searchParams.get('status')

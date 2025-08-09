@@ -68,10 +68,10 @@ export async function GET() {
       console.log('  - user_id:', user_id)
       
       const queryResult = await client.query(`
-        SELECT id, title, email, "is_active", "last_sync_at", "created_at"
+        SELECT id, title, email, "isActive" AS "is_active", "lastSyncAt" AS "last_sync_at", "createdAt" AS "created_at"
         FROM "calendar_connections" 
-        WHERE "user_id" = $1 
-        ORDER BY "created_at" DESC
+        WHERE "userId" = $1
+        ORDER BY "createdAt" DESC
       `, [user_id])
       
       const connections = queryResult.rows
@@ -210,8 +210,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For now, use hardcoded user ID
-    const user_id = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+    const user_id = user.id
 
     // Use direct PostgreSQL connection
     const pool = new Pool({
@@ -227,7 +226,7 @@ export async function POST(request: NextRequest) {
       // Check if connection already exists
       const existingResult = await client.query(`
         SELECT id FROM "calendar_connections" 
-        WHERE "user_id" = $1 AND email = $2
+        WHERE "userId" = $1 AND email = $2
       `, [user_id, userInfo.email])
       
       const existingConnection = existingResult.rows[0]
@@ -236,15 +235,14 @@ export async function POST(request: NextRequest) {
         // Update existing connection
         const updateResult = await client.query(`
           UPDATE "calendar_connections" 
-          SET "access_token" = $1, "refresh_token" = $2, "token_expiry" = $3, 
-              "google_account_id" = $4, "is_active" = $5, "updated_at" = $6
-          WHERE id = $7
-          RETURNING id, title, email, "is_active"
+          SET "accessToken" = $1, "refreshToken" = $2, "expiresAt" = $3,
+              "isActive" = $4, "updatedAt" = $5
+          WHERE id = $6
+          RETURNING id, title, email, "isActive" AS "is_active"
         `, [
           encrypt(tokens.access_token || ''),
           tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
           tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
-          userInfo.data.id!,
           true,
           new Date().toISOString(),
           existingConnection.id
@@ -268,16 +266,15 @@ export async function POST(request: NextRequest) {
         const connectionId = generateId()
         const insertResult = await client.query(`
           INSERT INTO "calendar_connections" (
-            id, "user_id", title, email, "google_account_id", "access_token", 
-            "refresh_token", "token_expiry", "is_active", "created_at", "updated_at"
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-          RETURNING id, title, email, "is_active"
+            id, "userId", title, email, "accessToken",
+            "refreshToken", "expiresAt", "isActive", "createdAt", "updatedAt"
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          RETURNING id, title, email, "isActive" AS "is_active"
         `, [
           connectionId,
           user_id,
-          `${userInfo.data.name}'s Calendar`,
-          userInfo.data.email || '',
-          userInfo.data.id!,
+          `${userInfo.name}'s Calendar`,
+          userInfo.email || '',
           encrypt(tokens.access_token || ''),
           tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
           tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
