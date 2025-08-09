@@ -251,7 +251,6 @@ export async function PATCH(
         }
       })
     }
-
     // Handle aliases from newer schema or UI
     // linkedin (lowercase) may be string or array → map to linkedIn (first value if array)
     if (body.linkedin !== undefined) {
