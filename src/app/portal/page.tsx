@@ -8,6 +8,7 @@ import { PublicationsSection } from '@/components/portal/PublicationsSection'
 import { TestimonialsSection } from '@/components/portal/TestimonialsSection'
 import { QuoteDisplay } from '@/components/portal/QuoteDisplay'
 import { ProfileWidget } from '@/components/portal/ProfileWidget'
+import { AvailabilitySlots } from '@/components/portal/AvailabilitySlots'
 
 export default function PortalPage() {
   const { settings } = useSettings()
@@ -67,22 +68,8 @@ export default function PortalPage() {
       {/* Profile Widget */}
       {analystProfile && <ProfileWidget analyst={analystProfile} />}
 
-      {/* Briefings Section */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Last Briefing */}
-        <BriefingCard
-          type="last"
-          briefing={lastBriefing}
-          className="bg-white rounded-xl shadow-sm"
-        />
-
-        {/* Next Briefing */}
-        <BriefingCard
-          type="next"
-          briefing={nextBriefing}
-          className="bg-white rounded-xl shadow-sm"
-        />
-      </div>
+      {/* Interactive Scheduling Section */}
+      <AvailabilitySlots />
 
       {/* Testimonials Section */}
       <TestimonialsSection />
