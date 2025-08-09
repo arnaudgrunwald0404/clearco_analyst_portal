@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useRouter } from 'next/navigation'
 
 interface Publication {
   id: string
@@ -79,6 +80,7 @@ const typeIcons = {
 }
 
 export default function PublicationsPage() {
+  const router = useRouter()
   const [publications, setPublications] = useState<Publication[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -465,15 +467,10 @@ export default function PublicationsPage() {
           <Button 
             variant="outline"
             className="flex items-center gap-2"
-            onClick={discoverWithExa}
-            disabled={isDiscovering}
+            onClick={() => router.push('/publications/review')}
           >
-            {isDiscovering ? (
-              <RefreshCw className="h-4 w-4 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4" />
-            )}
-            {isDiscovering ? 'Discovering...' : 'Discover Publications'}
+            <Sparkles className="h-4 w-4" />
+            Review Pending Publications
           </Button>
           <Button 
             className="flex items-center gap-2"
@@ -617,7 +614,9 @@ export default function PublicationsPage() {
           <div className="flex items-center">
             <Clock className="w-8 h-8 text-orange-500" />
             <div className="ml-3">
-              <p className="text-2xl font-bold text-gray-900">5</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {publications.filter(p => p.isTracked && !p.analystId /* placeholder if you flag review-needed */).length}
+              </p>
               <p className="text-sm text-gray-600">Pending Review</p>
             </div>
           </div>

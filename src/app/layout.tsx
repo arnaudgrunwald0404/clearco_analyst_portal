@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   description: "Industry analyst relationship management portal for HR tech companies",
 };
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function RootLayout({
   children,
 }: Readonly<{

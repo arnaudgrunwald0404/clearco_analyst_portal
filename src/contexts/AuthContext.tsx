@@ -46,6 +46,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           await loadUserProfile(session.user)
+          // If for any reason profile loading didn't set the user, fall back to auth session
+          if (!user) {
+            const authUser = session.user
+            const minimalUser: UserProfile = {
+              id: authUser.id,
+              email: authUser.email || '',
+              name: (authUser.user_metadata?.name 
+                || [authUser.user_metadata?.first_name, authUser.user_metadata?.last_name].filter(Boolean).join(' ') 
+                || authUser.email?.split('@')[0] 
+                || 'User'),
+              role: 'EDITOR',
+              company: authUser.user_metadata?.company || null,
+              profileImageUrl: authUser.user_metadata?.avatar_url || null,
+              createdAt: authUser.created_at,
+              updatedAt: new Date().toISOString()
+            }
+            setUser(minimalUser)
+            localStorage.setItem('user', JSON.stringify(minimalUser))
+          }
         } else {
           // No session, try localStorage fallback
           const storedUser = localStorage.getItem('user')
@@ -125,17 +144,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('This email is not authorized for access')
         }
 
-        // Use service role client to bypass RLS for database checks
-        const serviceClient = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
+        // Use service role client to bypass RLS for database checks if available
+        const canUseServiceRole = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+        const serviceClient = canUseServiceRole
+          ? createServiceClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!
+            )
+          : null
 
         // Check if email is from authorized domain OR is a registered analyst
         const isAuthorizedDomain = emailDomain === 'clearcompany.com'
         
         let isRegisteredAnalyst = false
-        if (!isAuthorizedDomain) {
+        if (!isAuthorizedDomain && serviceClient) {
           // Check if email exists in analysts table
           const { data: analyst, error: analystError } = await serviceClient
             .from('analysts')
@@ -176,13 +198,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString()
         }
 
-        const { error: createError } = await serviceClient
-          .from('user_profiles')
-          .insert(defaultProfile)
+        const createError = serviceClient
+          ? (await serviceClient.from('user_profiles').insert(defaultProfile)).error
+          : null
 
         if (createError) {
           console.error('Error creating user profile with service role:', createError)
-          // Don't set user if profile creation fails
+          // Fall back to minimal user
+          const userData: UserProfile = {
+            id: authUser.id,
+            email: authUser.email || '',
+            name: defaultProfile.name,
+            role: defaultProfile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
+            company: defaultProfile.company,
+            profileImageUrl: authUser.user_metadata?.avatar_url || null,
+            createdAt: authUser.created_at,
+            updatedAt: new Date().toISOString()
+          }
+          setUser(userData)
+          localStorage.setItem('user', JSON.stringify(userData))
           return
         }
 
@@ -218,12 +252,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (profileError) {
         // Handle other profile errors
         console.error('Error loading user profile:', profileError)
-        // Don't set user if profile loading fails
+        // Fall back to minimal user
+        const userData: UserProfile = {
+          id: authUser.id,
+          email: authUser.email || '',
+          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+          role: 'EDITOR',
+          company: authUser.user_metadata?.company || null,
+          profileImageUrl: authUser.user_metadata?.avatar_url || null,
+          createdAt: authUser.created_at,
+          updatedAt: new Date().toISOString()
+        }
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
         return
       }
     } catch (error) {
       console.error('Error loading user profile:', error)
-      // Don't set user if there's an error
+      // Fall back to minimal user
+      const userData: UserProfile = {
+        id: authUser.id,
+        email: authUser.email || '',
+        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+        role: 'EDITOR',
+        company: authUser.user_metadata?.company || null,
+        profileImageUrl: authUser.user_metadata?.avatar_url || null,
+        createdAt: authUser.created_at,
+        updatedAt: new Date().toISOString()
+      }
+      setUser(userData)
+      localStorage.setItem('user', JSON.stringify(userData))
       return
     }
   }

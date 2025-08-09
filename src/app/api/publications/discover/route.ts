@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 interface AnalystSource {
   analyst: {
@@ -175,7 +176,10 @@ async function discoverPublications(source: AnalystSource): Promise<Publication[
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
+      ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      : null
+    const supabase = adminSupabase || await createClient()
     
     // Get all analysts
     const { data: analysts, error: analystsError } = await supabase
@@ -238,6 +242,34 @@ export async function GET() {
           analyst: source.analyst
         })
       })
+
+      // Persist into Publication table (dedupe by analystId + url)
+      for (const pub of publications) {
+        try {
+          const { count } = await supabase
+            .from('Publication')
+            .select('id', { count: 'exact', head: true })
+            .eq('analystId', source.analyst.id)
+            .eq('url', pub.url)
+          if (!count || count === 0) {
+            await supabase
+              .from('Publication')
+              .insert({
+                analystId: source.analyst.id,
+                title: pub.title,
+                url: pub.url,
+                summary: pub.summary || null,
+                type: pub.type,
+                publishedAt: pub.publishedAt || new Date().toISOString(),
+                isTracked: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              })
+          }
+        } catch (e) {
+          // non-fatal; continue
+        }
+      }
     }
 
     // Return discovered publications

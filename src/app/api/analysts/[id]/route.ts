@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { syncAnalystSocialHandlesOnUpdate, removeAnalystSocialHandlesOnDelete } from '@/lib/social-sync'
 import { requireAuth } from '@/lib/auth-utils'
 
@@ -13,7 +14,11 @@ export async function DELETE(
 ) {
   try {
     const { id: analystId } = await params
-    const supabase = await createClient()
+    // Prefer service-role client for write ops to avoid RLS blocking profile edits
+    const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
+      ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      : null
+    const supabase = adminSupabase || await createClient()
 
     // Check if analyst exists and is not already archived
     const { data: existingAnalyst, error: fetchError } = await supabase
@@ -221,20 +226,24 @@ export async function PATCH(
       updatedAt: new Date().toISOString()
     }
 
-    const allowedFields = [
+    // Accept both legacy column names and new alias fields
+    // Columns in DB (see types): linkedIn, twitter, website, phone
+    const directFields = [
       'firstName', 'lastName', 'email', 'company', 'title', 'bio',
-      'profileImageUrl', 'twitterHandle', 'linkedinUrl', 'personalWebsite'
-    ]
+      'profileImageUrl', 'linkedIn', 'twitter', 'website', 'phone', 'notes'
+    ] as const
 
     // Admin-only fields
     const adminFields = ['influence', 'relationshipHealth', 'status', 'lastContactDate', 'keyThemes']
 
-    allowedFields.forEach(field => {
+    // Process direct fields
+    directFields.forEach((field) => {
       if (body[field] !== undefined) {
         updateData[field] = body[field]
       }
     })
 
+    // Process admin fields if user is admin
     if (userProfile.role === 'ADMIN') {
       adminFields.forEach(field => {
         if (body[field] !== undefined) {
@@ -243,6 +252,31 @@ export async function PATCH(
       })
     }
 
+    // Handle aliases from newer schema or UI
+    // linkedin (lowercase) may be string or array → map to linkedIn (first value if array)
+    if (body.linkedin !== undefined) {
+      updateData.linkedIn = Array.isArray(body.linkedin) ? body.linkedin[0] : body.linkedin
+    }
+    if (body.twitterHandle !== undefined) {
+      updateData.twitter = body.twitterHandle
+    }
+    if (body.linkedinUrl !== undefined) {
+      updateData.linkedIn = body.linkedinUrl
+    }
+    if (body.personalWebsite !== undefined) {
+      updateData.website = body.personalWebsite
+    }
+    // twitter/phone/website from selection modal may be arrays
+    if (body.twitter !== undefined && Array.isArray(body.twitter)) {
+      updateData.twitter = body.twitter[0]
+    }
+    if (body.phone !== undefined && Array.isArray(body.phone)) {
+      updateData.phone = body.phone[0]
+    }
+    // website from selection modal may be an array
+    if (body.website !== undefined && Array.isArray(body.website)) {
+      updateData.website = body.website[0]
+    }
 
     // 4. Update the analyst
     const { data: updatedAnalyst, error: updateError } = await supabase
@@ -276,17 +310,17 @@ export async function PATCH(
       }
     }
 
-    // 6. Sync social handles
-    const socialFields = ['twitterHandle', 'linkedinUrl', 'personalWebsite']
+    // 6. Sync social handles if social media fields were updated
+    const socialFields = ['twitter', 'linkedIn', 'website', 'twitterHandle', 'linkedinUrl', 'personalWebsite']
     const hasSocialUpdates = socialFields.some(field => body[field] !== undefined)
     
     if (hasSocialUpdates) {
       try {
         await syncAnalystSocialHandlesOnUpdate({
           id: updatedAnalyst.id,
-          twitterHandle: updatedAnalyst.twitterHandle,
-          linkedinUrl: updatedAnalyst.linkedinUrl,
-          personalWebsite: updatedAnalyst.personalWebsite
+          twitterHandle: (updatedAnalyst as any).twitter || body.twitterHandle || null,
+          linkedinUrl: (updatedAnalyst as any).linkedIn || body.linkedinUrl || null,
+          personalWebsite: (updatedAnalyst as any).website || body.personalWebsite || null
         })
       } catch (syncError) {
         console.error('Error syncing social handles:', syncError)

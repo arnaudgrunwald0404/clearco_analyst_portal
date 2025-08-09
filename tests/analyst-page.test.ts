@@ -440,12 +440,13 @@ test('Analyst Page - Influence and Health Scoring', async (t) => {
 // Test Suite: Communication Timeline
 test('Analyst Page - Communication Timeline', async (t) => {
   await t.test('should calculate next contact date', () => {
-    const lastContactDate = new Date('2024-10-15')
+    // Use UTC to avoid DST/timezone discrepancies
+    const lastContactDate = new Date(Date.UTC(2024, 9, 15)) // Oct is month 9 (0-indexed)
     const cadence = 30 // days
     const nextContactDate = new Date(lastContactDate.getTime() + (cadence * 24 * 60 * 60 * 1000))
-    
-    assert.strictEqual(nextContactDate.getDate(), 14) // November 14th
-    assert.strictEqual(nextContactDate.getMonth(), 10) // November (0-indexed)
+
+    assert.strictEqual(nextContactDate.getUTCDate(), 14) // November 14th
+    assert.strictEqual(nextContactDate.getUTCMonth(), 10) // November (0-indexed)
   })
 
   await t.test('should handle missing communication data', () => {
