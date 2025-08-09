@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+
 
 interface UserProfile {
   id: string
@@ -33,7 +33,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
 
+  // Internal logout used when we must force sign-out from within the context
+  const forceLogout = async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch {}
+    localStorage.removeItem('user')
+    sessionStorage.clear()
+    setUser(null)
+    // Use full redirect to ensure state resets
+    if (typeof window !== 'undefined') {
+      window.location.href = '/auth'
+    }
+  }
+
+  const isValidLocalUser = (candidate: any): candidate is UserProfile => {
+    if (!candidate) return false
+    if (typeof candidate !== 'object') return false
+    const hasBasics = typeof candidate.email === 'string' && candidate.email.length > 3
+      && typeof candidate.name === 'string' && candidate.name.length > 0
+      && typeof candidate.id === 'string' && candidate.id.length > 0
+      && (candidate.role === 'ADMIN' || candidate.role === 'EDITOR' || candidate.role === 'ANALYST')
+    return hasBasics
+  }
+
   useEffect(() => {
+    let loadingTimeout: ReturnType<typeof setTimeout> | null = null
+
     const loadUser = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
@@ -46,30 +72,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           await loadUserProfile(session.user)
-          // If for any reason profile loading didn't set the user, fall back to auth session
-          if (!user) {
-            const authUser = session.user
-            const minimalUser: UserProfile = {
-              id: authUser.id,
-              email: authUser.email || '',
-              name: (authUser.user_metadata?.name 
-                || [authUser.user_metadata?.first_name, authUser.user_metadata?.last_name].filter(Boolean).join(' ') 
-                || authUser.email?.split('@')[0] 
-                || 'User'),
-              role: 'EDITOR',
-              company: authUser.user_metadata?.company || null,
-              profileImageUrl: authUser.user_metadata?.avatar_url || null,
-              createdAt: authUser.created_at,
-              updatedAt: new Date().toISOString()
-            }
-            setUser(minimalUser)
-            localStorage.setItem('user', JSON.stringify(minimalUser))
-          }
         } else {
-          // No valid session - clear any stale localStorage data and redirect to login
-          console.log('No valid session found - clearing stale data')
-          localStorage.removeItem('user')
-          setUser(null)
+          // No Supabase session: support analyst login via validated localStorage user
+          const storedUserRaw = localStorage.getItem('user')
+          if (storedUserRaw) {
+            try {
+              const parsed = JSON.parse(storedUserRaw)
+              if (isValidLocalUser(parsed)) {
+                setUser(parsed)
+              } else {
+                console.warn('Invalid local user data found; clearing')
+                localStorage.removeItem('user')
+                setUser(null)
+              }
+            } catch (parseErr) {
+              console.warn('Failed to parse local user; clearing')
+              localStorage.removeItem('user')
+              setUser(null)
+            }
+          } else {
+            setUser(null)
+          }
         }
       } catch (error) {
         console.error('Error loading user:', error)
@@ -81,13 +104,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Add timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.warn('Auth loading timeout - forcing loading to false and clearing stale data')
-      localStorage.removeItem('user')
-      setUser(null)
+    // Add a soft timeout so the UI never spins forever. We DO NOT clear user
+    // state here; we only end the loading spinner and rely on later events.
+    loadingTimeout = setTimeout(() => {
+      console.warn('Auth load taking too long; ending loading state for UX. Session will continue initializing in background.')
       setLoading(false)
-    }, 5000)
+    }, 12000)
 
     loadUser()
 
@@ -105,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     )
 
     return () => {
-      clearTimeout(timeoutId)
+      if (loadingTimeout) clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [supabase])
@@ -120,103 +142,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .single()
 
       if (profileError && profileError.code === 'PGRST116') {
-        // Profile doesn't exist, create one with role based on email domain
+        // Profile doesn't exist. Keep authorized domain users signed in with minimal profile.
         const email = authUser.email || ''
-        const emailDomain = email.split('@')[1]?.toLowerCase()
-        const emailName = email.split('@')[0]?.toLowerCase()
-        
-        // Apply domain validation - block unauthorized users
-        if (email.toLowerCase() === 'dev@example.com') {
-          throw new Error('This email is not authorized for access')
-        }
-
-        // Use service role client to bypass RLS for database checks
-        const serviceClient = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
-
-        // Check if email is from authorized domain OR is a registered analyst
-        const isAuthorizedDomain = emailDomain === 'clearcompany.com'
-        
-        let isRegisteredAnalyst = false
-        if (!isAuthorizedDomain) {
-          // Check if email exists in analysts table
-          const { data: analyst, error: analystError } = await serviceClient
-            .from('analysts')
-            .select('id, email')
-            .eq('email', email.toLowerCase())
-            .single()
-          
-          isRegisteredAnalyst = !analystError && !!analyst
-        }
-
-        if (!isAuthorizedDomain && !isRegisteredAnalyst) {
-          throw new Error('Access restricted to ClearCompany employees and registered analysts only')
-        }
-
-        // Determine role based on validated authorization
-        let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
-        
-        if (isAuthorizedDomain) {
-          // All @clearcompany.com users are admins
-          role = 'ADMIN'
-        } else if (isRegisteredAnalyst) {
-          // Registered analysts get ANALYST role
-          role = 'ANALYST'
-        }
-        
-        const firstName = authUser.user_metadata?.first_name || authUser.email?.split('@')[0] || 'User'
-        const lastName = authUser.user_metadata?.last_name || ''
-        const fullName = firstName + (lastName ? ' ' + lastName : '')
-        
-        const defaultProfile = {
-          id: authUser.id,
-          email: authUser.email || '',
-          name: fullName,
-          role: role,
-          company: authUser.user_metadata?.company || 
-                  (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-
-        const { error: createError } = await serviceClient
-          .from('user_profiles')
-          .insert(defaultProfile)
-
-        if (createError) {
-          console.error('Error creating user profile with service role:', createError)
-          // Fall back to minimal user
+        const domain = email.split('@')[1]?.toLowerCase()
+        if (domain === 'clearcompany.com') {
+          const firstName = authUser.user_metadata?.first_name || email.split('@')[0] || 'User'
+          const lastName = authUser.user_metadata?.last_name || ''
           const userData: UserProfile = {
             id: authUser.id,
-            email: authUser.email || '',
-            name: defaultProfile.name,
-            role: defaultProfile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
-            company: defaultProfile.company,
+            email,
+            name: firstName + (lastName ? ` ${lastName}` : ''),
+            role: 'ADMIN',
+            company: 'ClearCompany',
             profileImageUrl: authUser.user_metadata?.avatar_url || null,
             createdAt: authUser.created_at,
             updatedAt: new Date().toISOString()
           }
           setUser(userData)
           localStorage.setItem('user', JSON.stringify(userData))
-          return
+        } else {
+          await forceLogout()
         }
-
-        // Set user with default profile
-        const userData: UserProfile = {
-          id: authUser.id,
-          email: authUser.email || '',
-          name: defaultProfile.name,
-          role: defaultProfile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
-          company: defaultProfile.company,
-          profileImageUrl: authUser.user_metadata?.avatar_url || null,
-          createdAt: authUser.created_at,
-          updatedAt: new Date().toISOString()
-        }
-
-        setUser(userData)
-        localStorage.setItem('user', JSON.stringify(userData))
       } else if (profile) {
         // Set user with existing profile
         const userData: UserProfile = {
@@ -227,44 +173,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           company: profile.company,
           profileImageUrl: authUser.user_metadata?.avatar_url || null,
           createdAt: authUser.created_at,
-          updatedAt: profile.updatedAt || profile.updated_at
+          updatedAt: (profile as any).updatedAt || (profile as any).updated_at
         }
 
         setUser(userData)
         localStorage.setItem('user', JSON.stringify(userData))
       } else if (profileError) {
-        // Handle other profile errors
-        console.error('Error loading user profile:', profileError)
-        // Fall back to minimal user
-        const userData: UserProfile = {
-          id: authUser.id,
-          email: authUser.email || '',
-          name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-          role: 'EDITOR',
-          company: authUser.user_metadata?.company || null,
-          profileImageUrl: authUser.user_metadata?.avatar_url || null,
-          createdAt: authUser.created_at,
-          updatedAt: new Date().toISOString()
+        // Non-"not found" profile errors should NOT force logout.
+        // Instead, keep the user signed in with a minimal profile if allowed.
+        console.warn('Profile load error, falling back to minimal profile:', profileError)
+        const email = authUser.email || ''
+        const domain = email.split('@')[1]?.toLowerCase()
+        if (domain === 'clearcompany.com') {
+          const firstName = authUser.user_metadata?.first_name || email.split('@')[0] || 'User'
+          const lastName = authUser.user_metadata?.last_name || ''
+          const userData: UserProfile = {
+            id: authUser.id,
+            email,
+            name: firstName + (lastName ? ` ${lastName}` : ''),
+            role: 'ADMIN',
+            company: 'ClearCompany',
+            profileImageUrl: authUser.user_metadata?.avatar_url || null,
+            createdAt: authUser.created_at,
+            updatedAt: new Date().toISOString()
+          }
+          setUser(userData)
+          localStorage.setItem('user', JSON.stringify(userData))
+        } else {
+          // For unrecognized domains, do not force sign-out; just clear local state
+          // and allow routes to redirect gracefully.
+          setUser(null)
+          localStorage.removeItem('user')
         }
-        setUser(userData)
-        localStorage.setItem('user', JSON.stringify(userData))
         return
       }
     } catch (error) {
       console.error('Error loading user profile:', error)
-      // Fall back to minimal user
-      const userData: UserProfile = {
-        id: authUser.id,
-        email: authUser.email || '',
-        name: authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
-        role: 'EDITOR',
-        company: authUser.user_metadata?.company || null,
-        profileImageUrl: authUser.user_metadata?.avatar_url || null,
-        createdAt: authUser.created_at,
-        updatedAt: new Date().toISOString()
-      }
-      setUser(userData)
-      localStorage.setItem('user', JSON.stringify(userData))
+      await forceLogout()
       return
     }
   }
@@ -340,7 +285,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/callback`
+          // Prefer the current origin to avoid port/domain mismatches during local dev
+          redirectTo: `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}/auth/callback`
         }
       })
 
@@ -409,6 +355,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authUser) {
         await loadUserProfile(authUser)
       } else {
+        // No Supabase user: refresh from localStorage
+        const storedUserRaw = localStorage.getItem('user')
+        if (storedUserRaw) {
+          try {
+            const parsed = JSON.parse(storedUserRaw)
+            if (isValidLocalUser(parsed)) {
+              setUser(parsed)
+              return
+            }
+          } catch {}
+        }
         await signOut()
       }
     } catch (error) {

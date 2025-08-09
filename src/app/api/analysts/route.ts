@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
 
@@ -43,7 +43,11 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const influence = searchParams.get('influence')
 
-    const supabase = await createClient()
+    // Use service role to bypass RLS for admin dashboard APIs
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Check cache for basic queries
     const now = Date.now()
@@ -150,7 +154,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Check for existing analyst with same email
     const { data: existingAnalyst } = await supabase
@@ -174,14 +181,14 @@ export async function POST(request: NextRequest) {
       company,
       title,
       phone,
-      linkedIn,
-      twitter,
-      website,
+      // Map request fields to DB column names
+      linkedinUrl: linkedIn || null,
+      twitterHandle: twitter || null,
+      personalWebsite: website || null,
       bio,
       profileImageUrl,
       type,
-      eligibleNewsletters,
-      influenceScore,
+      // Remove fields not present in schema: eligibleNewsletters, influenceScore
       influence,
       status,
       relationshipHealth,
@@ -197,7 +204,7 @@ export async function POST(request: NextRequest) {
     if (insertError) {
       console.error('Error creating analyst:', insertError)
       return NextResponse.json(
-        { error: 'Failed to create analyst' },
+        { error: 'Failed to create analyst', details: insertError.message },
         { status: 500 }
       )
     }

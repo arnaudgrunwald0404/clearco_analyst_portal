@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
@@ -62,7 +63,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = await createClient()
+    // Dev/admin guard
+    const isDev = process.env.NODE_ENV !== 'production'
+    const adminToken = request.headers.get('x-admin-token')
+    const isAuthorized = isDev || (adminToken && adminToken === process.env.DEV_ADMIN_TOKEN)
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Check if analyst exists
     const { data: analyst, error: analystError } = await supabase

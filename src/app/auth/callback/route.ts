@@ -29,14 +29,23 @@ export async function GET(request: NextRequest) {
     
     if (!error && data.user) {
       try {
-        // Use service role client to bypass RLS for profile creation
-        const serviceClient = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        )
+        // Use service role client to bypass RLS for profile creation (optional)
+        const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        const serviceClient = hasServiceRole
+          ? createServiceClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!
+            )
+          : null
+
+        if (!hasServiceRole) {
+          console.warn('Service role key missing; skipping profile creation and relying on client-side fallback')
+          // Redirect to app; AuthContext will handle minimal profile fallback
+          return NextResponse.redirect(`${origin}/`)
+        }
         
         // Check if user profile exists
-        const { data: profile, error: profileError } = await serviceClient
+        const { data: profile, error: profileError } = await serviceClient!
           .from('user_profiles')
           .select('*')
           .eq('id', data.user.id)
@@ -59,7 +68,7 @@ export async function GET(request: NextRequest) {
           let isRegisteredAnalyst = false
           if (!isAuthorizedDomain) {
             // Check if email exists in analysts table
-            const { data: analyst, error: analystError } = await serviceClient
+            const { data: analyst, error: analystError } = await serviceClient!
               .from('analysts')
               .select('id, email')
               .eq('email', email.toLowerCase())
@@ -97,7 +106,7 @@ export async function GET(request: NextRequest) {
             updated_at: new Date().toISOString()
           }
 
-          const { error: createError } = await serviceClient
+          const { error: createError } = await serviceClient!
             .from('user_profiles')
             .insert(defaultProfile)
 
@@ -105,15 +114,7 @@ export async function GET(request: NextRequest) {
             console.error('Failed to create user profile with service role:', createError)
             console.error('Profile data that failed:', defaultProfile)
             
-            // Try to get more information about the error
-            if (createError.code) {
-              console.error('Error code:', createError.code)
-            }
-            if (createError.details) {
-              console.error('Error details:', createError.details)
-            }
-            
-            // Try fallback with regular client
+            // Try fallback with regular client (may succeed if RLS allows it)
             console.log('Trying fallback with regular client...')
             const { error: fallbackError } = await supabase
               .from('user_profiles')
@@ -121,7 +122,9 @@ export async function GET(request: NextRequest) {
             
             if (fallbackError) {
               console.error('Fallback also failed:', fallbackError)
-              return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+              // Do not block login; redirect and let client-side fallback handle
+              const redirectPath = role === 'ANALYST' ? '/portal' : '/'
+              return NextResponse.redirect(`${origin}${redirectPath}`)
             }
           }
           
@@ -139,11 +142,13 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}${redirectPath}`)
         } else if (profileError) {
           console.error('Error checking user profile:', profileError)
-          return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+          // Do not block login; continue
+          return NextResponse.redirect(`${origin}/`)
         }
       } catch (dbError) {
         console.error('Database error during OAuth callback:', dbError)
-        return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+        // Do not block login; continue
+        return NextResponse.redirect(`${origin}/`)
       }
     }
     

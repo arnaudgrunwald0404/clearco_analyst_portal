@@ -107,6 +107,13 @@ function DashboardContent() {
     message: string
   } | null>(null)
 
+  // Redirect unauthenticated users to /auth after auth resolves
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/auth')
+    }
+  }, [authLoading, user, router])
+
   const fetchDashboardData = async () => {
     let controller: AbortController | null = null;
     let timeoutId: NodeJS.Timeout | null = null;

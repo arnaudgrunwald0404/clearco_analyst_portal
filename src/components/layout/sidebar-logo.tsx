@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext'
 
 export function SidebarLogo() {
   const { settings, isInitialized } = useSettings()
-  const { user } = useAuth()
   const [logoError, setLogoError] = useState(false)
 
   // Reset logo error state when settings change
@@ -14,7 +13,7 @@ export function SidebarLogo() {
     setLogoError(false)
   }, [settings?.logoUrl])
 
-  if (!isInitialized || !user) {
+  if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-36 p-4 bg-white border-b border-gray-200">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

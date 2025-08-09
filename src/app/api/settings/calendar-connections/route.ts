@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { encrypt, decrypt } from '@/lib/crypto'
 import { Pool } from 'pg'
 import { requireAuth } from '@/lib/auth-utils'
@@ -47,68 +48,38 @@ export async function GET() {
     console.log('👤 [Calendar Connections GET] User email:', user.email || 'No email')
     console.log('👤 [Calendar Connections GET] User metadata:', JSON.stringify(user.user_metadata || {}, null, 2))
 
-    console.log('🔗 [Calendar Connections GET] Initializing database connection...')
-    console.log('🔗 [Calendar Connections GET] Connection string preview:', process.env.DATABASE_URL?.substring(0, 30) + '...')
-    
-    // Use direct PostgreSQL connection to bypass Supabase RLS issues
-    const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: {
-        rejectUnauthorized: false
-      }
-    })
-    
-    console.log('📡 [Calendar Connections GET] Attempting to connect to database...')
-    const client = await pool.connect()
-    console.log('✅ [Calendar Connections GET] Database connection successful')
-    
-    try {
-      console.log('📊 [Calendar Connections GET] Executing query...')
-      console.log('📊 [Calendar Connections GET] Query parameters:')
-      console.log('  - user_id:', user_id)
-      
-      const queryResult = await client.query(`
-        SELECT id, title, email, "isActive" AS "is_active", "lastSyncAt" AS "last_sync_at", "createdAt" AS "created_at"
-        FROM "calendar_connections" 
-        WHERE "userId" = $1
-        ORDER BY "createdAt" DESC
-      `, [user_id])
-      
-      const connections = queryResult.rows
-      
-      console.log('✅ [Calendar Connections GET] Query executed successfully')
-      console.log('📈 [Calendar Connections GET] Query result details:')
-      console.log('  - Rows returned:', connections?.length || 0)
-      console.log('  - Row count from query:', queryResult.rowCount)
-      console.log('  - Command:', queryResult.command)
-      
-      if (connections && connections.length > 0) {
-        console.log('📊 [Calendar Connections GET] Connection details:')
-        connections.forEach((conn, index) => {
-          console.log(`  Connection ${index + 1}:`)
-          console.log(`    - ID: ${conn.id}`)
-          console.log(`    - Title: ${conn.title}`)
-          console.log(`    - Email: ${conn.email}`)
-          console.log(`    - Active: ${conn.is_active}`)
-          console.log(`    - Last sync: ${conn.last_sync_at || 'Never'}`)
-          console.log(`    - Created: ${conn.created_at}`)
-        })
-      } else {
-        console.log('📊 [Calendar Connections GET] No connections found for user')
-      }
+    console.log('🔗 [Calendar Connections GET] Using Supabase SSR client')
+    const supabase = await createClient()
 
-      return NextResponse.json({
-        success: true,
-        data: connections || []
-      })
-    } finally {
-      client.release()
-      await pool.end()
+    console.log('📊 [Calendar Connections GET] Querying Supabase...')
+    const { data, error } = await supabase
+      .from('calendar_connections')
+      .select('id, title, email, is_active, last_sync_at, created_at, user_id')
+      .eq('user_id', user_id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('❌ [Calendar Connections GET] Supabase query error:', error)
+      return NextResponse.json({ success: false, error: 'Failed to load connections' }, { status: 500 })
     }
+
+    const connections = (data || []).map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      email: row.email,
+      is_active: row.is_active ?? null,
+      last_sync_at: row.last_sync_at ?? null,
+      created_at: row.created_at ?? null,
+    }))
+
+    console.log('✅ [Calendar Connections GET] Query executed successfully, rows:', connections.length)
+
+    return NextResponse.json({ success: true, data: connections })
   } catch (error) {
-    console.error('💥 [Calendar Connections] Unexpected error:', error)
+    console.error('💥 [Calendar Connections GET] Unexpected error:', error)
+    const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { success: false, error: 'Internal server error' },
+      { success: false, error: 'Internal server error', details: message },
       { status: 500 }
     )
   }
@@ -149,7 +120,7 @@ export async function POST(request: NextRequest) {
     console.log('📝 [Calendar Connections POST] Request body keys:', Object.keys(body))
     console.log('📝 [Calendar Connections POST] Body content:', JSON.stringify(body, null, 2))
     
-    const { code } = body
+    const { code, clientNonce } = body
     console.log('🔑 [Calendar Connections POST] Authorization code present:', !!code)
     if (code) {
       console.log('🔑 [Calendar Connections POST] Code length:', code.length)
@@ -163,7 +134,10 @@ export async function POST(request: NextRequest) {
       // Create state parameter for the OAuth flow
       const stateData = {
         connectFirst: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        userId: user.id,
+        purpose: 'calendar_connect',
+        clientNonce: clientNonce || null
       }
       const state = Buffer.from(JSON.stringify(stateData)).toString('base64')
       
@@ -226,7 +200,7 @@ export async function POST(request: NextRequest) {
       // Check if connection already exists
       const existingResult = await client.query(`
         SELECT id FROM "calendar_connections" 
-        WHERE "userId" = $1 AND email = $2
+        WHERE user_id = $1 AND email = $2
       `, [user_id, userInfo.email])
       
       const existingConnection = existingResult.rows[0]
@@ -235,10 +209,10 @@ export async function POST(request: NextRequest) {
         // Update existing connection
         const updateResult = await client.query(`
           UPDATE "calendar_connections" 
-          SET "accessToken" = $1, "refreshToken" = $2, "expiresAt" = $3,
-              "isActive" = $4, "updatedAt" = $5
+          SET access_token = $1, refresh_token = $2, expires_at = $3,
+              is_active = $4, updated_at = $5
           WHERE id = $6
-          RETURNING id, title, email, "isActive" AS "is_active"
+          RETURNING id, title, email, is_active
         `, [
           encrypt(tokens.access_token || ''),
           tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
@@ -266,10 +240,10 @@ export async function POST(request: NextRequest) {
         const connectionId = generateId()
         const insertResult = await client.query(`
           INSERT INTO "calendar_connections" (
-            id, "userId", title, email, "accessToken",
-            "refreshToken", "expiresAt", "isActive", "createdAt", "updatedAt"
+            id, user_id, title, email, access_token,
+            refresh_token, expires_at, is_active, created_at, updated_at
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          RETURNING id, title, email, "isActive" AS "is_active"
+          RETURNING id, title, email, is_active
         `, [
           connectionId,
           user_id,

@@ -16,12 +16,14 @@ export function Sidebar() {
       {/* Navigation Links */}
       <NavigationLinks />
       
-      {/* User Dropdown */}
-      <UserDropdown 
-        isOpen={isDropdownOpen}
-        onToggle={() => setIsDropdownOpen(!isDropdownOpen)}
-        onClose={() => setIsDropdownOpen(false)}
-      />
+      {/* User Dropdown (pinned to bottom) */}
+      <div className="mt-auto p-4 border-t border-gray-200">
+        <UserDropdown 
+          isOpen={isDropdownOpen}
+          onToggle={() => setIsDropdownOpen(!isDropdownOpen)}
+          onClose={() => setIsDropdownOpen(false)}
+        />
+      </div>
     </div>
   )
 }

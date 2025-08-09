@@ -1,9 +1,23 @@
-import { createClient } from '@/lib/supabase/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    // Simple guard: allow in development or when a valid admin token is provided
+    const isDev = process.env.NODE_ENV !== 'production'
+    const adminToken = request.headers.get('x-admin-token')
+    const isAuthorized = isDev || (adminToken && adminToken === process.env.DEV_ADMIN_TOKEN)
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: 'Supabase service configuration missing' }, { status: 500 })
+    }
+
+    const supabase = createServiceClient(supabaseUrl, serviceKey)
 
     // Check if Sarah Chen already exists
     const { data: existingSarah, error: checkError } = await supabase

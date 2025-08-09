@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // First, find the analyst by email
+    // Find analyst by email; any analyst can access the portal
     const { data: analyst, error: analystError } = await supabase
       .from('analysts')
       .select('id, firstName, lastName, email, company, title, profileImageUrl')
@@ -29,43 +28,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if analyst has access credentials
-    const { data: access, error: accessError } = await supabase
-      .from('analyst_access')
-      .select('password_hash, is_active, last_login')
-      .eq('analyst_id', analyst.id)
-      .single()
-
-    if (accessError || !access) {
-      return NextResponse.json(
-        { success: false, error: 'Analyst portal access not configured' },
-        { status: 401 }
-      )
-    }
-
-    if (!access.is_active) {
-      return NextResponse.json(
-        { success: false, error: 'Analyst portal access is disabled' },
-        { status: 401 }
-      )
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, access.password_hash)
-    if (!isValidPassword) {
+    // For now: accept DEFAULT_ANALYST_PASSWORD as the shared password
+    const expected = process.env.DEFAULT_ANALYST_PASSWORD || 'changeme123!'
+    if (password !== expected) {
       return NextResponse.json(
         { success: false, error: 'Invalid password' },
         { status: 401 }
       )
     }
 
-    // Update last login
-    await supabase
-      .from('analyst_access')
-      .update({ last_login: new Date().toISOString() })
-      .eq('analyst_id', analyst.id)
-
-    // Create user session data
+    // Create user session payload
     const userData = {
       id: analyst.id,
       email: analyst.email,

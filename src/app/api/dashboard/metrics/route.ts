@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         .from('briefings')
         .select('id, status, scheduledAt')
         .lt('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // Before tomorrow
-        .in('status', ['SCHEDULED', 'IN_PROGRESS']),
+        .eq('status', 'SCHEDULED'),
       
       // Briefings planned (scheduled after today in calendar)
       supabase
@@ -176,18 +176,29 @@ export async function GET(request: NextRequest) {
     console.log('📅 YTD briefings data:', briefingStatsYTD.data);
     console.log('📅 YTD briefings count:', briefingsYTD);
     
-    // Debug briefings due
-    console.log('📅 Briefings Due response:', briefingsDue);
-    console.log('📅 Briefings Due data:', briefingsDue.data);
+    // Debug briefings due (analyst-based)
     console.log('📅 Today date:', today.toISOString());
     console.log('📅 Tomorrow date:', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString());
-    
-    // Briefings Due: overdue + due today (status SCHEDULED or IN_PROGRESS, before tomorrow)
+
+    // Briefings Due is a count of analysts who are due for a briefing (not scheduled briefings)
+    let briefingsDueCount = 0;
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3000`;
+      const dueResp = await fetch(`${baseUrl}/api/briefings/due?page=1&limit=20`, { cache: 'no-store' });
+      if (dueResp.ok) {
+        const dueJson = await dueResp.json();
+        briefingsDueCount = Array.isArray(dueJson?.data) ? dueJson.data.length : 0;
+      } else {
+        console.warn('⚠️ Failed to fetch analysts due for briefings from internal API:', dueResp.status);
+      }
+    } catch (e) {
+      console.warn('⚠️ Error fetching analysts due for briefings:', e);
+    }
+
     // Briefings Planned: future briefings (status SCHEDULED, from tomorrow onwards)
-    const briefingsDueCount = briefingsDue.data?.length || 0;
     const briefingsPlannedCount = briefingsPlanned.data?.length || 0;
     
-    console.log('📅 Briefings Due count:', briefingsDueCount);
+    console.log('📅 Briefings Due (analysts) count:', briefingsDueCount);
     console.log('📅 Briefings Planned count:', briefingsPlannedCount);
     
     // Calculate briefing follow-ups (completed briefings that need follow-up)

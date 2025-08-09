@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
 
 // Initialize Google OAuth2 client
@@ -141,18 +142,23 @@ export async function GET(request: NextRequest) {
       console.warn('Could not get calendar name, using default:', error)
     }
 
-    // Get user ID from session/auth or use fallback
-    // TODO: Replace with proper session management
-    const user_id = 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
+    // Get user ID from state (preferred) or fallback
+    const user_id = connectionData.userId || 'd129d3b9-6cb7-4e77-ac3f-f233e1e047a0'
     console.log('👤 [CALENDAR OAUTH] Using user_id:', user_id)
     console.log('⚠️  [CALENDAR OAUTH] WARNING: Using hardcoded user ID - should be from session in production')
 
-    // Ensure user exists in database
+    // Ensure user exists in database (use service role to bypass any RLS)
     console.log('🔍 [CALENDAR OAUTH] Ensuring user exists in database...')
     try {
-      const supabase = await createClient()
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Supabase service configuration missing')
+      }
+      const sClient = createServiceClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
       
-      let { data: user, error: userError } = await supabase
+      let { data: user, error: userError } = await sClient
         .from('user_profiles')
         .select('*')
         .eq('id', user_id)
@@ -161,7 +167,7 @@ export async function GET(request: NextRequest) {
       // PGRST116 means no rows found, which is expected for new users
       if (!user && (userError?.code === 'PGRST116' || !userError)) {
         console.log('👤 [CALENDAR OAUTH] User not found, creating new user profile...')
-        const { data: newUser, error: createError } = await supabase
+        const { data: newUser, error: createError } = await sClient
           .from('user_profiles')
           .insert({
             id: user_id,
@@ -197,7 +203,11 @@ export async function GET(request: NextRequest) {
     console.log('🔑 [CALENDAR OAUTH] Looking for user_id:', user_id)
     console.log('🔑 [CALENDAR OAUTH] Looking for google_account_id:', userInfo.data.id)
     
-    const supabase = await createClient()
+    // Use service role for calendar connections writes
+    const supabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     let existingConnection
     try {
       console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
@@ -241,6 +251,7 @@ export async function GET(request: NextRequest) {
           access_token: encryptToken(tokens.access_token),
           refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
           expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           is_active: true,
           updated_at: new Date().toISOString(),
         })
@@ -265,6 +276,7 @@ export async function GET(request: NextRequest) {
           access_token: encryptToken(tokens.access_token),
           refresh_token: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
           expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+          token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           is_active: true,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -287,6 +299,9 @@ export async function GET(request: NextRequest) {
         email: userInfo.data.email,
         calendarName: encodeURIComponent(calendarName)
       })
+      if (connectionData.clientNonce) {
+        params.set('nonce', connectionData.clientNonce)
+      }
       
       return NextResponse.redirect(
         new URL(`/settings?${params.toString()}`, request.url)

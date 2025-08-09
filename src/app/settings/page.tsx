@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import SidebarNav from './SidebarNav'
 import GeneralSection from './GeneralSection'
 import TopicsSection from './TopicsSection'
-import AnalystPortalSection from './AnalystPortalSection'
 import CalendarSection from './CalendarSection'
 import InfluenceTiersSection from './InfluenceTiersSection'
 import ContentSection from './ContentSection'
@@ -38,9 +37,10 @@ interface SyncProgress {
 
 import { useAuth } from '@/contexts/AuthContext'
 import { FileText } from 'lucide-react'
+import AnalystPortalSection from './AnalystPortalSection'
 
 function SettingsPageContent() {
-  const { user } = useAuth()
+  const { user, refreshUser } = useAuth()
   const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState('general')
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
@@ -79,6 +79,18 @@ function SettingsPageContent() {
       const connectionId = searchParams.get('connectionId')
       const email = searchParams.get('email')
       const calendarName = searchParams.get('calendarName')
+      const nonce = searchParams.get('nonce')
+
+      try {
+        const stored = sessionStorage.getItem('oauthNonce')
+        if (nonce && stored && nonce === stored) {
+          // Nonce verified; clear it
+          sessionStorage.removeItem('oauthNonce')
+        } else {
+          // If nonce missing/mismatch, attempt to refresh user session
+          refreshUser?.()
+        }
+      } catch {}
       
       if (connectionId && email && calendarName) {
         // Show naming dialog
@@ -197,12 +209,18 @@ function SettingsPageContent() {
     try {
       console.log('📡 [Client] Making POST request to initiate OAuth...')
       // Initiate Google OAuth without requiring a title first
+      // Generate a client nonce to verify roundtrip
+      const randomBytes = new Uint8Array(16)
+      window.crypto.getRandomValues(randomBytes)
+      const clientNonce = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('')
+      sessionStorage.setItem('oauthNonce', clientNonce)
+
       const response = await fetch('/api/settings/calendar-connections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}), // No title required initially
+        body: JSON.stringify({ clientNonce }), // Include client nonce for state encoding
       })
 
       console.log('📊 [Client] Response received:')
@@ -570,11 +588,6 @@ function SettingsPageContent() {
         <div className="w-6/12 space-y-8">
           {activeSection === 'general' && <GeneralSection showHelp={showHelp} hideHelp={hideHelp} />}
           {activeSection === 'topics' && <TopicsSection />}
-          {activeSection === 'analyst-portal' && (
-            <AnalystPortalSection 
-              initialTab={searchParams.get('tab') as 'settings' | 'access' || 'settings'} 
-            />
-          )}
           {activeSection === 'calendar' && (
             <CalendarSection
               calendarConnections={calendarConnections}
@@ -588,6 +601,9 @@ function SettingsPageContent() {
             />
           )}
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
+          {activeSection === 'analyst-portal' && (
+            <AnalystPortalSection initialTab={'settings'} showAccessTab={false} />
+          )}
           {activeSection === 'content' && <ContentSection />}
         </div>
       </div>

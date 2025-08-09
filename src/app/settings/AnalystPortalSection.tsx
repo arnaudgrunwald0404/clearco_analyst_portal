@@ -26,9 +26,11 @@ interface AnalystAccess {
 
 interface AnalystPortalSectionProps {
   initialTab?: 'settings' | 'access'
+  /** When false, hides the Access Management tab and content */
+  showAccessTab?: boolean
 }
 
-export default function AnalystPortalSection({ initialTab = 'settings' }: AnalystPortalSectionProps) {
+export default function AnalystPortalSection({ initialTab = 'settings', showAccessTab = true }: AnalystPortalSectionProps) {
   const [analystAccess, setAnalystAccess] = useState<AnalystAccess[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -52,8 +54,10 @@ export default function AnalystPortalSection({ initialTab = 'settings' }: Analys
   }
 
   useEffect(() => {
-    fetchAnalystAccess()
-  }, [])
+    if (showAccessTab) {
+      fetchAnalystAccess()
+    }
+  }, [showAccessTab])
 
   const handleCreateAccess = () => {
     setSelectedAnalystId(null)
@@ -106,22 +110,24 @@ export default function AnalystPortalSection({ initialTab = 'settings' }: Analys
             <Settings className="w-4 h-4 inline mr-2" />
             Portal Settings
           </button>
-          <button
-            onClick={() => setActiveTab('access')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'access'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <Shield className="w-4 h-4 inline mr-2" />
-            Access Management
-            {analystAccess.length > 0 && (
-              <Badge variant="secondary" className="ml-2 text-xs">
-                {analystAccess.length}
-              </Badge>
-            )}
-          </button>
+          {showAccessTab && (
+            <button
+              onClick={() => setActiveTab('access')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'access'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Shield className="w-4 h-4 inline mr-2" />
+              Access Management
+              {analystAccess.length > 0 && (
+                <Badge variant="secondary" className="ml-2 text-xs">
+                  {analystAccess.length}
+                </Badge>
+              )}
+            </button>
+          )}
         </nav>
       </div>
 
@@ -143,7 +149,7 @@ export default function AnalystPortalSection({ initialTab = 'settings' }: Analys
       )}
 
       {/* Access Management Tab */}
-      {activeTab === 'access' && (
+      {showAccessTab && activeTab === 'access' && (
         <div className="space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
