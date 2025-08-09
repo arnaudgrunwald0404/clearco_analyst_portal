@@ -5,7 +5,7 @@ import { syncAnalystSocialHandlesOnUpdate, removeAnalystSocialHandlesOnDelete } 
 import { requireAuth } from '@/lib/auth-utils'
 
 interface RouteParams {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export async function DELETE(
@@ -251,6 +251,7 @@ export async function PATCH(
         }
       })
     }
+
     // Handle aliases from newer schema or UI
     // linkedin (lowercase) may be string or array → map to linkedIn (first value if array)
     if (body.linkedin !== undefined) {
@@ -295,17 +296,23 @@ export async function PATCH(
 
     // 5. Handle topics updates if provided
     if (body.topics && Array.isArray(body.topics)) {
+      // Delete existing topics
       await supabase
         .from('covered_topics')
         .delete()
         .eq('analystId', analystIdToUpdate)
 
+      // Insert new topics
       if (body.topics.length > 0) {
         const topicData = body.topics.map((topic: string) => ({
           analystId: analystIdToUpdate,
           topic,
+          createdAt: new Date().toISOString()
         }))
-        await supabase.from('covered_topics').insert(topicData)
+
+        await supabase
+          .from('covered_topics')
+          .insert(topicData)
       }
     }
 
@@ -323,6 +330,7 @@ export async function PATCH(
         })
       } catch (syncError) {
         console.error('Error syncing social handles:', syncError)
+        // Don't fail the analyst update, just log the error
       }
     }
 
