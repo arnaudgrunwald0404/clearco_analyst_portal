@@ -130,20 +130,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('This email is not authorized for access')
         }
 
-        // Use service role client to bypass RLS for database checks if available
-        const canUseServiceRole = !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-        const serviceClient = canUseServiceRole
-          ? createServiceClient(
-              process.env.NEXT_PUBLIC_SUPABASE_URL!,
-              process.env.SUPABASE_SERVICE_ROLE_KEY!
-            )
-          : null
+        // Use service role client to bypass RLS for database checks
+        const serviceClient = createServiceClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
 
         // Check if email is from authorized domain OR is a registered analyst
         const isAuthorizedDomain = emailDomain === 'clearcompany.com'
         
         let isRegisteredAnalyst = false
-        if (!isAuthorizedDomain && serviceClient) {
+        if (!isAuthorizedDomain) {
           // Check if email exists in analysts table
           const { data: analyst, error: analystError } = await serviceClient
             .from('analysts')
@@ -184,9 +181,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date().toISOString()
         }
 
-        const createError = serviceClient
-          ? (await serviceClient.from('user_profiles').insert(defaultProfile)).error
-          : null
+        const { error: createError } = await serviceClient
+          .from('user_profiles')
+          .insert(defaultProfile)
 
         if (createError) {
           console.error('Error creating user profile with service role:', createError)
