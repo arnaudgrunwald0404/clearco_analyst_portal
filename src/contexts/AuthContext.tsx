@@ -66,31 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('user', JSON.stringify(minimalUser))
           }
         } else {
-          // No session, try localStorage fallback
-          const storedUser = localStorage.getItem('user')
-          if (storedUser) {
-            try {
-              const userData = JSON.parse(storedUser)
-              setUser(userData)
-              console.log('Loaded user from localStorage (no session)')
-            } catch (parseError) {
-              console.error('Error parsing stored user:', parseError)
-            }
-          }
+          // No valid session - clear any stale localStorage data and redirect to login
+          console.log('No valid session found - clearing stale data')
+          localStorage.removeItem('user')
+          setUser(null)
         }
       } catch (error) {
         console.error('Error loading user:', error)
-        // Try localStorage fallback on any error
-        const storedUser = localStorage.getItem('user')
-        if (storedUser) {
-          try {
-            const userData = JSON.parse(storedUser)
-            setUser(userData)
-            console.log('Loaded user from localStorage (error fallback)')
-          } catch (parseError) {
-            console.error('Error parsing stored user:', parseError)
-          }
-        }
+        // Clear any stale data on error
+        localStorage.removeItem('user')
+        setUser(null)
       } finally {
         setLoading(false)
       }
@@ -98,9 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
-      console.warn('Auth loading timeout - forcing loading to false')
+      console.warn('Auth loading timeout - forcing loading to false and clearing stale data')
+      localStorage.removeItem('user')
+      setUser(null)
       setLoading(false)
-      // No automatic user creation - users must authenticate properly
     }, 5000)
 
     loadUser()

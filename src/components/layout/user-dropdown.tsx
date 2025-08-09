@@ -14,6 +14,14 @@ interface UserDropdownProps {
 export function UserDropdown({ isOpen, onToggle, onClose }: UserDropdownProps) {
   const { user, signOut } = useAuth()
 
+  // Check for invalid user data and redirect to login if needed
+  useEffect(() => {
+    if (user && (!user.email || (!user.name || user.name === 'Admin User'))) {
+      console.warn('Invalid user session detected, signing out...')
+      signOut()
+    }
+  }, [user, signOut])
+
   const handleLogout = async () => {
     onClose()
     await signOut()
@@ -35,15 +43,17 @@ export function UserDropdown({ isOpen, onToggle, onClose }: UserDropdownProps) {
     return 'AU'
   }
 
-  // Get display name
+  // Get display name - if we reach the fallback, this indicates an auth issue
   const getDisplayName = () => {
-    if (user?.name) {
+    if (user?.name && user?.email) {
       return user.name
     }
     if (user?.email) {
       return user.email.split('@')[0]
     }
-    return 'User'
+    // This fallback indicates invalid auth data - should redirect to login
+    console.warn('Invalid user data detected - missing name and email')
+    return 'Invalid User'
   }
 
   return (
