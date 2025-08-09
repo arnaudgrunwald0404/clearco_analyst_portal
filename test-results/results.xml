@@ -1,2040 +1,287 @@
-<testsuites id="" name="" tests="203" failures="82" skipped="63" errors="0" time="51.643665999999996">
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="chromium" tests="29" failures="17" skipped="0" time="67.206" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0.242">
-<failure message="api-endpoints.spec.ts:32:7 POST /api/auth/login - successful login" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:32:7 › Authentication API Endpoints › POST /api/auth/login - successful login 
+<testsuites id="" name="" tests="7" failures="7" skipped="0" errors="0" time="102.83593300000001">
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="chromium" tests="1" failures="1" skipped="0" time="31.74" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="31.74">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [chromium] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
+    Test timeout of 30000ms exceeded while running "beforeEach" hook.
 
-    Expected: 200
-    Received: 401
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+    > 19 |   test.beforeEach(async ({ page }) => {
+         |        ^
+      20 |     await loginAsAdmin(page);
+      21 |     await page.goto(`${BASE_URL}/analysts`);
+      22 |   });
+        at /app/tests/e2e/analysts-flow.spec.ts:19:8
 
-      38 |     })
-      39 |     
-    > 40 |     expect(response.status()).toBe(200)
-         |                               ^
-      41 |     
-      42 |     const data = await response.json()
-      43 |     expect(data).toHaveProperty('success', true)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:40:31
+    Error: page.waitForURL: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "http://localhost:3000/" until "load"
+    ============================================================
+
+      13 |   await page.fill('input[type="password"]', TEST_USER.password);
+      14 |   await page.click('button[type="submit"]');
+    > 15 |   await page.waitForURL(`${BASE_URL}/`);
+         |              ^
+      16 | }
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+        at loginAsAdmin (/app/tests/e2e/analysts-flow.spec.ts:15:14)
+        at /app/tests/e2e/analysts-flow.spec.ts:20:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/error-context.md
 ]]>
 </failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/test-failed-1.png]]
+
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/video.webm]]
+
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-chromium/error-context.md]]
+]]>
+</system-out>
 </testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0.455">
-<failure message="api-endpoints.spec.ts:47:7 POST /api/auth/login - invalid credentials" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:47:7 › Authentication API Endpoints › POST /api/auth/login - invalid credentials 
+</testsuite>
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="firefox" tests="1" failures="1" skipped="0" time="30.234" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="30.234">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [firefox] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
+    Test timeout of 30000ms exceeded while running "beforeEach" hook.
 
-    Expected: 401
-    Received: 403
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+    > 19 |   test.beforeEach(async ({ page }) => {
+         |        ^
+      20 |     await loginAsAdmin(page);
+      21 |     await page.goto(`${BASE_URL}/analysts`);
+      22 |   });
+        at /app/tests/e2e/analysts-flow.spec.ts:19:8
 
-      53 |     })
-      54 |     
-    > 55 |     expect(response.status()).toBe(401)
-         |                               ^
-      56 |     
-      57 |     const data = await response.json()
-      58 |     expect(data).toHaveProperty('success', false)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:55:31
+    Error: page.waitForURL: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "http://localhost:3000/" until "load"
+    ============================================================
+
+      13 |   await page.fill('input[type="password"]', TEST_USER.password);
+      14 |   await page.click('button[type="submit"]');
+    > 15 |   await page.waitForURL(`${BASE_URL}/`);
+         |              ^
+      16 | }
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+        at loginAsAdmin (/app/tests/e2e/analysts-flow.spec.ts:15:14)
+        at /app/tests/e2e/analysts-flow.spec.ts:20:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/error-context.md
 ]]>
 </failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0.878">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0.046">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0.997">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="6.053">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="6.588">
-<failure message="api-endpoints.spec.ts:133:7 PUT /api/settings/general - validation errors" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:133:7 › Settings API Endpoints › PUT /api/settings/general - validation errors 
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/test-failed-1.png]]
 
-    Error: expect(received).toBe(expected) // Object.is equality
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/video.webm]]
 
-    Expected: 400
-    Received: 401
-
-      145 |     })
-      146 |     
-    > 147 |     expect(response.status()).toBe(400)
-          |                               ^
-      148 |     
-      149 |     const data = await response.json()
-      150 |     expect(data).toHaveProperty('error')
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:147:31
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-firefox/error-context.md]]
 ]]>
-</failure>
+</system-out>
 </testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="5.745">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="6.716">
-<failure message="api-endpoints.spec.ts:164:7 GET /api/analysts - list analysts" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:164:7 › Analysts API Endpoints › GET /api/analysts - list analysts 
+</testsuite>
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="webkit" tests="1" failures="1" skipped="0" time="0.003" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="0.003">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [webkit] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      176 |     if (response.status() === 200) {
-      177 |       const data = await response.json()
-    > 178 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      179 |     }
-      180 |   })
-      181 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:178:35
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="1.273">
-<failure message="api-endpoints.spec.ts:182:7 POST /api/analysts - create analyst" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:182:7 › Analysts API Endpoints › POST /api/analysts - create analyst 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [201, 401]
-
-      197 |     
-      198 |     // Should return 201 for success or 401 for auth failure
-    > 199 |     expect([201, 401]).toContain(response.status())
-          |                        ^
-      200 |     
-      201 |     if (response.status() === 201) {
-      202 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:199:24
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0.939">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0.277">
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="1.968">
-<failure message="api-endpoints.spec.ts:257:7 POST /api/analysts/bulk - bulk create analysts" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:257:7 › Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "created"
-    Received path: []
-
-    Received value: {"data": {"count": 0, "created": [], "errors": ["Failed to create analyst bulk1@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache", "Failed to create analyst bulk2@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache"]}, "success": true}
-
-      286 |       const data = await response.json()
-      287 |       expect(data).toHaveProperty('success', true)
-    > 288 |       expect(data).toHaveProperty('created')
-          |                    ^
-      289 |     }
-      290 |   })
-      291 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:288:20
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="1.15">
-<failure message="api-endpoints.spec.ts:294:7 GET /api/publications - list publications" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:294:7 › Publications API Endpoints › GET /api/publications - list publications 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      306 |     if (response.status() === 200) {
-      307 |       const data = await response.json()
-    > 308 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      309 |     }
-      310 |   })
-      311 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:308:35
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="1.1">
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="11.001">
-<failure message="api-endpoints.spec.ts:332:7 GET /api/publications/discover - publication discovery" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:332:7 › Publications API Endpoints › GET /api/publications/discover - publication discovery 
-
-    TimeoutError: apiRequestContext.get: Timeout 10000ms exceeded.
-    Call log:
-      - → GET http://localhost:3000/api/publications/discover
-        - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Safari/537.36
-        - accept: */*
-        - accept-encoding: gzip,deflate,br
-
-
-      333 |     const authCookie = await getAuthCookie(request)
-      334 |     
-    > 335 |     const response = await request.get(`${BASE_URL}/api/publications/discover`, {
-          |                                    ^
-      336 |       headers: {
-      337 |         'Cookie': authCookie
-      338 |       }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:335:36
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="2.151">
-<failure message="api-endpoints.spec.ts:353:7 GET /api/events - list events" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:353:7 › Events API Endpoints › GET /api/events - list events 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      365 |     if (response.status() === 200) {
-      366 |       const data = await response.json()
-    > 367 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      368 |     }
-      369 |   })
-      370 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:367:35
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="1.561">
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="1.598">
-<failure message="api-endpoints.spec.ts:392:7 GET /api/awards - list awards" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:392:7 › Awards API Endpoints › GET /api/awards - list awards 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [200, 401]
-
-      400 |     
-      401 |     // Should return 200 for success or 401 for auth failure
-    > 402 |     expect([200, 401]).toContain(response.status())
-          |                        ^
-      403 |     
-      404 |     if (response.status() === 200) {
-      405 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:402:24
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="2.179">
-<failure message="api-endpoints.spec.ts:412:7 GET /api/dashboard/metrics - dashboard metrics" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:412:7 › Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "totalAnalysts"
-    Received path: []
-
-    Received value: {"cacheAge": 0, "cached": false, "data": {"activeAlerts": 0, "activeAnalysts": 99, "analystsAddedPast90Days": 99, "averageInfluenceScore": 0, "briefingFollowUps": 0, "briefingsDue": 0, "briefingsPast90Days": 0, "briefingsPlanned": 0, "briefingsYTD": 2, "cacheDuration": 300, "cacheEnabled": true, "calendarMeetings": 0, "completedBriefings": 0, "contentItemsPast90Days": 0, "engagementRate": 0, "expectedPerformanceGain": "80-90% faster dashboard loads", "newAnalysts": [{"company": "AnalystCompany", "createdAt": "2025-08-01T09:01:19.935748+00:00", "firstName": "Sarah", "id": "cla28db4622c22443ebb41dae3d", "lastName": "Chen"}, {"company": "BLR", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "James", "id": "clec2663da", "lastName": "Davis"}, {"company": "3sixtyinsights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Nicholas", "id": "cl57d5aef7", "lastName": "Biron"}, {"company": "NextGen Insights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Yvette", "id": "clb97a8ef6", "lastName": "Cameron"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Jen", "id": "cl9277b2ec", "lastName": "Colletta"}, {"company": "Brandon Hall Group", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Mike", "id": "cl652fc6f3", "lastName": "Cook"}, {"company": "PeopleTech Partners", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Cara", "id": "cl3ea4b44b", "lastName": "Brennan"}, {"company": "NelsonHall", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Gary", "id": "cl51dc7829", "lastName": "Bragar"}, {"company": "IDC", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Megan", "id": "cl4ec31b8d", "lastName": "Buttita"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Elizabeth", "id": "cl26599969", "lastName": "Clarke"}], "newsletterEngagements": 0, "newslettersSentPast90Days": 0, "publishedContent": 0, "queryOptimization": "Cached with Supabase queries", "recentContentItems": [], "recentInteractions": 2, "relationshipHealth": 4, "relevantSocialPosts": 0, "totalAnalysts": 99}, "success": true}
-
-      424 |     if (response.status() === 200) {
-      425 |       const data = await response.json()
-    > 426 |       expect(data).toHaveProperty('totalAnalysts')
-          |                    ^
-      427 |       expect(data).toHaveProperty('activeAnalysts')
-      428 |       expect(data).toHaveProperty('engagementRate')
-      429 |     }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:426:20
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="2.292">
-<failure message="api-endpoints.spec.ts:432:7 GET /api/dashboard/top-analysts - top analysts" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:432:7 › Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      444 |     if (response.status() === 200) {
-      445 |       const data = await response.json()
-    > 446 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      447 |     }
-      448 |   })
-      449 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:446:35
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="2.999">
-<failure message="api-endpoints.spec.ts:450:7 GET /api/dashboard/recent-activity - recent activity" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:450:7 › Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      462 |     if (response.status() === 200) {
-      463 |       const data = await response.json()
-    > 464 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      465 |     }
-      466 |   })
-      467 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:464:35
-]]>
-</failure>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="1.975">
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="1.954">
-<failure message="api-endpoints.spec.ts:490:7 GET /api/social-media/recent-activity - recent social activity" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:490:7 › Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      502 |     if (response.status() === 200) {
-      503 |       const data = await response.json()
-    > 504 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      505 |     }
-      506 |   })
-      507 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:504:35
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="1.755">
-<failure message="api-endpoints.spec.ts:510:7 404 for non-existent endpoints" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:510:7 › Error Handling › 404 for non-existent endpoints ───
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 404
-    Received: 500
-
-      511 |     const response = await request.get(`${BASE_URL}/api/non-existent-endpoint`)
-      512 |     
-    > 513 |     expect(response.status()).toBe(404)
-          |                               ^
-      514 |   })
-      515 |
-      516 |   test('405 for wrong HTTP methods', async ({ request }) => {
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:513:31
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="1.621">
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="1.391">
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0.002">
-<failure message="api-endpoints.spec.ts:538:7 API endpoints have appropriate CORS headers" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:538:7 › Rate Limiting and Security › API endpoints have appropriate CORS headers 
-
-    TypeError: request.options is not a function
-
-      537 | test.describe('Rate Limiting and Security', () => {
-      538 |   test('API endpoints have appropriate CORS headers', async ({ request }) => {
-    > 539 |     const response = await request.options(`${BASE_URL}/api/settings/general`)
-          |                                    ^
-      540 |     
-      541 |     const headers = response.headers()
-      542 |     // Check for security headers (these may vary based on your implementation)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:539:36
-]]>
-</failure>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="0.3">
-<failure message="api-endpoints.spec.ts:546:7 API endpoints reject requests with invalid content types" type="FAILURE">
-<![CDATA[  [chromium] › api/api-endpoints.spec.ts:546:7 › Rate Limiting and Security › API endpoints reject requests with invalid content types 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 500
-
-      555 |     })
-      556 |     
-    > 557 |     expect(response.status()).toBe(400)
-          |                               ^
-      558 |   })
-      559 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:557:31
+    Error: browserType.launch:
+    ╔══════════════════════════════════════════════════════╗
+    ║ Host system is missing dependencies to run browsers. ║
+    ║ Missing libraries:                                   ║
+    ║     libgtk-4.so.1                                    ║
+    ║     libgraphene-1.0.so.0                             ║
+    ║     libxslt.so.1                                     ║
+    ║     libwoff2dec.so.1.0.2                             ║
+    ║     libvpx.so.9                                      ║
+    ║     libevent-2.1.so.7                                ║
+    ║     libopus.so.0                                     ║
+    ║     libgstallocators-1.0.so.0                        ║
+    ║     libgstapp-1.0.so.0                               ║
+    ║     libgstpbutils-1.0.so.0                           ║
+    ║     libgstaudio-1.0.so.0                             ║
+    ║     libgsttag-1.0.so.0                               ║
+    ║     libgstvideo-1.0.so.0                             ║
+    ║     libgstgl-1.0.so.0                                ║
+    ║     libgstcodecparsers-1.0.so.0                      ║
+    ║     libgstfft-1.0.so.0                               ║
+    ║     libflite.so.1                                    ║
+    ║     libflite_usenglish.so.1                          ║
+    ║     libflite_cmu_grapheme_lang.so.1                  ║
+    ║     libflite_cmu_grapheme_lex.so.1                   ║
+    ║     libflite_cmu_indic_lang.so.1                     ║
+    ║     libflite_cmu_indic_lex.so.1                      ║
+    ║     libflite_cmulex.so.1                             ║
+    ║     libflite_cmu_time_awb.so.1                       ║
+    ║     libflite_cmu_us_awb.so.1                         ║
+    ║     libflite_cmu_us_kal16.so.1                       ║
+    ║     libflite_cmu_us_kal.so.1                         ║
+    ║     libflite_cmu_us_rms.so.1                         ║
+    ║     libflite_cmu_us_slt.so.1                         ║
+    ║     libwebpdemux.so.2                                ║
+    ║     libavif.so.16                                    ║
+    ║     libharfbuzz-icu.so.0                             ║
+    ║     libwebpmux.so.3                                  ║
+    ║     libenchant-2.so.2                                ║
+    ║     libsecret-1.so.0                                 ║
+    ║     libhyphen.so.0                                   ║
+    ║     libmanette-0.2.so.0                              ║
+    ║     libx264.so                                       ║
+    ╚══════════════════════════════════════════════════════╝
 ]]>
 </failure>
 </testcase>
 </testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="firefox" tests="29" failures="17" skipped="0" time="30.583" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0.224">
-<failure message="api-endpoints.spec.ts:32:7 POST /api/auth/login - successful login" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:32:7 › Authentication API Endpoints › POST /api/auth/login - successful login 
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="Mobile Chrome" tests="1" failures="1" skipped="0" time="31.573" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="31.573">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [Mobile Chrome] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
+    Test timeout of 30000ms exceeded while running "beforeEach" hook.
 
-    Expected: 200
-    Received: 401
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+    > 19 |   test.beforeEach(async ({ page }) => {
+         |        ^
+      20 |     await loginAsAdmin(page);
+      21 |     await page.goto(`${BASE_URL}/analysts`);
+      22 |   });
+        at /app/tests/e2e/analysts-flow.spec.ts:19:8
 
-      38 |     })
-      39 |     
-    > 40 |     expect(response.status()).toBe(200)
-         |                               ^
-      41 |     
-      42 |     const data = await response.json()
-      43 |     expect(data).toHaveProperty('success', true)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:40:31
+    Error: page.waitForURL: Test timeout of 30000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation to "http://localhost:3000/" until "load"
+    ============================================================
+
+      13 |   await page.fill('input[type="password"]', TEST_USER.password);
+      14 |   await page.click('button[type="submit"]');
+    > 15 |   await page.waitForURL(`${BASE_URL}/`);
+         |              ^
+      16 | }
+      17 |
+      18 | test.describe('Analysts Page - CRUD Operations', () => {
+        at loginAsAdmin (/app/tests/e2e/analysts-flow.spec.ts:15:14)
+        at /app/tests/e2e/analysts-flow.spec.ts:20:5
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ../test-results/e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/error-context.md
 ]]>
 </failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0.282">
-<failure message="api-endpoints.spec.ts:47:7 POST /api/auth/login - invalid credentials" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:47:7 › Authentication API Endpoints › POST /api/auth/login - invalid credentials 
+<system-out>
+<![CDATA[
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/test-failed-1.png]]
 
-    Error: expect(received).toBe(expected) // Object.is equality
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/video.webm]]
 
-    Expected: 401
-    Received: 403
-
-      53 |     })
-      54 |     
-    > 55 |     expect(response.status()).toBe(401)
-         |                               ^
-      56 |     
-      57 |     const data = await response.json()
-      58 |     expect(data).toHaveProperty('success', false)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:55:31
+[[ATTACHMENT|e2e-analysts-flow-Analysts-4e741--admin-to-add-a-new-analyst-Mobile-Chrome/error-context.md]]
 ]]>
-</failure>
+</system-out>
 </testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0.89">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0.555">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0.585">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="1.07">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0.81">
-<failure message="api-endpoints.spec.ts:133:7 PUT /api/settings/general - validation errors" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:133:7 › Settings API Endpoints › PUT /api/settings/general - validation errors 
+</testsuite>
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="Mobile Safari" tests="1" failures="1" skipped="0" time="0.004" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="0.004">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [Mobile Safari] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 401
-
-      145 |     })
-      146 |     
-    > 147 |     expect(response.status()).toBe(400)
-          |                               ^
-      148 |     
-      149 |     const data = await response.json()
-      150 |     expect(data).toHaveProperty('error')
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:147:31
-]]>
-</failure>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0.664">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0.867">
-<failure message="api-endpoints.spec.ts:164:7 GET /api/analysts - list analysts" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:164:7 › Analysts API Endpoints › GET /api/analysts - list analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      176 |     if (response.status() === 200) {
-      177 |       const data = await response.json()
-    > 178 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      179 |     }
-      180 |   })
-      181 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:178:35
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0.819">
-<failure message="api-endpoints.spec.ts:182:7 POST /api/analysts - create analyst" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:182:7 › Analysts API Endpoints › POST /api/analysts - create analyst 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [201, 401]
-
-      197 |     
-      198 |     // Should return 201 for success or 401 for auth failure
-    > 199 |     expect([201, 401]).toContain(response.status())
-          |                        ^
-      200 |     
-      201 |     if (response.status() === 201) {
-      202 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:199:24
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0.46">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0.644">
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="0.9">
-<failure message="api-endpoints.spec.ts:257:7 POST /api/analysts/bulk - bulk create analysts" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:257:7 › Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "created"
-    Received path: []
-
-    Received value: {"data": {"count": 0, "created": [], "errors": ["Failed to create analyst bulk1@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache", "Failed to create analyst bulk2@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache"]}, "success": true}
-
-      286 |       const data = await response.json()
-      287 |       expect(data).toHaveProperty('success', true)
-    > 288 |       expect(data).toHaveProperty('created')
-          |                    ^
-      289 |     }
-      290 |   })
-      291 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:288:20
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0.482">
-<failure message="api-endpoints.spec.ts:294:7 GET /api/publications - list publications" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:294:7 › Publications API Endpoints › GET /api/publications - list publications 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      306 |     if (response.status() === 200) {
-      307 |       const data = await response.json()
-    > 308 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      309 |     }
-      310 |   })
-      311 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:308:35
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0.26">
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="10.559">
-<failure message="api-endpoints.spec.ts:332:7 GET /api/publications/discover - publication discovery" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:332:7 › Publications API Endpoints › GET /api/publications/discover - publication discovery 
-
-    TimeoutError: apiRequestContext.get: Timeout 10000ms exceeded.
-    Call log:
-      - → GET http://localhost:3000/api/publications/discover
-        - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0.2) Gecko/20100101 Firefox/140.0.2
-        - accept: */*
-        - accept-encoding: gzip,deflate,br
-
-
-      333 |     const authCookie = await getAuthCookie(request)
-      334 |     
-    > 335 |     const response = await request.get(`${BASE_URL}/api/publications/discover`, {
-          |                                    ^
-      336 |       headers: {
-      337 |         'Cookie': authCookie
-      338 |       }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:335:36
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="1.143">
-<failure message="api-endpoints.spec.ts:353:7 GET /api/events - list events" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:353:7 › Events API Endpoints › GET /api/events - list events 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      365 |     if (response.status() === 200) {
-      366 |       const data = await response.json()
-    > 367 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      368 |     }
-      369 |   })
-      370 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:367:35
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0.473">
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="1.289">
-<failure message="api-endpoints.spec.ts:392:7 GET /api/awards - list awards" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:392:7 › Awards API Endpoints › GET /api/awards - list awards 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [200, 401]
-
-      400 |     
-      401 |     // Should return 200 for success or 401 for auth failure
-    > 402 |     expect([200, 401]).toContain(response.status())
-          |                        ^
-      403 |     
-      404 |     if (response.status() === 200) {
-      405 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:402:24
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="1.17">
-<failure message="api-endpoints.spec.ts:412:7 GET /api/dashboard/metrics - dashboard metrics" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:412:7 › Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "totalAnalysts"
-    Received path: []
-
-    Received value: {"cacheAge": 0, "cached": false, "data": {"activeAlerts": 0, "activeAnalysts": 99, "analystsAddedPast90Days": 99, "averageInfluenceScore": 0, "briefingFollowUps": 0, "briefingsDue": 0, "briefingsPast90Days": 0, "briefingsPlanned": 0, "briefingsYTD": 2, "cacheDuration": 300, "cacheEnabled": true, "calendarMeetings": 0, "completedBriefings": 0, "contentItemsPast90Days": 0, "engagementRate": 0, "expectedPerformanceGain": "80-90% faster dashboard loads", "newAnalysts": [{"company": "AnalystCompany", "createdAt": "2025-08-01T09:01:19.935748+00:00", "firstName": "Sarah", "id": "cla28db4622c22443ebb41dae3d", "lastName": "Chen"}, {"company": "BLR", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "James", "id": "clec2663da", "lastName": "Davis"}, {"company": "3sixtyinsights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Nicholas", "id": "cl57d5aef7", "lastName": "Biron"}, {"company": "NextGen Insights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Yvette", "id": "clb97a8ef6", "lastName": "Cameron"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Jen", "id": "cl9277b2ec", "lastName": "Colletta"}, {"company": "Brandon Hall Group", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Mike", "id": "cl652fc6f3", "lastName": "Cook"}, {"company": "PeopleTech Partners", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Cara", "id": "cl3ea4b44b", "lastName": "Brennan"}, {"company": "NelsonHall", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Gary", "id": "cl51dc7829", "lastName": "Bragar"}, {"company": "IDC", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Megan", "id": "cl4ec31b8d", "lastName": "Buttita"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Elizabeth", "id": "cl26599969", "lastName": "Clarke"}], "newsletterEngagements": 0, "newslettersSentPast90Days": 0, "publishedContent": 0, "queryOptimization": "Cached with Supabase queries", "recentContentItems": [], "recentInteractions": 2, "relationshipHealth": 4, "relevantSocialPosts": 0, "totalAnalysts": 99}, "success": true}
-
-      424 |     if (response.status() === 200) {
-      425 |       const data = await response.json()
-    > 426 |       expect(data).toHaveProperty('totalAnalysts')
-          |                    ^
-      427 |       expect(data).toHaveProperty('activeAnalysts')
-      428 |       expect(data).toHaveProperty('engagementRate')
-      429 |     }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:426:20
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="1.176">
-<failure message="api-endpoints.spec.ts:432:7 GET /api/dashboard/top-analysts - top analysts" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:432:7 › Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      444 |     if (response.status() === 200) {
-      445 |       const data = await response.json()
-    > 446 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      447 |     }
-      448 |   })
-      449 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:446:35
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0.625">
-<failure message="api-endpoints.spec.ts:450:7 GET /api/dashboard/recent-activity - recent activity" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:450:7 › Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      462 |     if (response.status() === 200) {
-      463 |       const data = await response.json()
-    > 464 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      465 |     }
-      466 |   })
-      467 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:464:35
-]]>
-</failure>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="0.596">
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="1.711">
-<failure message="api-endpoints.spec.ts:490:7 GET /api/social-media/recent-activity - recent social activity" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:490:7 › Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      502 |     if (response.status() === 200) {
-      503 |       const data = await response.json()
-    > 504 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      505 |     }
-      506 |   })
-      507 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:504:35
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0.685">
-<failure message="api-endpoints.spec.ts:510:7 404 for non-existent endpoints" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:510:7 › Error Handling › 404 for non-existent endpoints ────
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 404
-    Received: 500
-
-      511 |     const response = await request.get(`${BASE_URL}/api/non-existent-endpoint`)
-      512 |     
-    > 513 |     expect(response.status()).toBe(404)
-          |                               ^
-      514 |   })
-      515 |
-      516 |   test('405 for wrong HTTP methods', async ({ request }) => {
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:513:31
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="0.218">
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="0.883">
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0.001">
-<failure message="api-endpoints.spec.ts:538:7 API endpoints have appropriate CORS headers" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:538:7 › Rate Limiting and Security › API endpoints have appropriate CORS headers 
-
-    TypeError: request.options is not a function
-
-      537 | test.describe('Rate Limiting and Security', () => {
-      538 |   test('API endpoints have appropriate CORS headers', async ({ request }) => {
-    > 539 |     const response = await request.options(`${BASE_URL}/api/settings/general`)
-          |                                    ^
-      540 |     
-      541 |     const headers = response.headers()
-      542 |     // Check for security headers (these may vary based on your implementation)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:539:36
-]]>
-</failure>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="0.542">
-<failure message="api-endpoints.spec.ts:546:7 API endpoints reject requests with invalid content types" type="FAILURE">
-<![CDATA[  [firefox] › api/api-endpoints.spec.ts:546:7 › Rate Limiting and Security › API endpoints reject requests with invalid content types 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 500
-
-      555 |     })
-      556 |     
-    > 557 |     expect(response.status()).toBe(400)
-          |                               ^
-      558 |   })
-      559 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:557:31
+    Error: browserType.launch:
+    ╔══════════════════════════════════════════════════════╗
+    ║ Host system is missing dependencies to run browsers. ║
+    ║ Missing libraries:                                   ║
+    ║     libgtk-4.so.1                                    ║
+    ║     libgraphene-1.0.so.0                             ║
+    ║     libxslt.so.1                                     ║
+    ║     libwoff2dec.so.1.0.2                             ║
+    ║     libvpx.so.9                                      ║
+    ║     libevent-2.1.so.7                                ║
+    ║     libopus.so.0                                     ║
+    ║     libgstallocators-1.0.so.0                        ║
+    ║     libgstapp-1.0.so.0                               ║
+    ║     libgstpbutils-1.0.so.0                           ║
+    ║     libgstaudio-1.0.so.0                             ║
+    ║     libgsttag-1.0.so.0                               ║
+    ║     libgstvideo-1.0.so.0                             ║
+    ║     libgstgl-1.0.so.0                                ║
+    ║     libgstcodecparsers-1.0.so.0                      ║
+    ║     libgstfft-1.0.so.0                               ║
+    ║     libflite.so.1                                    ║
+    ║     libflite_usenglish.so.1                          ║
+    ║     libflite_cmu_grapheme_lang.so.1                  ║
+    ║     libflite_cmu_grapheme_lex.so.1                   ║
+    ║     libflite_cmu_indic_lang.so.1                     ║
+    ║     libflite_cmu_indic_lex.so.1                      ║
+    ║     libflite_cmulex.so.1                             ║
+    ║     libflite_cmu_time_awb.so.1                       ║
+    ║     libflite_cmu_us_awb.so.1                         ║
+    ║     libflite_cmu_us_kal16.so.1                       ║
+    ║     libflite_cmu_us_kal.so.1                         ║
+    ║     libflite_cmu_us_rms.so.1                         ║
+    ║     libflite_cmu_us_slt.so.1                         ║
+    ║     libwebpdemux.so.2                                ║
+    ║     libavif.so.16                                    ║
+    ║     libharfbuzz-icu.so.0                             ║
+    ║     libwebpmux.so.3                                  ║
+    ║     libenchant-2.so.2                                ║
+    ║     libsecret-1.so.0                                 ║
+    ║     libhyphen.so.0                                   ║
+    ║     libmanette-0.2.so.0                              ║
+    ║     libx264.so                                       ║
+    ╚══════════════════════════════════════════════════════╝
 ]]>
 </failure>
 </testcase>
 </testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="webkit" tests="29" failures="17" skipped="0" time="25.093" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0.267">
-<failure message="api-endpoints.spec.ts:32:7 POST /api/auth/login - successful login" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:32:7 › Authentication API Endpoints › POST /api/auth/login - successful login 
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="Microsoft Edge" tests="1" failures="1" skipped="0" time="0.004" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="0.004">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [Microsoft Edge] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 200
-    Received: 401
-
-      38 |     })
-      39 |     
-    > 40 |     expect(response.status()).toBe(200)
-         |                               ^
-      41 |     
-      42 |     const data = await response.json()
-      43 |     expect(data).toHaveProperty('success', true)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:40:31
-]]>
-</failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0.347">
-<failure message="api-endpoints.spec.ts:47:7 POST /api/auth/login - invalid credentials" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:47:7 › Authentication API Endpoints › POST /api/auth/login - invalid credentials 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 401
-    Received: 403
-
-      53 |     })
-      54 |     
-    > 55 |     expect(response.status()).toBe(401)
-         |                               ^
-      56 |     
-      57 |     const data = await response.json()
-      58 |     expect(data).toHaveProperty('success', false)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:55:31
-]]>
-</failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0.583">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0.172">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0.325">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="0.614">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0.463">
-<failure message="api-endpoints.spec.ts:133:7 PUT /api/settings/general - validation errors" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:133:7 › Settings API Endpoints › PUT /api/settings/general - validation errors 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 401
-
-      145 |     })
-      146 |     
-    > 147 |     expect(response.status()).toBe(400)
-          |                               ^
-      148 |     
-      149 |     const data = await response.json()
-      150 |     expect(data).toHaveProperty('error')
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:147:31
-]]>
-</failure>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0.027">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0.265">
-<failure message="api-endpoints.spec.ts:164:7 GET /api/analysts - list analysts" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:164:7 › Analysts API Endpoints › GET /api/analysts - list analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      176 |     if (response.status() === 200) {
-      177 |       const data = await response.json()
-    > 178 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      179 |     }
-      180 |   })
-      181 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:178:35
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0.722">
-<failure message="api-endpoints.spec.ts:182:7 POST /api/analysts - create analyst" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:182:7 › Analysts API Endpoints › POST /api/analysts - create analyst 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [201, 401]
-
-      197 |     
-      198 |     // Should return 201 for success or 401 for auth failure
-    > 199 |     expect([201, 401]).toContain(response.status())
-          |                        ^
-      200 |     
-      201 |     if (response.status() === 201) {
-      202 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:199:24
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0.242">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0.189">
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="0.897">
-<failure message="api-endpoints.spec.ts:257:7 POST /api/analysts/bulk - bulk create analysts" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:257:7 › Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "created"
-    Received path: []
-
-    Received value: {"data": {"count": 0, "created": [], "errors": ["Failed to create analyst bulk1@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache", "Failed to create analyst bulk2@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache"]}, "success": true}
-
-      286 |       const data = await response.json()
-      287 |       expect(data).toHaveProperty('success', true)
-    > 288 |       expect(data).toHaveProperty('created')
-          |                    ^
-      289 |     }
-      290 |   })
-      291 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:288:20
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0.414">
-<failure message="api-endpoints.spec.ts:294:7 GET /api/publications - list publications" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:294:7 › Publications API Endpoints › GET /api/publications - list publications 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      306 |     if (response.status() === 200) {
-      307 |       const data = await response.json()
-    > 308 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      309 |     }
-      310 |   })
-      311 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:308:35
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0.578">
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="10.403">
-<failure message="api-endpoints.spec.ts:332:7 GET /api/publications/discover - publication discovery" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:332:7 › Publications API Endpoints › GET /api/publications/discover - publication discovery 
-
-    TimeoutError: apiRequestContext.get: Timeout 10000ms exceeded.
-    Call log:
-      - → GET http://localhost:3000/api/publications/discover
-        - user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15
-        - accept: */*
-        - accept-encoding: gzip,deflate,br
-
-
-      333 |     const authCookie = await getAuthCookie(request)
-      334 |     
-    > 335 |     const response = await request.get(`${BASE_URL}/api/publications/discover`, {
-          |                                    ^
-      336 |       headers: {
-      337 |         'Cookie': authCookie
-      338 |       }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:335:36
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="0.557">
-<failure message="api-endpoints.spec.ts:353:7 GET /api/events - list events" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:353:7 › Events API Endpoints › GET /api/events - list events 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      365 |     if (response.status() === 200) {
-      366 |       const data = await response.json()
-    > 367 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      368 |     }
-      369 |   })
-      370 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:367:35
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0.158">
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="0.41">
-<failure message="api-endpoints.spec.ts:392:7 GET /api/awards - list awards" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:392:7 › Awards API Endpoints › GET /api/awards - list awards 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [200, 401]
-
-      400 |     
-      401 |     // Should return 200 for success or 401 for auth failure
-    > 402 |     expect([200, 401]).toContain(response.status())
-          |                        ^
-      403 |     
-      404 |     if (response.status() === 200) {
-      405 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:402:24
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="0.398">
-<failure message="api-endpoints.spec.ts:412:7 GET /api/dashboard/metrics - dashboard metrics" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:412:7 › Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "totalAnalysts"
-    Received path: []
-
-    Received value: {"cacheAge": 7, "cached": true, "data": {"activeAlerts": 0, "activeAnalysts": 99, "analystsAddedPast90Days": 99, "averageInfluenceScore": 0, "briefingFollowUps": 0, "briefingsDue": 0, "briefingsPast90Days": 0, "briefingsPlanned": 0, "briefingsYTD": 2, "cacheDuration": 300, "cacheEnabled": true, "calendarMeetings": 0, "completedBriefings": 0, "contentItemsPast90Days": 0, "engagementRate": 0, "expectedPerformanceGain": "80-90% faster dashboard loads", "newAnalysts": [{"company": "AnalystCompany", "createdAt": "2025-08-01T09:01:19.935748+00:00", "firstName": "Sarah", "id": "cla28db4622c22443ebb41dae3d", "lastName": "Chen"}, {"company": "BLR", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "James", "id": "clec2663da", "lastName": "Davis"}, {"company": "3sixtyinsights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Nicholas", "id": "cl57d5aef7", "lastName": "Biron"}, {"company": "NextGen Insights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Yvette", "id": "clb97a8ef6", "lastName": "Cameron"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Jen", "id": "cl9277b2ec", "lastName": "Colletta"}, {"company": "Brandon Hall Group", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Mike", "id": "cl652fc6f3", "lastName": "Cook"}, {"company": "PeopleTech Partners", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Cara", "id": "cl3ea4b44b", "lastName": "Brennan"}, {"company": "NelsonHall", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Gary", "id": "cl51dc7829", "lastName": "Bragar"}, {"company": "IDC", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Megan", "id": "cl4ec31b8d", "lastName": "Buttita"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Elizabeth", "id": "cl26599969", "lastName": "Clarke"}], "newsletterEngagements": 0, "newslettersSentPast90Days": 0, "publishedContent": 0, "queryOptimization": "Cached with Supabase queries", "recentContentItems": [], "recentInteractions": 2, "relationshipHealth": 4, "relevantSocialPosts": 0, "totalAnalysts": 99}, "success": true}
-
-      424 |     if (response.status() === 200) {
-      425 |       const data = await response.json()
-    > 426 |       expect(data).toHaveProperty('totalAnalysts')
-          |                    ^
-      427 |       expect(data).toHaveProperty('activeAnalysts')
-      428 |       expect(data).toHaveProperty('engagementRate')
-      429 |     }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:426:20
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="0.799">
-<failure message="api-endpoints.spec.ts:432:7 GET /api/dashboard/top-analysts - top analysts" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:432:7 › Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      444 |     if (response.status() === 200) {
-      445 |       const data = await response.json()
-    > 446 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      447 |     }
-      448 |   })
-      449 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:446:35
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0.326">
-<failure message="api-endpoints.spec.ts:450:7 GET /api/dashboard/recent-activity - recent activity" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:450:7 › Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      462 |     if (response.status() === 200) {
-      463 |       const data = await response.json()
-    > 464 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      465 |     }
-      466 |   })
-      467 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:464:35
-]]>
-</failure>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="0.843">
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="0.545">
-<failure message="api-endpoints.spec.ts:490:7 GET /api/social-media/recent-activity - recent social activity" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:490:7 › Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      502 |     if (response.status() === 200) {
-      503 |       const data = await response.json()
-    > 504 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      505 |     }
-      506 |   })
-      507 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:504:35
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0.336">
-<failure message="api-endpoints.spec.ts:510:7 404 for non-existent endpoints" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:510:7 › Error Handling › 404 for non-existent endpoints ─────
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 404
-    Received: 500
-
-      511 |     const response = await request.get(`${BASE_URL}/api/non-existent-endpoint`)
-      512 |     
-    > 513 |     expect(response.status()).toBe(404)
-          |                               ^
-      514 |   })
-      515 |
-      516 |   test('405 for wrong HTTP methods', async ({ request }) => {
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:513:31
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="1.146">
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="1.631">
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0.002">
-<failure message="api-endpoints.spec.ts:538:7 API endpoints have appropriate CORS headers" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:538:7 › Rate Limiting and Security › API endpoints have appropriate CORS headers 
-
-    TypeError: request.options is not a function
-
-      537 | test.describe('Rate Limiting and Security', () => {
-      538 |   test('API endpoints have appropriate CORS headers', async ({ request }) => {
-    > 539 |     const response = await request.options(`${BASE_URL}/api/settings/general`)
-          |                                    ^
-      540 |     
-      541 |     const headers = response.headers()
-      542 |     // Check for security headers (these may vary based on your implementation)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:539:36
-]]>
-</failure>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="1.434">
-<failure message="api-endpoints.spec.ts:546:7 API endpoints reject requests with invalid content types" type="FAILURE">
-<![CDATA[  [webkit] › api/api-endpoints.spec.ts:546:7 › Rate Limiting and Security › API endpoints reject requests with invalid content types 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 500
-
-      555 |     })
-      556 |     
-    > 557 |     expect(response.status()).toBe(400)
-          |                               ^
-      558 |   })
-      559 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:557:31
+    Error: browserType.launch: Chromium distribution 'msedge' is not found at /opt/microsoft/msedge/msedge
+    Run "npx playwright install msedge"
 ]]>
 </failure>
 </testcase>
 </testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="Mobile Chrome" tests="29" failures="17" skipped="0" time="25.764" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0.318">
-<failure message="api-endpoints.spec.ts:32:7 POST /api/auth/login - successful login" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:32:7 › Authentication API Endpoints › POST /api/auth/login - successful login 
+<testsuite name="e2e/analysts-flow.spec.ts" timestamp="2025-08-09T02:04:48.118Z" hostname="Google Chrome" tests="1" failures="1" skipped="0" time="0.003" errors="0">
+<testcase name="Analysts Page - CRUD Operations › should allow an admin to add a new analyst" classname="e2e/analysts-flow.spec.ts" time="0.003">
+<failure message="analysts-flow.spec.ts:24:7 should allow an admin to add a new analyst" type="FAILURE">
+<![CDATA[  [Google Chrome] › e2e/analysts-flow.spec.ts:24:7 › Analysts Page - CRUD Operations › should allow an admin to add a new analyst
 
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 200
-    Received: 401
-
-      38 |     })
-      39 |     
-    > 40 |     expect(response.status()).toBe(200)
-         |                               ^
-      41 |     
-      42 |     const data = await response.json()
-      43 |     expect(data).toHaveProperty('success', true)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:40:31
+    Error: browserType.launch: Chromium distribution 'chrome' is not found at /opt/google/chrome/chrome
+    Run "npx playwright install chrome"
 ]]>
 </failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0.52">
-<failure message="api-endpoints.spec.ts:47:7 POST /api/auth/login - invalid credentials" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:47:7 › Authentication API Endpoints › POST /api/auth/login - invalid credentials 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 401
-    Received: 403
-
-      53 |     })
-      54 |     
-    > 55 |     expect(response.status()).toBe(401)
-         |                               ^
-      56 |     
-      57 |     const data = await response.json()
-      58 |     expect(data).toHaveProperty('success', false)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:55:31
-]]>
-</failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0.493">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0.224">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0.672">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="0.587">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0.584">
-<failure message="api-endpoints.spec.ts:133:7 PUT /api/settings/general - validation errors" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:133:7 › Settings API Endpoints › PUT /api/settings/general - validation errors 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 401
-
-      145 |     })
-      146 |     
-    > 147 |     expect(response.status()).toBe(400)
-          |                               ^
-      148 |     
-      149 |     const data = await response.json()
-      150 |     expect(data).toHaveProperty('error')
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:147:31
-]]>
-</failure>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0.014">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0.214">
-<failure message="api-endpoints.spec.ts:164:7 GET /api/analysts - list analysts" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:164:7 › Analysts API Endpoints › GET /api/analysts - list analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      176 |     if (response.status() === 200) {
-      177 |       const data = await response.json()
-    > 178 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      179 |     }
-      180 |   })
-      181 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:178:35
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0.65">
-<failure message="api-endpoints.spec.ts:182:7 POST /api/analysts - create analyst" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:182:7 › Analysts API Endpoints › POST /api/analysts - create analyst 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [201, 401]
-
-      197 |     
-      198 |     // Should return 201 for success or 401 for auth failure
-    > 199 |     expect([201, 401]).toContain(response.status())
-          |                        ^
-      200 |     
-      201 |     if (response.status() === 201) {
-      202 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:199:24
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0.449">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0.808">
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="1.148">
-<failure message="api-endpoints.spec.ts:257:7 POST /api/analysts/bulk - bulk create analysts" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:257:7 › Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "created"
-    Received path: []
-
-    Received value: {"data": {"count": 0, "created": [], "errors": ["Failed to create analyst bulk1@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache", "Failed to create analyst bulk2@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache"]}, "success": true}
-
-      286 |       const data = await response.json()
-      287 |       expect(data).toHaveProperty('success', true)
-    > 288 |       expect(data).toHaveProperty('created')
-          |                    ^
-      289 |     }
-      290 |   })
-      291 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:288:20
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0.563">
-<failure message="api-endpoints.spec.ts:294:7 GET /api/publications - list publications" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:294:7 › Publications API Endpoints › GET /api/publications - list publications 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      306 |     if (response.status() === 200) {
-      307 |       const data = await response.json()
-    > 308 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      309 |     }
-      310 |   })
-      311 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:308:35
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0.333">
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="10.349">
-<failure message="api-endpoints.spec.ts:332:7 GET /api/publications/discover - publication discovery" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:332:7 › Publications API Endpoints › GET /api/publications/discover - publication discovery 
-
-    TimeoutError: apiRequestContext.get: Timeout 10000ms exceeded.
-    Call log:
-      - → GET http://localhost:3000/api/publications/discover
-        - user-agent: Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.7258.5 Mobile Safari/537.36
-        - accept: */*
-        - accept-encoding: gzip,deflate,br
-
-
-      333 |     const authCookie = await getAuthCookie(request)
-      334 |     
-    > 335 |     const response = await request.get(`${BASE_URL}/api/publications/discover`, {
-          |                                    ^
-      336 |       headers: {
-      337 |         'Cookie': authCookie
-      338 |       }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:335:36
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="0.263">
-<failure message="api-endpoints.spec.ts:353:7 GET /api/events - list events" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:353:7 › Events API Endpoints › GET /api/events - list events 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      365 |     if (response.status() === 200) {
-      366 |       const data = await response.json()
-    > 367 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      368 |     }
-      369 |   })
-      370 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:367:35
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0.389">
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="0.374">
-<failure message="api-endpoints.spec.ts:392:7 GET /api/awards - list awards" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:392:7 › Awards API Endpoints › GET /api/awards - list awards 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [200, 401]
-
-      400 |     
-      401 |     // Should return 200 for success or 401 for auth failure
-    > 402 |     expect([200, 401]).toContain(response.status())
-          |                        ^
-      403 |     
-      404 |     if (response.status() === 200) {
-      405 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:402:24
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="0.163">
-<failure message="api-endpoints.spec.ts:412:7 GET /api/dashboard/metrics - dashboard metrics" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:412:7 › Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "totalAnalysts"
-    Received path: []
-
-    Received value: {"cacheAge": 16, "cached": true, "data": {"activeAlerts": 0, "activeAnalysts": 99, "analystsAddedPast90Days": 99, "averageInfluenceScore": 0, "briefingFollowUps": 0, "briefingsDue": 0, "briefingsPast90Days": 0, "briefingsPlanned": 0, "briefingsYTD": 2, "cacheDuration": 300, "cacheEnabled": true, "calendarMeetings": 0, "completedBriefings": 0, "contentItemsPast90Days": 0, "engagementRate": 0, "expectedPerformanceGain": "80-90% faster dashboard loads", "newAnalysts": [{"company": "AnalystCompany", "createdAt": "2025-08-01T09:01:19.935748+00:00", "firstName": "Sarah", "id": "cla28db4622c22443ebb41dae3d", "lastName": "Chen"}, {"company": "BLR", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "James", "id": "clec2663da", "lastName": "Davis"}, {"company": "3sixtyinsights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Nicholas", "id": "cl57d5aef7", "lastName": "Biron"}, {"company": "NextGen Insights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Yvette", "id": "clb97a8ef6", "lastName": "Cameron"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Jen", "id": "cl9277b2ec", "lastName": "Colletta"}, {"company": "Brandon Hall Group", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Mike", "id": "cl652fc6f3", "lastName": "Cook"}, {"company": "PeopleTech Partners", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Cara", "id": "cl3ea4b44b", "lastName": "Brennan"}, {"company": "NelsonHall", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Gary", "id": "cl51dc7829", "lastName": "Bragar"}, {"company": "IDC", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Megan", "id": "cl4ec31b8d", "lastName": "Buttita"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Elizabeth", "id": "cl26599969", "lastName": "Clarke"}], "newsletterEngagements": 0, "newslettersSentPast90Days": 0, "publishedContent": 0, "queryOptimization": "Cached with Supabase queries", "recentContentItems": [], "recentInteractions": 2, "relationshipHealth": 4, "relevantSocialPosts": 0, "totalAnalysts": 99}, "success": true}
-
-      424 |     if (response.status() === 200) {
-      425 |       const data = await response.json()
-    > 426 |       expect(data).toHaveProperty('totalAnalysts')
-          |                    ^
-      427 |       expect(data).toHaveProperty('activeAnalysts')
-      428 |       expect(data).toHaveProperty('engagementRate')
-      429 |     }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:426:20
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="1.17">
-<failure message="api-endpoints.spec.ts:432:7 GET /api/dashboard/top-analysts - top analysts" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:432:7 › Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      444 |     if (response.status() === 200) {
-      445 |       const data = await response.json()
-    > 446 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      447 |     }
-      448 |   })
-      449 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:446:35
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0.811">
-<failure message="api-endpoints.spec.ts:450:7 GET /api/dashboard/recent-activity - recent activity" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:450:7 › Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      462 |     if (response.status() === 200) {
-      463 |       const data = await response.json()
-    > 464 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      465 |     }
-      466 |   })
-      467 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:464:35
-]]>
-</failure>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="1.261">
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="0.376">
-<failure message="api-endpoints.spec.ts:490:7 GET /api/social-media/recent-activity - recent social activity" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:490:7 › Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      502 |     if (response.status() === 200) {
-      503 |       const data = await response.json()
-    > 504 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      505 |     }
-      506 |   })
-      507 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:504:35
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0.816">
-<failure message="api-endpoints.spec.ts:510:7 404 for non-existent endpoints" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:510:7 › Error Handling › 404 for non-existent endpoints 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 404
-    Received: 500
-
-      511 |     const response = await request.get(`${BASE_URL}/api/non-existent-endpoint`)
-      512 |     
-    > 513 |     expect(response.status()).toBe(404)
-          |                               ^
-      514 |   })
-      515 |
-      516 |   test('405 for wrong HTTP methods', async ({ request }) => {
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:513:31
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="0.313">
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="0.753">
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0.002">
-<failure message="api-endpoints.spec.ts:538:7 API endpoints have appropriate CORS headers" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:538:7 › Rate Limiting and Security › API endpoints have appropriate CORS headers 
-
-    TypeError: request.options is not a function
-
-      537 | test.describe('Rate Limiting and Security', () => {
-      538 |   test('API endpoints have appropriate CORS headers', async ({ request }) => {
-    > 539 |     const response = await request.options(`${BASE_URL}/api/settings/general`)
-          |                                    ^
-      540 |     
-      541 |     const headers = response.headers()
-      542 |     // Check for security headers (these may vary based on your implementation)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:539:36
-]]>
-</failure>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="1.147">
-<failure message="api-endpoints.spec.ts:546:7 API endpoints reject requests with invalid content types" type="FAILURE">
-<![CDATA[  [Mobile Chrome] › api/api-endpoints.spec.ts:546:7 › Rate Limiting and Security › API endpoints reject requests with invalid content types 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 500
-
-      555 |     })
-      556 |     
-    > 557 |     expect(response.status()).toBe(400)
-          |                               ^
-      558 |   })
-      559 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:557:31
-]]>
-</failure>
-</testcase>
-</testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="Mobile Safari" tests="29" failures="14" skipped="5" time="17.385" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0.53">
-<failure message="api-endpoints.spec.ts:32:7 POST /api/auth/login - successful login" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:32:7 › Authentication API Endpoints › POST /api/auth/login - successful login 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 200
-    Received: 401
-
-      38 |     })
-      39 |     
-    > 40 |     expect(response.status()).toBe(200)
-         |                               ^
-      41 |     
-      42 |     const data = await response.json()
-      43 |     expect(data).toHaveProperty('success', true)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:40:31
-]]>
-</failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0.409">
-<failure message="api-endpoints.spec.ts:47:7 POST /api/auth/login - invalid credentials" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:47:7 › Authentication API Endpoints › POST /api/auth/login - invalid credentials 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 401
-    Received: 403
-
-      53 |     })
-      54 |     
-    > 55 |     expect(response.status()).toBe(401)
-         |                               ^
-      56 |     
-      57 |     const data = await response.json()
-      58 |     expect(data).toHaveProperty('success', false)
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:55:31
-]]>
-</failure>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0.425">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0.178">
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0.205">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="0.272">
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0.18">
-<failure message="api-endpoints.spec.ts:133:7 PUT /api/settings/general - validation errors" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:133:7 › Settings API Endpoints › PUT /api/settings/general - validation errors 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 400
-    Received: 401
-
-      145 |     })
-      146 |     
-    > 147 |     expect(response.status()).toBe(400)
-          |                               ^
-      148 |     
-      149 |     const data = await response.json()
-      150 |     expect(data).toHaveProperty('error')
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:147:31
-]]>
-</failure>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0.028">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0.435">
-<failure message="api-endpoints.spec.ts:164:7 GET /api/analysts - list analysts" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:164:7 › Analysts API Endpoints › GET /api/analysts - list analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      176 |     if (response.status() === 200) {
-      177 |       const data = await response.json()
-    > 178 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      179 |     }
-      180 |   })
-      181 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:178:35
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0.725">
-<failure message="api-endpoints.spec.ts:182:7 POST /api/analysts - create analyst" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:182:7 › Analysts API Endpoints › POST /api/analysts - create analyst 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [201, 401]
-
-      197 |     
-      198 |     // Should return 201 for success or 401 for auth failure
-    > 199 |     expect([201, 401]).toContain(response.status())
-          |                        ^
-      200 |     
-      201 |     if (response.status() === 201) {
-      202 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:199:24
-]]>
-</failure>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0.384">
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0.611">
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="0.941">
-<failure message="api-endpoints.spec.ts:257:7 POST /api/analysts/bulk - bulk create analysts" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:257:7 › Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "created"
-    Received path: []
-
-    Received value: {"data": {"count": 0, "created": [], "errors": ["Failed to create analyst bulk1@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache", "Failed to create analyst bulk2@example.com: Could not find the 'eligibleNewsletters' column of 'analysts' in the schema cache"]}, "success": true}
-
-      286 |       const data = await response.json()
-      287 |       expect(data).toHaveProperty('success', true)
-    > 288 |       expect(data).toHaveProperty('created')
-          |                    ^
-      289 |     }
-      290 |   })
-      291 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:288:20
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0.728">
-<failure message="api-endpoints.spec.ts:294:7 GET /api/publications - list publications" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:294:7 › Publications API Endpoints › GET /api/publications - list publications 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      306 |     if (response.status() === 200) {
-      307 |       const data = await response.json()
-    > 308 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      309 |     }
-      310 |   })
-      311 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:308:35
-]]>
-</failure>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0.164">
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="4.061">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="0.676">
-<failure message="api-endpoints.spec.ts:353:7 GET /api/events - list events" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:353:7 › Events API Endpoints › GET /api/events - list events 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      365 |     if (response.status() === 200) {
-      366 |       const data = await response.json()
-    > 367 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      368 |     }
-      369 |   })
-      370 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:367:35
-]]>
-</failure>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0.585">
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="0.557">
-<failure message="api-endpoints.spec.ts:392:7 GET /api/awards - list awards" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:392:7 › Awards API Endpoints › GET /api/awards - list awards 
-
-    Error: expect(received).toContain(expected) // indexOf
-
-    Expected value: 500
-    Received array: [200, 401]
-
-      400 |     
-      401 |     // Should return 200 for success or 401 for auth failure
-    > 402 |     expect([200, 401]).toContain(response.status())
-          |                        ^
-      403 |     
-      404 |     if (response.status() === 200) {
-      405 |       const data = await response.json()
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:402:24
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="0.55">
-<failure message="api-endpoints.spec.ts:412:7 GET /api/dashboard/metrics - dashboard metrics" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:412:7 › Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics 
-
-    Error: expect(received).toHaveProperty(path)
-
-    Expected path: "totalAnalysts"
-    Received path: []
-
-    Received value: {"cacheAge": 24, "cached": true, "data": {"activeAlerts": 0, "activeAnalysts": 99, "analystsAddedPast90Days": 99, "averageInfluenceScore": 0, "briefingFollowUps": 0, "briefingsDue": 0, "briefingsPast90Days": 0, "briefingsPlanned": 0, "briefingsYTD": 2, "cacheDuration": 300, "cacheEnabled": true, "calendarMeetings": 0, "completedBriefings": 0, "contentItemsPast90Days": 0, "engagementRate": 0, "expectedPerformanceGain": "80-90% faster dashboard loads", "newAnalysts": [{"company": "AnalystCompany", "createdAt": "2025-08-01T09:01:19.935748+00:00", "firstName": "Sarah", "id": "cla28db4622c22443ebb41dae3d", "lastName": "Chen"}, {"company": "BLR", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "James", "id": "clec2663da", "lastName": "Davis"}, {"company": "3sixtyinsights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Nicholas", "id": "cl57d5aef7", "lastName": "Biron"}, {"company": "NextGen Insights", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Yvette", "id": "clb97a8ef6", "lastName": "Cameron"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Jen", "id": "cl9277b2ec", "lastName": "Colletta"}, {"company": "Brandon Hall Group", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Mike", "id": "cl652fc6f3", "lastName": "Cook"}, {"company": "PeopleTech Partners", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Cara", "id": "cl3ea4b44b", "lastName": "Brennan"}, {"company": "NelsonHall", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Gary", "id": "cl51dc7829", "lastName": "Bragar"}, {"company": "IDC", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Megan", "id": "cl4ec31b8d", "lastName": "Buttita"}, {"company": "Human Resource Executive", "createdAt": "2025-07-31T01:43:33.266426+00:00", "firstName": "Elizabeth", "id": "cl26599969", "lastName": "Clarke"}], "newsletterEngagements": 0, "newslettersSentPast90Days": 0, "publishedContent": 0, "queryOptimization": "Cached with Supabase queries", "recentContentItems": [], "recentInteractions": 2, "relationshipHealth": 4, "relevantSocialPosts": 0, "totalAnalysts": 99}, "success": true}
-
-      424 |     if (response.status() === 200) {
-      425 |       const data = await response.json()
-    > 426 |       expect(data).toHaveProperty('totalAnalysts')
-          |                    ^
-      427 |       expect(data).toHaveProperty('activeAnalysts')
-      428 |       expect(data).toHaveProperty('engagementRate')
-      429 |     }
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:426:20
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="0.723">
-<failure message="api-endpoints.spec.ts:432:7 GET /api/dashboard/top-analysts - top analysts" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:432:7 › Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      444 |     if (response.status() === 200) {
-      445 |       const data = await response.json()
-    > 446 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      447 |     }
-      448 |   })
-      449 |
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:446:35
-]]>
-</failure>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0.157">
-<failure message="api-endpoints.spec.ts:450:7 GET /api/dashboard/recent-activity - recent activity" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:450:7 › Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      462 |     if (response.status() === 200) {
-      463 |       const data = await response.json()
-    > 464 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      465 |     }
-      466 |   })
-      467 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:464:35
-]]>
-</failure>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="1.578">
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="1.415">
-<failure message="api-endpoints.spec.ts:490:7 GET /api/social-media/recent-activity - recent social activity" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:490:7 › Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: true
-    Received: false
-
-      502 |     if (response.status() === 200) {
-      503 |       const data = await response.json()
-    > 504 |       expect(Array.isArray(data)).toBe(true)
-          |                                   ^
-      505 |     }
-      506 |   })
-      507 | })
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:504:35
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0.856">
-<failure message="api-endpoints.spec.ts:510:7 404 for non-existent endpoints" type="FAILURE">
-<![CDATA[  [Mobile Safari] › api/api-endpoints.spec.ts:510:7 › Error Handling › 404 for non-existent endpoints 
-
-    Error: expect(received).toBe(expected) // Object.is equality
-
-    Expected: 404
-    Received: 500
-
-      511 |     const response = await request.get(`${BASE_URL}/api/non-existent-endpoint`)
-      512 |     
-    > 513 |     expect(response.status()).toBe(404)
-          |                               ^
-      514 |   })
-      515 |
-      516 |   test('405 for wrong HTTP methods', async ({ request }) => {
-        at /Users/arnaudgrunwald/AGcodework/analyst-portal/tests/api/api-endpoints.spec.ts:513:31
-]]>
-</failure>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="0.012">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-</testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="Microsoft Edge" tests="29" failures="0" skipped="29" time="0" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-</testsuite>
-<testsuite name="api/api-endpoints.spec.ts" timestamp="2025-08-04T04:07:21.171Z" hostname="Google Chrome" tests="29" failures="0" skipped="29" time="0" errors="0">
-<testcase name="Authentication API Endpoints › POST /api/auth/login - successful login" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/login - invalid credentials" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Authentication API Endpoints › POST /api/auth/analyst - analyst login" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - requires authentication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/general - authenticated request" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - update settings" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › PUT /api/settings/general - validation errors" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Settings API Endpoints › GET /api/settings/calendar-connections - requires authentication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts - list analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - create analyst" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts - validation errors" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › GET /api/analysts/[id] - get specific analyst" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Analysts API Endpoints › POST /api/analysts/bulk - bulk create analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications - list publications" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › POST /api/publications - create publication" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Publications API Endpoints › GET /api/publications/discover - publication discovery" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Events API Endpoints › GET /api/events - list events" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Events API Endpoints › POST /api/events - create event" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Awards API Endpoints › GET /api/awards - list awards" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/metrics - dashboard metrics" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/top-analysts - top analysts" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Dashboard API Endpoints › GET /api/dashboard/recent-activity - recent activity" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Briefings API Endpoints › GET /api/briefings - list briefings" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Social Media API Endpoints › GET /api/social-media/recent-activity - recent social activity" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 404 for non-existent endpoints" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 405 for wrong HTTP methods" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Error Handling › 400 for malformed JSON" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints have appropriate CORS headers" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
-</testcase>
-<testcase name="Rate Limiting and Security › API endpoints reject requests with invalid content types" classname="api/api-endpoints.spec.ts" time="0">
-<skipped>
-</skipped>
 </testcase>
 </testsuite>
 </testsuites>
