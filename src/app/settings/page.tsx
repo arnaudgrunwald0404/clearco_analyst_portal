@@ -37,6 +37,7 @@ interface SyncProgress {
 }
 
 import { useAuth } from '@/contexts/AuthContext'
+import { FileText } from 'lucide-react'
 
 function SettingsPageContent() {
   const { user } = useAuth()
@@ -543,10 +544,6 @@ function SettingsPageContent() {
       })
     }
   }
-
-import { FileText } from 'lucide-react'
-
-// ... (keep existing imports)
 
 // ... (inside SettingsPageContent component)
   // Define menu sections

@@ -16,7 +16,7 @@ import {
   Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/components/ui/toast'
 
 const contentTypes = [
   { value: 'ALL', label: 'All Types' },

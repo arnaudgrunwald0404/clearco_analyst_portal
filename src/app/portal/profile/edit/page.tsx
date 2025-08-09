@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { AnalystProfileForm } from '@/components/forms/analyst-profile-form'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/components/ui/toast'
 
 export default function EditProfilePage() {
   const { user } = useAuth()
