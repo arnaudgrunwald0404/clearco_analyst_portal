@@ -18,6 +18,12 @@ function encryptToken(token: string): string {
   return CryptoJS.AES.encrypt(token, ENCRYPTION_KEY).toString()
 }
 
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 10)
+  return `cl${timestamp}${randomPart}`
+}
+
 export async function GET(request: NextRequest) {
   console.log('\n' + '='.repeat(80))
   console.log('📅 [CALENDAR OAUTH] Google Calendar OAuth callback started')
@@ -269,6 +275,7 @@ export async function GET(request: NextRequest) {
       const { data: newConnection, error: createError } = await supabase
         .from('calendar_connections')
         .insert({
+          id: generateId(),
           user_id: user_id,
           title: connectionData.title || calendarName, // Use provided title or calendar name as default
           email: userInfo.data.email,
