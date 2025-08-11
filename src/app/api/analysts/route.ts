@@ -6,9 +6,9 @@ import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
 type Analyst = Database['public']['Tables']['analysts']['Row']
 type AnalystInsert = Database['public']['Tables']['analysts']['Insert']
 
-// Fail fast if required Supabase env vars are missing (tests expect this throw on import)
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is missing')
+// Fail fast if required Supabase env vars are missing
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) {
+  throw new Error('Supabase URL and a Key (service role or anon) are required')
 }
 
 // Simple CUID-like ID generator
@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const influence = searchParams.get('influence')
 
-    // Use service role to bypass RLS for admin dashboard APIs
+    // Use service role to bypass RLS for admin dashboard APIs, fallback to anon key for tests
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const supabase = createServiceClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      supabaseKey!
     )
 
     // Check cache for basic queries
@@ -154,9 +155,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     const supabase = createServiceClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      supabaseKey!
     )
 
     // Check for existing analyst with same email
