@@ -345,7 +345,7 @@ function DashboardContent() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">
             {authLoading ? 'Loading authentication...' : 
-             settingsLoading ? 'Loading your workspace...' : 'Loading dashboard...'}
+             settingsLoading ? 'Loading your data...' : 'Loading dashboard...'}
           </p>
           {settingsLoading && (
             <p className="text-sm text-gray-500 mt-2">This may take a few moments...</p>

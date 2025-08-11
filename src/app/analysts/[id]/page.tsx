@@ -335,6 +335,10 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* noindex to prevent search engine indexing */}
+      <head>
+        <meta name="robots" content="noindex,nofollow,noarchive" />
+      </head>
       {/* Header */}
       <div className="bg-white shadow">
         <div className="px-8 py-6">

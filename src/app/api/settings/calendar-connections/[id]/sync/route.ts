@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth-utils'
 import type { Database } from '@/types/supabase'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import CryptoJS from 'crypto-js'
+import { decrypt as decryptGcm } from '@/lib/crypto'
 
 type calendar_connections = Database['public']['Tables']['calendar_connections']['Row']
 type CalendarMeeting = Database['public']['Tables']['calendar_meetings']['Row']
@@ -17,12 +21,24 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 )
 
-// Encryption key for storing tokens
+// Support decrypting tokens stored via either our GCM helper (ENCRYPTION_SECRET)
+// or legacy CryptoJS AES with ENCRYPTION_KEY
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'fallback-key-change-in-production'
 
 function decryptToken(encryptedToken: string): string {
-  const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY)
-  return bytes.toString(CryptoJS.enc.Utf8)
+  // Try GCM decrypt first (current storage method)
+  try {
+    return decryptGcm(encryptedToken)
+  } catch {}
+  // Fallback to CryptoJS AES with ENCRYPTION_KEY (legacy)
+  try {
+    const bytes = CryptoJS.AES.decrypt(encryptedToken, ENCRYPTION_KEY)
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8)
+    if (!decrypted) throw new Error('Empty decrypt result')
+    return decrypted
+  } catch (err) {
+    throw new Error('Failed to decrypt access token')
+  }
 }
 
 // Simple CUID-like ID generator
@@ -35,12 +51,12 @@ function generateId(): string {
 // Store for SSE connections
 const syncConnections = new Map<string, any>()
 
-// Store for active sync locks (user_id -> { connectionId, start_time, is_active })
-const syncLocks = new Map<string, { connectionId: string; start_time: Date; is_active: boolean }>()
+// Store for active sync locks (connectionId -> { start_time, is_active })
+const syncLocks = new Map<string, { start_time: Date; is_active: boolean }>()
 
-// Function to check if a sync is already in progress for a user
-function isSyncInProgress(user_id: string): boolean {
-  const lock = syncLocks.get(user_id)
+// Function to check if a sync is already in progress for a connection
+function isSyncInProgress(connectionId: string): boolean {
+  const lock = syncLocks.get(connectionId)
   
   if (!lock) return false
   
@@ -51,27 +67,23 @@ function isSyncInProgress(user_id: string): boolean {
   return is_active
 }
 
-// Function to acquire a sync lock
-function acquireSyncLock(user_id: string, connectionId: string): boolean {
-  if (isSyncInProgress(user_id)) {
+// Function to acquire a sync lock (by connection)
+function acquireSyncLock(connectionId: string): boolean {
+  if (isSyncInProgress(connectionId)) {
     return false
   }
   
-  syncLocks.set(user_id, {
-    connectionId,
-    start_time: new Date(),
-    is_active: true
-  })
+  syncLocks.set(connectionId, { start_time: new Date(), is_active: true })
   
   return true
 }
 
 // Function to release a sync lock
-function releaseSyncLock(user_id: string) {
-  const lock = syncLocks.get(user_id)
+function releaseSyncLock(connectionId: string) {
+  const lock = syncLocks.get(connectionId)
   if (lock) {
     lock.is_active = false
-    syncLocks.delete(user_id)
+    syncLocks.delete(connectionId)
   }
 }
 
@@ -112,9 +124,7 @@ function matchAnalystByEmail(email: string, analysts: any[]): any | null {
   return match || null
 }
 
-async function startCalendarSync(connectionId: string, user_id: string, forceSync: boolean = false) {
-  const supabase = await createClient()
-  
+async function startCalendarSync(connectionId: string, forceSync: boolean = false, supabase: SupabaseClient<Database>) {
   try {
     sendSSEMessage(connectionId, { 
       type: 'progress', 
@@ -127,7 +137,6 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
       .from('calendar_connections')
       .select('*')
       .eq('id', connectionId)
-      .eq('user_id', user_id)
       .single()
 
     if (connectionError || !connection) {
@@ -155,21 +164,28 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
       progress: 20 
     })
 
-    // Get time range for sync
+    // Get time range for sync: from Jan 1, 2024 to today + 6 months
     const now = new Date()
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const timeMin = new Date(Date.UTC(2024, 0, 1, 0, 0, 0))
+    const timeMaxDate = new Date(now)
+    timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
 
-    // Fetch events from Google Calendar
-    const response = await calendar.events.list({
-      calendarId: 'primary',
-      timeMin: thirtyDaysAgo.toISOString(),
-      timeMax: thirtyDaysFromNow.toISOString(),
-      singleEvents: true,
-      orderBy: 'start_time',
-    })
-
-    const events = response.data.items || []
+    // Fetch events from Google Calendar with pagination
+    const events: any[] = []
+    let pageToken: string | undefined = undefined
+    do {
+      const resp = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMaxDate.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 2500,
+        pageToken
+      })
+      events.push(...(resp.data.items || []))
+      pageToken = resp.data.nextPageToken || undefined
+    } while (pageToken)
     
     sendSSEMessage(connectionId, { 
       type: 'progress', 
@@ -206,14 +222,49 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
     let createdBriefings = 0
     let createdMeetings = 0
 
-    // Process events
+    // Process events grouped by month
+    let currentMonthKey: string | null = null
+    let currentMonthLabel: string | null = null
+    let currentMonthAnalystCount = 0
+
+    const formatMonthLabel = (d: Date) => d.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+
     for (const event of events) {
       try {
         if (!event.start?.dateTime || !event.end?.dateTime) continue
 
         const start_time = new Date(event.start.dateTime)
         const end_time = new Date(event.end.dateTime)
+        const durationMinutes = Math.max(1, Math.round((end_time.getTime() - start_time.getTime()) / (60 * 1000)))
         const attendeeEmails = event.attendees?.map(a => a.email).filter(Boolean) || []
+
+        // Month boundary handling
+        const monthKey = `${start_time.getUTCFullYear()}-${String(start_time.getUTCMonth() + 1).padStart(2, '0')}`
+        if (currentMonthKey === null) {
+          currentMonthKey = monthKey
+          currentMonthLabel = formatMonthLabel(start_time)
+          sendSSEMessage(connectionId, {
+            type: 'month_started',
+            month: currentMonthLabel
+          })
+        } else if (monthKey !== currentMonthKey) {
+          // Emit summary for previous month
+          if (currentMonthLabel) {
+            sendSSEMessage(connectionId, {
+              type: 'month_result',
+              month: currentMonthLabel,
+              foundAnalystMeetings: currentMonthAnalystCount
+            })
+          }
+          // Start new month
+          currentMonthKey = monthKey
+          currentMonthLabel = formatMonthLabel(start_time)
+          currentMonthAnalystCount = 0
+          sendSSEMessage(connectionId, {
+            type: 'month_started',
+            month: currentMonthLabel
+          })
+        }
         
         // Check for duplicate briefing
         const briefingKey = `${event.summary}|${start_time.toISOString()}`
@@ -223,75 +274,81 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
           // Try to match attendees with analysts
           const matchedAnalysts = attendeeEmails
             .map(email => email ? matchAnalystByEmail(email, analysts) : null)
-            .filter(Boolean)
+            .filter(Boolean) as any[]
 
-                     // Create calendar meeting record
-           const meetingData: CalendarMeetingInsert = {
-             id: generateId(),
-             analyst_id: matchedAnalysts[0]?.id || '',
-             calendarConnectionId: connection.id,
-             google_event_id: event.id || generateId(),
-             title: event.summary || 'Untitled Meeting',
-             start_time: start_time.toISOString(),
-             end_time: end_time.toISOString(),
-             attendees: JSON.stringify(attendeeEmails)
-           }
+          // Create or upsert calendar meeting record
+          const meetingData: CalendarMeetingInsert = {
+            id: generateId(),
+            calendar_connection_id: connection.id,
+            google_event_id: event.id || generateId(),
+            title: event.summary || 'Untitled Meeting',
+            description: event.description || null,
+            start_time: start_time.toISOString(),
+            end_time: end_time.toISOString(),
+            attendees: attendeeEmails.length ? JSON.stringify(attendeeEmails) : null,
+            analyst_id: matchedAnalysts[0]?.id || null,
+            is_analyst_meeting: matchedAnalysts.length > 0,
+            confidence: matchedAnalysts.length > 0 ? 0.8 : 0.0,
+            tags: null
+          }
 
-          if (matchedAnalysts.length > 0) {
-            const { error: meetingError } = await supabase
-              .from('calendar_meetings')
-              .upsert(meetingData, { onConflict: 'google_event_id' })
+          const { error: meetingError } = await supabase
+            .from('calendar_meetings')
+            .upsert(meetingData, { onConflict: 'google_event_id' })
 
-            if (!meetingError) {
-              createdMeetings++
+          if (!meetingError) {
+            createdMeetings++
+          }
+
+          // Create briefing if it's a relevant meeting and not duplicate
+          if (event.summary && matchedAnalysts.length > 0) {
+            currentMonthAnalystCount += 1
+            // Emit realtime increment for analyst meetings discovered
+            sendSSEMessage(connectionId, {
+              type: 'analyst_meeting_found'
+            })
+            const briefingData: BriefingInsert = {
+              id: generateId(),
+              title: event.summary,
+              description: event.description || `Meeting with ${matchedAnalysts.map(a => `${a.firstName} ${a.lastName}`).join(', ')}`,
+              scheduledAt: start_time.toISOString(),
+              status: start_time > now ? 'SCHEDULED' : 'COMPLETED',
+              agenda: event.location ? `Location: ${event.location}` : null,
+              duration: durationMinutes as any,
+              notes: null
             }
 
-            // Create briefing if it's a relevant meeting
-            if (event.summary && matchedAnalysts.length > 0) {
-              const briefingData: BriefingInsert = {
+            const { data: newBriefing, error: briefingError } = await supabase
+              .from('briefings')
+              .insert(briefingData)
+              .select()
+              .single()
+
+            if (!briefingError && newBriefing) {
+              // Add to our duplicate check set
+              briefingSet.add(briefingKey)
+              createdBriefings++
+
+              // Associate analysts with briefing
+              const briefingAnalysts: BriefingAnalystInsert[] = matchedAnalysts.map(analyst => ({
                 id: generateId(),
-                title: event.summary,
-                description: event.description || `Meeting with ${matchedAnalysts.map(a => `${a.firstName} ${a.lastName}`).join(', ')}`,
-                scheduledAt: start_time.toISOString(),
-                status: start_time > now ? 'SCHEDULED' : 'COMPLETED',
-                agenda: event.location ? `Location: ${event.location}` : null
-              }
+                briefingId: newBriefing.id,
+                analystId: analyst.id
+              }))
 
-              const { data: newBriefing, error: briefingError } = await supabase
-                .from('briefings')
-                .insert(briefingData)
-                .select()
-                .single()
-
-              if (!briefingError && newBriefing) {
-                // Add to our duplicate check set
-                briefingSet.add(briefingKey)
-                createdBriefings++
-
-                // Associate analysts with briefing
-                const briefingAnalysts: BriefingAnalystInsert[] = matchedAnalysts.map(analyst => ({
-                  id: generateId(),
-                  briefingId: newBriefing.id,
-                  analyst_id: analyst.id
-                }))
-
-                await supabase
-                  .from('briefing_analysts')
-                  .insert(briefingAnalysts)
-              }
+              await supabase
+                .from('briefing_analysts')
+                .insert(briefingAnalysts)
             }
           }
         }
 
         processedEvents++
-        
-        // Update progress
-        const progress = 50 + Math.floor((processedEvents / events.length) * 40)
-        sendSSEMessage(connectionId, { 
-          type: 'progress', 
-          message: `Processed ${processedEvents}/${events.length} events`, 
-          progress 
+        // Emit total processed counter increment
+        sendSSEMessage(connectionId, {
+          type: 'event_processed'
         })
+        // No per-event progress row to keep UI concise
 
       } catch (eventError) {
         console.error('Error processing event:', eventError)
@@ -299,10 +356,19 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
       }
     }
 
+    // Emit summary for last month
+    if (currentMonthLabel) {
+      sendSSEMessage(connectionId, {
+        type: 'month_result',
+        month: currentMonthLabel,
+        foundAnalystMeetings: currentMonthAnalystCount
+      })
+    }
+
     // Update connection sync timestamp
     await supabase
       .from('calendar_connections')
-              .update({ last_sync: new Date().toISOString() })
+      .update({ last_sync_at: new Date().toISOString() })
       .eq('id', connection.id)
 
     sendSSEMessage(connectionId, { 
@@ -330,7 +396,7 @@ async function startCalendarSync(connectionId: string, user_id: string, forceSyn
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
     })
   } finally {
-    releaseSyncLock(user_id)
+    releaseSyncLock(connectionId)
     setTimeout(() => {
       const connection = syncConnections.get(connectionId)
       if (connection) {
@@ -348,25 +414,52 @@ export async function POST(
   try {
     const { id } = await params
     const connectionId = id
-    const { user_id, forceSync } = await request.json()
+    const body = await request.json().catch(() => ({})) as { user_id?: string; forceSync?: boolean }
+    const forceSync = body.forceSync
 
-    if (!user_id) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      )
+    // Allow internal jobs to bypass user authentication using a shared secret
+    const internalSecret = process.env.INTERNAL_JOB_SECRET
+    const providedSecret = request.headers.get('x-internal-job')
+    let isInternal = false
+    if (internalSecret && providedSecret && providedSecret === internalSecret) {
+      isInternal = true
+    }
+
+    if (!isInternal) {
+      // Require auth to start sync when not an internal job
+      const authResult = await requireAuth()
+      if (authResult instanceof NextResponse) {
+        return authResult
+      }
+      // const authUser = authResult // currently unused
     }
 
     // Check if sync is already in progress
-    if (!acquireSyncLock(user_id, connectionId)) {
+    if (!acquireSyncLock(connectionId)) {
       return NextResponse.json(
         { error: 'Calendar sync already in progress' },
         { status: 409 }
       )
     }
 
+    // Build appropriate Supabase client
+    let supabaseClient: SupabaseClient<Database>
+    if (isInternal) {
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      if (!serviceRoleKey || !supabaseUrl) {
+        return NextResponse.json(
+          { error: 'Server misconfiguration: missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL' },
+          { status: 500 }
+        )
+      }
+      supabaseClient = createServiceClient<Database>(supabaseUrl, serviceRoleKey)
+    } else {
+      supabaseClient = await createClient()
+    }
+
     // Start the sync process asynchronously
-    startCalendarSync(connectionId, user_id, forceSync)
+    startCalendarSync(connectionId, forceSync, supabaseClient)
 
     return NextResponse.json({
       success: true,
@@ -391,12 +484,6 @@ export async function GET(
 ) {
   const { id } = await params
   const connectionId = id
-  const { searchParams } = new URL(request.url)
-  const user_id = searchParams.get('user_id')
-
-  if (!user_id) {
-    return new NextResponse('User ID is required', { status: 400 })
-  }
 
   // Set up SSE
   const stream = new ReadableStream({

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { encrypt, decrypt } from '@/lib/crypto'
+import CryptoJS from 'crypto-js'
 import { Pool } from 'pg'
 import { requireAuth } from '@/lib/auth-utils'
 
@@ -18,6 +18,9 @@ function generateId(): string {
   const randomPart = Math.random().toString(36).substring(2, 8)
   return `cl${timestamp}${randomPart}`
 }
+
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'fallback-key-change-in-production'
+const encryptToken = (token: string | null | undefined) => token ? CryptoJS.AES.encrypt(token, ENCRYPTION_KEY).toString() : null
 
 // GET - Fetch all calendar connections for the user
 export async function GET() {
@@ -214,8 +217,8 @@ export async function POST(request: NextRequest) {
           WHERE id = $6
           RETURNING id, title, email, is_active
         `, [
-          encrypt(tokens.access_token || ''),
-          tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
+          encryptToken(tokens.access_token || ''),
+          encryptToken(tokens.refresh_token || undefined),
           tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           true,
           new Date().toISOString(),
@@ -249,8 +252,8 @@ export async function POST(request: NextRequest) {
           user_id,
           `${userInfo.name}'s Calendar`,
           userInfo.email || '',
-          encrypt(tokens.access_token || ''),
-          tokens.refresh_token ? encrypt(tokens.refresh_token) : null,
+          encryptToken(tokens.access_token || ''),
+          encryptToken(tokens.refresh_token || undefined),
           tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           true,
           new Date().toISOString(),

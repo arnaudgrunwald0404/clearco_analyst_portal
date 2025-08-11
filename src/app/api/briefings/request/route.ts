@@ -29,10 +29,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Slot ID is required.' }, { status: 400 })
     }
 
-    // 2. Check if the slot is still available
+    // 2. Check if the slot is still available and get its start_time
     const { data: slot, error: slotError } = await supabase
       .from('availability_slots')
-      .select('is_booked')
+      .select('is_booked, start_time')
       .eq('id', slot_id)
       .single()
 
@@ -60,6 +60,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         slot_id,
         analyst_id: analyst.id,
+        start_time: slot.start_time,
+        analyst_email: authUser.email
       }),
     })
 

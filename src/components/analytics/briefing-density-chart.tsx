@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 interface Contribution {
   date: string
   count: number
+  maxInfluence?: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH' | null
 }
 
 const BriefingDensityChart = () => {
@@ -48,16 +49,24 @@ const BriefingDensityChart = () => {
   })
 
   const contributionsByDate = (Array.isArray(data) ? data : []).reduce((acc, curr) => {
-    acc[curr.date] = curr.count
+    acc[curr.date] = { count: curr.count, maxInfluence: curr.maxInfluence }
     return acc
-  }, {} as Record<string, number>)
+  }, {} as Record<string, { count: number; maxInfluence?: Contribution['maxInfluence'] }>)
 
-  const getColor = (count: number) => {
-    if (count === 0) return 'bg-gray-100'
-    if (count <= 1) return 'bg-green-200'
-    if (count <= 3) return 'bg-green-400'
-    if (count <= 5) return 'bg-green-600'
-    return 'bg-green-800'
+  const getInfluenceColor = (maxInfluence?: Contribution['maxInfluence'], count?: number) => {
+    if (!count || count === 0) return 'bg-gray-100 text-gray-900'
+    switch (maxInfluence) {
+      case 'VERY_HIGH':
+        return 'bg-red-600 text-white'
+      case 'HIGH':
+        return 'bg-orange-500 text-white'
+      case 'MEDIUM':
+        return 'bg-yellow-400 text-gray-900'
+      case 'LOW':
+        return 'bg-green-500 text-white'
+      default:
+        return 'bg-gray-300 text-gray-900'
+    }
   }
 
   const months = [
@@ -98,24 +107,29 @@ const BriefingDensityChart = () => {
             <div className="grid grid-flow-col grid-rows-7 gap-1">
               {dates.map((date, i) => {
                 const dateString = date.toISOString().split('T')[0]
-                const count = contributionsByDate[dateString] || 0
+                const info = contributionsByDate[dateString] || { count: 0, maxInfluence: undefined }
+                const color = getInfluenceColor(info.maxInfluence, info.count)
                 return (
                   <div
                     key={i}
-                    className={`w-4 h-4 rounded-sm ${getColor(count)}`}
-                    title={`${count} briefings on ${date.toDateString()}`}
-                  />
+                    className={`relative w-4 h-4 rounded-sm flex items-center justify-center ${color}`}
+                    title={`${info.count} meeting${info.count === 1 ? '' : 's'} on ${date.toDateString()}`}
+                  >
+                    {info.count > 1 && (
+                      <span className="text-[10px] leading-none font-semibold">
+                        {info.count}
+                      </span>
+                    )}
+                  </div>
                 )
               })}
             </div>
-            <div className="flex justify-end items-center mt-4 text-xs text-gray-600">
-              <span>Less</span>
-              <div className="w-4 h-4 bg-gray-100 rounded-sm mx-1"></div>
-              <div className="w-4 h-4 bg-green-200 rounded-sm mx-1"></div>
-              <div className="w-4 h-4 bg-green-400 rounded-sm mx-1"></div>
-              <div className="w-4 h-4 bg-green-600 rounded-sm mx-1"></div>
-              <div className="w-4 h-4 bg-green-800 rounded-sm mx-1"></div>
-              <span>More</span>
+            <div className="flex justify-end items-center mt-4 text-xs text-gray-600 gap-2">
+              <span>Influence:</span>
+              <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-sm bg-green-500" /> <span>Low</span></div>
+              <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-sm bg-yellow-400" /> <span>Medium</span></div>
+              <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-sm bg-orange-500" /> <span>High</span></div>
+              <div className="flex items-center gap-1"><div className="w-4 h-4 rounded-sm bg-red-600" /> <span>Very High</span></div>
             </div>
           </div>
         )}

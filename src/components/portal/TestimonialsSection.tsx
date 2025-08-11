@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import { Star, Quote } from 'lucide-react'
 
 interface Testimonial {
@@ -20,8 +21,9 @@ export function TestimonialsSection() {
     const fetchTestimonials = async () => {
       try {
         const response = await fetch('/api/testimonials')
-        const data = await response.json()
-        setTestimonials(data)
+        const json = await response.json()
+        const list = Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : [])
+        setTestimonials(list)
       } catch (error) {
         console.error('Error fetching testimonials:', error)
       } finally {
@@ -47,7 +49,7 @@ export function TestimonialsSection() {
     )
   }
 
-  if (testimonials.length === 0) {
+  if (!Array.isArray(testimonials) || testimonials.length === 0) {
     return null
   }
 

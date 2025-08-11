@@ -660,6 +660,8 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
                   )}
                 </div>
 
+                {/* Eligible Newsletters - temporarily removed */}
+                {/*
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Eligible Newsletters
@@ -697,6 +699,7 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
                     })}
                   </div>
                 </div>
+                */}
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
                   <button
@@ -759,7 +762,7 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
                         <div>• Covered Topics</div>
                         <div>• Type</div>
                         <div>• Influence Level</div>
-                        <div>• Eligible Newsletters</div>
+                        {/* <div>• Eligible Newsletters</div> */}
                       </div>
                     </div>
                   </>
@@ -824,7 +827,7 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
                               <option value="coveredTopics">Covered Topics</option>
                               <option value="type">Type</option>
                               <option value="influence">Influence</option>
-                              <option value="eligibleNewsletters">Eligible Newsletters</option>
+                              {/* <option value="eligibleNewsletters">Eligible Newsletters</option> */}
                             </select>
                           </div>
                         </div>
