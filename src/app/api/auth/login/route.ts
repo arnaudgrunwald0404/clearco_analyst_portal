@@ -9,25 +9,36 @@ interface LoginRequest {
 }
 
 export async function POST(request: NextRequest) {
+  const reqId = crypto.randomUUID()
+  const { pathname, origin } = new URL(request.url)
+  console.log(`[LOGIN ${reqId}] ⇢ POST ${pathname}`)
   try {
     const { email, password, provider }: LoginRequest = await request.json()
+    console.log(`[LOGIN ${reqId}] Body: email=${email || 'missing'} provider=${provider || 'password'} password_present=${!!password}`)
 
     if (!email) {
-      return NextResponse.json(
+      console.warn(`[LOGIN ${reqId}] Missing email`)
+      const resp = NextResponse.json(
         { success: false, error: 'Email is required' },
         { status: 400 }
       )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
     // Validate email domain and block unauthorized users
     const emailDomain = email.split('@')[1]?.toLowerCase()
+    console.log(`[LOGIN ${reqId}] Email domain: ${emailDomain}`)
     
     // Block dev@example.com specifically
     if (email.toLowerCase() === 'dev@example.com') {
-      return NextResponse.json(
+      console.warn(`[LOGIN ${reqId}] Blocked unauthorized email dev@example.com`)
+      const resp = NextResponse.json(
         { success: false, error: 'This email is not authorized for access' },
         { status: 403 }
       )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
     // Check if email is from authorized domain OR is a registered analyst
@@ -48,16 +59,20 @@ export async function POST(request: NextRequest) {
         .single()
       
       isRegisteredAnalyst = !analystError && !!analyst
+      console.log(`[LOGIN ${reqId}] isAuthorizedDomain=${isAuthorizedDomain} isRegisteredAnalyst=${isRegisteredAnalyst}`)
     }
 
     if (!isAuthorizedDomain && !isRegisteredAnalyst) {
-      return NextResponse.json(
+      console.warn(`[LOGIN ${reqId}] Access denied (domain + analyst checks failed) for ${email}`)
+      const resp = NextResponse.json(
         { 
           success: false, 
           error: 'Access restricted to ClearCompany employees and registered analysts only' 
         },
         { status: 403 }
       )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
     const supabase = await createClient()
@@ -67,29 +82,38 @@ export async function POST(request: NextRequest) {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`
+          redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback`
         }
       })
 
       if (error) {
-        return NextResponse.json(
+        console.error(`[LOGIN ${reqId}] OAuth error:`, error)
+        const resp = NextResponse.json(
           { success: false, error: error.message },
           { status: 400 }
         )
+        resp.headers.set('X-Request-Id', reqId)
+        return resp
       }
 
-      return NextResponse.json({
+      console.log(`[LOGIN ${reqId}] OAuth redirect generated`)
+      const resp = NextResponse.json({
         success: true,
         redirect: data.url
       })
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
     // Handle password authentication
     if (!password) {
-      return NextResponse.json(
+      console.warn(`[LOGIN ${reqId}] Missing password for password login`)
+      const resp = NextResponse.json(
         { success: false, error: 'Password is required for email login' },
         { status: 400 }
       )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
     // Sign in with Supabase auth
@@ -99,13 +123,16 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError || !authData.user) {
-      return NextResponse.json(
+      console.warn(`[LOGIN ${reqId}] Invalid credentials for ${email}`)
+      const resp = NextResponse.json(
         { success: false, error: 'Invalid email or password' },
         { status: 401 }
       )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
     }
 
-    console.log('✅ Authentication successful for:', authData.user.email)
+    console.log(`[LOGIN ${reqId}] ✅ Authentication successful for: ${authData.user.email}`)
 
     // Determine role based on validated authorization
     let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
@@ -132,19 +159,23 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     }
 
-    console.log('✅ Returning user data:', userData)
+    console.log(`[LOGIN ${reqId}] Returning user data:`, { id: userData.id, email: userData.email, role: userData.role })
 
-    return NextResponse.json({
+    const resp = NextResponse.json({
       success: true,
       user: userData,
       redirectTo: role === 'ANALYST' ? '/portal' : '/'
     })
+    resp.headers.set('X-Request-Id', reqId)
+    return resp
 
   } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json(
+    console.error(`[LOGIN ${reqId}] Login error:`, error)
+    const resp = NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     )
+    resp.headers.set('X-Request-Id', reqId)
+    return resp
   }
 } 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { 
@@ -35,21 +35,33 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
   const [totalAnalysts, setTotalAnalysts] = useState(0)
   const [publicationsFound, setPublicationsFound] = useState(0)
   const [logs, setLogs] = useState<string[]>([])
+  const [tick, setTick] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [completedAnalysts, setCompletedAnalysts] = useState<Array<{name: string, publicationsFound: number}>>([])
   const [currentAnalystIndex, setCurrentAnalystIndex] = useState(0)
+  const startedRef = useRef(false)
+  const esRef = useRef<EventSource | null>(null)
 
   useEffect(() => {
-    if (autoStart) {
+    if (autoStart && !startedRef.current) {
+      startedRef.current = true
       startDiscovery()
     }
   }, [autoStart])
 
+  useEffect(() => {
+    return () => {
+      esRef.current?.close()
+      esRef.current = null
+      startedRef.current = false
+    }
+  }, [])
+
   const addLog = (message: string) => {
-    setLogs(prev => [...prev.slice(-4), message]) // Keep last 5 logs
+    setLogs(prev => [...prev, message])
   }
 
-  const startDiscovery = async () => {
+  const startDiscovery = () => {
     setIsRunning(true)
     setIsCompleted(false)
     setError(null)
@@ -59,9 +71,16 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
     setCompletedAnalysts([])
     setCurrentAnalystIndex(0)
     setCurrentMessage('Starting discovery...')
+    setTick(0)
+
+    // Animated dots for current analyst
+    const interval = setInterval(() => setTick(t => (t + 1) % 3), 700)
 
     try {
+      // Close any existing stream before starting a new one
+      esRef.current?.close()
       const eventSource = new EventSource('/api/publications/discover-progress')
+      esRef.current = eventSource
       
       eventSource.onmessage = (event) => {
         try {
@@ -90,8 +109,8 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
               if (update.data.totalAnalysts && !totalAnalysts) {
                 setTotalAnalysts(update.data.totalAnalysts)
               }
-              setCurrentMessage(`Processing analyst ${analystIndex}${total ? `/${total}` : ''}: ${update.data.analyst}`)
-              addLog(`🔍 Starting ${update.data.analyst} (${update.data.company || 'Unknown company'})`)
+              setCurrentMessage(`Processing analyst ${analystIndex}${total ? `/${total}` : ''}: ${update.data.analyst}${'.'.repeat((tick % 3) + 1)}`)
+              addLog(`🔍 Searching ${update.data.analyst}${'.'.repeat((tick % 3) + 1)}`)
               if (update.data.progress !== undefined) {
                 setProgress(update.data.progress)
               }
@@ -102,7 +121,9 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
 
             case 'analyst_complete':
               const found = update.data.publicationsFound || 0
-              addLog(`✅ ${update.data.analyst}: ${found} publications found`)
+              const titles = Array.isArray(update.data.topTitles) ? update.data.topTitles : []
+              addLog(`✅ ${update.data.analyst}: ${found} publication${found === 1 ? '' : 's'} found`)
+              titles.slice(0,3).forEach((t: string, i: number) => addLog(`   • ${t}`))
               setCompletedAnalysts(prev => [...prev, { name: update.data.analyst, publicationsFound: found }])
               setPublicationsFound(prev => prev + found)
               if (update.data.progress !== undefined) {
@@ -119,6 +140,7 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
               setCurrentMessage(`Discovery completed! Found ${update.data.totalFound} publications.`)
               addLog(`🎉 Discovery completed: ${update.data.totalFound} total publications`)
               onComplete(update.data.publications)
+              clearInterval(interval)
               eventSource.close()
               break
 
@@ -127,6 +149,7 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
               setCurrentMessage('Discovery failed')
               addLog(`❌ Error: ${update.data.message}`)
               onError(update.data.message || 'Discovery failed')
+              clearInterval(interval)
               eventSource.close()
               break
           }
@@ -140,11 +163,7 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
         setError('Connection to discovery service failed')
         setCurrentMessage('Connection failed')
         onError('Connection to discovery service failed')
-        eventSource.close()
-      }
-
-      // Cleanup on unmount
-      return () => {
+        clearInterval(interval)
         eventSource.close()
       }
 
@@ -153,6 +172,7 @@ export function DiscoveryProgress({ onComplete, onError, autoStart = false }: Di
       setError(errorMessage)
       setCurrentMessage('Failed to start')
       onError(errorMessage)
+      // interval will not have started if we error here
     } finally {
       setIsRunning(false)
     }

@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         console.log('📋 [GOOGLE OAUTH] Found calendars:', calendarList.data.items?.length || 0)
 
         // Store tokens and calendar info in database
-        const supabase = await createClient()
+        const supabase = createClient()
         
         console.log('💾 [GOOGLE OAUTH] Storing calendar connection...')
         const { data: connection, error: connectionError } = await supabase
@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
 
     // If not a calendar integration, proceed with normal auth flow
     console.log('🔐 [GOOGLE OAUTH] Proceeding with normal auth flow')
-    const supabase = await createClient()
+    const supabase = createClient()
     
     const { data: { user }, error: signInError } = await supabase.auth.signInWithOAuth({
       provider: 'google',

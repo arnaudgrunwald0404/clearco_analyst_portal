@@ -29,6 +29,7 @@ import {
   Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Papa from 'papaparse'
 
 interface Briefing {
   id: string
@@ -43,8 +44,7 @@ interface Briefing {
   followUpActions?: string[]
   recordingUrl?: string
   transcript?: string
-  aiSummary?: string
-  followUpSummary?: string
+  ai_summary?: any
   duration?: number
   attendeeEmails?: string[]
   analysts: {
@@ -415,7 +415,7 @@ function BriefingCard({
               Transcript
             </div>
           )}
-          {briefing.aiSummary && (
+          {briefing.ai_summary && (
             <div className="flex items-center text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
               <Bot className="w-3 h-3 mr-1" />
               AI Summary
@@ -444,6 +444,7 @@ function BriefingDrawer({
   const [isUpdating, setIsUpdating] = useState(false)
   const [transcript, setTranscript] = useState(briefing.transcript || '')
   const [notes, setNotes] = useState(briefing.notes || '')
+  const [highlightSections, setHighlightSections] = useState(false)
   
   const { date, time } = formatDateTime(briefing.scheduledAt)
   
@@ -467,6 +468,22 @@ function BriefingDrawer({
       console.error('Error updating briefing:', error)
     } finally {
       setIsUpdating(false)
+    }
+  }
+  
+  const handleRemoveBriefing = async () => {
+    if (!confirm('Remove this briefing? This will delete it from your briefings.')) return
+    try {
+      const response = await fetch(`/api/briefings/${briefing.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({} as any))
+        throw new Error(err.error || 'Failed to delete briefing')
+      }
+      onUpdate()
+      onClose()
+    } catch (e) {
+      console.error('Failed to delete briefing:', e)
+      alert(e instanceof Error ? e.message : 'Failed to delete briefing')
     }
   }
   
@@ -526,7 +543,7 @@ function BriefingDrawer({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'overview' && (
-          <OverviewTab briefing={briefing} />
+          <OverviewTab briefing={briefing} highlightSections={highlightSections} onRemove={handleRemoveBriefing} />
         )}
         
         {activeTab === 'transcript' && (
@@ -538,36 +555,44 @@ function BriefingDrawer({
             setNotes={setNotes}
             isUpdating={isUpdating}
             onSave={handleSaveTranscript}
+            onGenerateDone={() => {
+              onUpdate()
+              onTabChange('overview')
+              setHighlightSections(true)
+              setTimeout(() => setHighlightSections(false), 3000)
+            }}
           />
         )}
       </div>
+
     </div>
   )
 }
 
 // OverviewTab Component
-function OverviewTab({ briefing }: { briefing: Briefing }) {
+function OverviewTab({ briefing, highlightSections = false, onRemove }: { briefing: Briefing; highlightSections?: boolean; onRemove: () => void }) {
+  // Extract structured sections from ai_summary (markdown headings)
+  const ai = (briefing.ai_summary || '').toString()
+  const extractSection = (title: string) => {
+    const re = new RegExp(`^##\\s+${title}\\s*$([\\s\\S]*?)(^##\\s|$)`, 'mi')
+    const m = ai.match(re)
+    return m ? m[1].trim() : ''
+  }
+  const keyTopics = extractSection('Key topics discussed')
+  const followUps = extractSection('Follow-up items')
+  const quotes = extractSection('Interesting quotes')
+
   return (
     <div className="p-6 space-y-6">
       {/* AI Summary */}
-      {briefing.aiSummary && (
+      {briefing.ai_summary && (
         <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
           <div className="flex items-center mb-3">
             <Bot className="w-5 h-5 text-purple-600 mr-2" />
             <h3 className="font-semibold text-gray-900">AI Summary</h3>
           </div>
           <div className="text-sm text-gray-700 whitespace-pre-wrap">
-            {briefing.aiSummary}
-          </div>
-        </div>
-      )}
-      
-      {/* Follow-ups */}
-      {briefing.followUpSummary && (
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Follow-up Actions</h3>
-          <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
-            {briefing.followUpSummary}
+            {String(briefing.ai_summary)}
           </div>
         </div>
       )}
@@ -641,8 +666,24 @@ function OverviewTab({ briefing }: { briefing: Briefing }) {
         </div>
       )}
       
+      {/* AI-derived Content */}
+      <div className="grid grid-cols-1 gap-4">
+        <div className={cn("bg-white border rounded-lg p-4", highlightSections && "ring-2 ring-yellow-400")}> 
+          <h3 className="font-semibold text-gray-900 mb-2">Key Topics</h3>
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">{keyTopics || 'None'}</div>
+        </div>
+        <div className={cn("bg-white border rounded-lg p-4", highlightSections && "ring-2 ring-yellow-400")}> 
+          <h3 className="font-semibold text-gray-900 mb-2">Follow-up Items</h3>
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">{followUps || 'None'}</div>
+        </div>
+        <div className={cn("bg-white border rounded-lg p-4", highlightSections && "ring-2 ring-yellow-400")}> 
+          <h3 className="font-semibold text-gray-900 mb-2">Interesting Quotes</h3>
+          <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">{quotes || 'None'}</div>
+        </div>
+      </div>
+
       {/* Actions */}
-      <div className="border-t border-gray-200 pt-6">
+      <div className="border-t border-gray-200 pt-6 space-y-4">
         <div className="flex flex-wrap gap-2">
           {briefing.recordingUrl && (
             <a
@@ -655,13 +696,72 @@ function OverviewTab({ briefing }: { briefing: Briefing }) {
               View Recording
             </a>
           )}
-          <button className="flex items-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <Edit3 className="w-4 h-4 mr-2" />
+        </div>
+        {/* Bottom actions visible only in Overview tab */}
+        <div className="flex justify-end gap-2 pt-4 border-t border-gray-200">
+          <button className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors" aria-label="Edit details">
             Edit Details
+          </button>
+          <button onClick={onRemove} className="px-3 py-2 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors" aria-label="Remove briefing">
+            Remove
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+// GenerateSummaryButton Component
+function GenerateSummaryButton({ briefingId, onDone }: { briefingId: string; onDone?: () => void }) {
+  const [isSummarizing, setIsSummarizing] = useState(false)
+
+  const handleGenerate = async () => {
+    try {
+      setIsSummarizing(true)
+      const resp = await fetch(`/api/briefings/${briefingId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate-summary' })
+      })
+      const json = await resp.json()
+      if (!resp.ok || !json.success) {
+        alert(json.error || 'Failed to generate AI summary')
+        return
+      }
+      // Persist the AI summary to the briefing
+      await fetch(`/api/briefings/${briefingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ai_summary: json.summary })
+      })
+      onDone && onDone()
+      alert('AI summary generated')
+    } catch (e) {
+      console.error('Generate AI summary failed', e)
+      alert('Failed to generate AI summary')
+    } finally {
+      setIsSummarizing(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleGenerate}
+      disabled={isSummarizing}
+      className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+    >
+      {isSummarizing ? (
+        <>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+          Generating...
+        </>
+      ) : (
+        <>
+          <Bot className="w-4 h-4 mr-2" />
+          Generate AI Summary
+        </>
+      )}
+    </button>
   )
 }
 
@@ -673,7 +773,8 @@ function TranscriptTab({
   notes, 
   setNotes, 
   isUpdating, 
-  onSave 
+  onSave,
+  onGenerateDone
 }: {
   briefing: Briefing
   transcript: string
@@ -682,28 +783,62 @@ function TranscriptTab({
   setNotes: (value: string) => void
   isUpdating: boolean
   onSave: () => void
+  onGenerateDone: () => void
 }) {
   return (
     <div className="p-6 space-y-6">
       {/* Upload Options */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Transcript Management</h3>
-          <div className="flex items-center space-x-2">
-            <button className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
-              <Upload className="w-4 h-4 mr-1" />
-              Upload File
-            </button>
-            <button className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
-              <Mic className="w-4 h-4 mr-1" />
-              Record
-            </button>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600">
-          Upload a transcript file, record audio, or manually enter the transcript below.
-        </p>
-      </div>
+      	<div className="bg-gray-50 rounded-lg p-4">
+        	<div className="flex items-center justify-between mb-3">
+          	<h3 className="font-semibold text-gray-900">Transcript Management</h3>
+          	<div className="flex items-center space-x-2">
+            	<button
+                type="button"
+                onClick={() => document.getElementById(`portal-transcript-file-input-${briefing.id}`)?.click()}
+                className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+              >
+              	<Upload className="w-4 h-4 mr-1" />
+              	Upload text file
+            	</button>
+            {/* Record button hidden for now */}
+          	</div>
+        	</div>
+        	<p className="text-sm text-gray-600">
+          Upload a CSV or TXT file (Word documents not yet supported), or manually enter the transcript below.
+        	</p>
+        	<input
+            id={`portal-transcript-file-input-${briefing.id}`}
+            type="file"
+            accept=".txt,.csv"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]
+              if (!file) return
+              const ext = file.name.split('.').pop()?.toLowerCase()
+              try {
+                if (ext === 'txt' || !ext) {
+                  const text = await file.text()
+                  setTranscript(text)
+                } else if (ext === 'csv') {
+                  const text = await file.text()
+                  const parsed = Papa.parse(text, { skipEmptyLines: true })
+                  const rows = (parsed.data as any[])
+                  const lines = rows.map((r) => (Array.isArray(r) ? r.join(', ') : String(r)))
+                  setTranscript(lines.join('\n'))
+                } else if (ext === 'docx' || ext === 'doc') {
+                  alert('DOC/DOCX parsing is not supported in this view. Please convert to TXT/CSV or paste the text directly.')
+                } else {
+                  alert('Unsupported file type. Please upload a TXT or CSV file.')
+                }
+              } catch (err) {
+                console.error('Failed to read file', err)
+                alert('Failed to read the selected file. Please try a different file.')
+              } finally {
+                e.currentTarget.value = ''
+              }
+            }}
+          />
+      	</div>
       
       {/* Transcript Editor */}
       <div>
@@ -731,28 +866,30 @@ function TranscriptTab({
         />
       </div>
       
-      {/* Save Button */}
+      {/* Actions */}
       <div className="flex justify-between items-center pt-4 border-t border-gray-200">
         <div className="text-sm text-gray-600">
           {briefing.transcript ? 'Last updated: ' + new Date(briefing.updatedAt).toLocaleDateString() : 'No transcript saved yet'}
         </div>
-        <button
-          onClick={onSave}
-          disabled={isUpdating}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isUpdating ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Saving...
-            </>
-          ) : (
-            <>
-              <Bot className="w-4 h-4 mr-2" />
-              Save & Generate AI Summary
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSave}
+            disabled={isUpdating}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isUpdating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Saving...
+              </>
+            ) : (
+              <>
+                Save
+              </>
+            )}
+          </button>
+          <GenerateSummaryButton briefingId={briefing.id} onDone={onGenerateDone} />
+        </div>
       </div>
     </div>
   )

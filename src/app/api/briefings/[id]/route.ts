@@ -95,7 +95,8 @@ export async function PUT(
       status,
       outcomes,
       followUpActions,
-      analystIds
+      analystIds,
+      contentUrl
     } = body
 
     const supabase = await createClient()
@@ -111,6 +112,7 @@ export async function PUT(
         status,
         outcomes,
         followUpActions,
+        contentUrl,
         updatedAt: new Date().toISOString()
       })
       .eq('id', id)
@@ -165,6 +167,63 @@ export async function PUT(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const body = await request.json()
+
+    const supabase = await createClient()
+
+    // Build update object with only defined keys
+    const allowedKeys = [
+      'title',
+      'description',
+      'scheduledAt',
+      'duration',
+      'status',
+      'agenda',
+      'notes',
+      'outcomes',
+      'followUpActions',
+      'recordingUrl',
+      'transcript',
+      'ai_summary',
+      'contentUrl',
+    ] as const
+
+    const updateData: Record<string, any> = { updatedAt: new Date().toISOString() }
+    for (const key of allowedKeys) {
+      if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) {
+        updateData[key] = body[key]
+      }
+    }
+
+    if (Object.keys(updateData).length === 1) {
+      return NextResponse.json({ success: false, error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    const { data: updated, error } = await supabase
+      .from('briefings')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error patching briefing:', error)
+      return NextResponse.json({ success: false, error: 'Failed to update briefing' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, data: updated })
+  } catch (error) {
+    console.error('Error in briefing PATCH:', error)
+    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -259,28 +318,61 @@ export async function POST(
       const analysts = (briefingAnalysts || []).map((ba: any) => ba.analysts)
 
       try {
-        const prompt = `Generate a professional briefing summary for the following meeting:
+        const transcript = (briefing as any).transcript || ''
+        const prompt = `You are a helpful assistant that summarizes analyst briefings.
 
+Summarize the following meeting into clear bullet points with exactly these sections:
+
+- Key topics discussed
+- Follow-up items
+- Interesting quotes (FOCUS on what the INDUSTRY ANALYST is saying, not the PreferredDomain/client team)
+
+Context:
 Title: ${briefing.title}
 Description: ${briefing.description || 'No description provided'}
-Duration: ${briefing.duration} minutes
-Participants: ${analysts.map((a: any) => `${a.firstName} ${a.lastName} (${a.title} at ${a.company})`).join(', ')}
+Duration: ${briefing.duration || 'Unknown'} minutes
+Industry Analysts: ${analysts.map((a: any) => `${a.firstName} ${a.lastName}${a.title ? ` (${a.title}` : ''}${a.company ? `${a.title ? ' at ' : ' ('}${a.company})` : a.title ? ')' : ''}`).join(', ')}
 
-Create a structured summary with:
-1. Meeting Overview
-2. Key Discussion Points
-3. Outcomes/Decisions
-4. Next Steps
+Transcript:
+"""
+${transcript}
+"""
 
-Keep it professional and concise.`
+Instructions:
+- Output must be concise and formatted as bullet lists under each section.
+- Follow-up items: Each bullet MUST begin with the OWNER name followed by a colon and the action (e.g., "Sarah Chen: Send ROI case studies"). Use a participant/speaker from the transcript when possible; if unknown, use "TBD:".
+- Interesting quotes: PRIORITIZE quotes from the INDUSTRY ANALYST(S), not from PreferredDomain team members. Look for moments where the analyst:
+  * Shares opinions about market trends or industry insights
+  * Gives advice or recommendations
+  * Makes predictions about the future
+  * Expresses surprise, concern, or strong views
+  * Provides unique perspectives on the industry
+  Use the exact text from the transcript enclosed in double quotes, and include the speaker name if identifiable.
+- Do not fabricate content; if a section has no content, write "None".
+- Output with clear section delimiters exactly as follows:
+  [KEY_TOPICS_START]
+  (bullet points here)
+  [KEY_TOPICS_END]
+  
+  [FOLLOW_UP_START]
+  (follow-up items here)
+  [FOLLOW_UP_END]
+  
+  [QUOTES_START]
+  (interesting quotes here)
+  [QUOTES_END]
+`
 
+        console.log('AI Generation Prompt:', prompt)
+        
         const completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o-mini",
           messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000
+          max_tokens: 800
         })
-
+        
         const generatedSummary = completion.choices[0]?.message?.content || 'Unable to generate summary'
+        console.log('AI Generated Summary:', generatedSummary)
 
         return NextResponse.json({
           success: true,

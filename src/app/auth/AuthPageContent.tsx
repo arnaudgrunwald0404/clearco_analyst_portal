@@ -296,15 +296,6 @@ export default function AuthPageContent() {
             </div>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Demo Credentials:</h3>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Admin:</strong> agrunwald@clearcompany.com / 3tts3tte</div>
-              <div><strong>Analyst:</strong> sarah.chen@analystcompany.com / password</div>
-              <div className="text-blue-600 mt-2"><strong>💡 Tip:</strong> Analysts can use Magic Link for easier login!</div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

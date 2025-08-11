@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals'
 import { GoogleSearchEngine } from '@/lib/publication-discovery/search-engines'
 
 describe('GoogleSearchEngine', () => {
@@ -6,14 +6,15 @@ describe('GoogleSearchEngine', () => {
 
   beforeEach(() => {
     // Clear environment variables before each test
-    vi.resetModules()
+    jest.resetModules()
     process.env = { ...originalEnv }
+    jest.restoreAllMocks()
   })
 
   afterEach(() => {
     // Restore environment variables after each test
     process.env = originalEnv
-    vi.restoreAllMocks()
+    jest.restoreAllMocks()
   })
 
   describe('Configuration', () => {
@@ -61,7 +62,7 @@ describe('GoogleSearchEngine', () => {
       const searchEngine = new GoogleSearchEngine()
       
       // Mock fetch to simulate API error
-      global.fetch = vi.fn().mockRejectedValue(new Error('API Error'))
+      global.fetch = jest.fn().mockRejectedValue(new Error('API Error')) as any
       
       const results = await searchEngine.search('test query')
       expect(results).toEqual([])
@@ -71,10 +72,10 @@ describe('GoogleSearchEngine', () => {
       const searchEngine = new GoogleSearchEngine()
       
       // Mock fetch to return empty items
-      global.fetch = vi.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ items: [] })
-      })
+      }) as any
       
       const results = await searchEngine.search('test query')
       expect(results).toEqual([])
@@ -97,10 +98,10 @@ describe('GoogleSearchEngine', () => {
       }
 
       // Mock fetch to return test data
-      global.fetch = vi.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockApiResponse)
-      })
+      }) as any
       
       const results = await searchEngine.search('test query')
       expect(results).toHaveLength(1)
@@ -120,13 +121,13 @@ describe('GoogleSearchEngine', () => {
       const maxResults = 5
       
       // Mock fetch to verify the URL contains the correct num parameter
-      global.fetch = vi.fn().mockImplementation((url) => {
-        expect(url).toContain(`num=${maxResults}`)
+      global.fetch = jest.fn().mockImplementation((url) => {
+        expect(url as string).toContain(`num=${maxResults}`)
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ items: [] })
         })
-      })
+      }) as any
       
       await searchEngine.search('test query', maxResults)
       expect(fetch).toHaveBeenCalled()
@@ -136,10 +137,10 @@ describe('GoogleSearchEngine', () => {
       const searchEngine = new GoogleSearchEngine()
       
       // Mock fetch to return a 403 error
-      global.fetch = vi.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockResolvedValue({
         ok: false,
         status: 403
-      })
+      }) as any
       
       const results = await searchEngine.search('test query')
       expect(results).toEqual([])
@@ -150,10 +151,10 @@ describe('GoogleSearchEngine', () => {
       const startTime = Date.now()
       
       // Mock fetch to return success
-      global.fetch = vi.fn().mockResolvedValue({
+      global.fetch = jest.fn().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ items: [] })
-      })
+      }) as any
       
       // Make two consecutive requests
       await searchEngine.search('query 1')
@@ -172,33 +173,36 @@ describe('GoogleSearchEngine', () => {
       const searchEngine = new GoogleSearchEngine()
       
       // Mock fetch to capture and verify the URL
-      global.fetch = vi.fn().mockImplementation((url) => {
-        expect(url).toMatch(/^https:\/\/www\.googleapis\.com\/customsearch\/v1/)
-        expect(url).toContain('key=test-api-key')
-        expect(url).toContain('cx=test-engine-id')
-        expect(url).toContain('q=test%20query') // URL encoded query
+      global.fetch = jest.fn().mockImplementation((url) => {
+        const u = String(url)
+        expect(u).toMatch(/^https:\/\/www\.googleapis\.com\/customsearch\/v1/)
+        expect(u).toContain('key=test-api-key')
+        expect(u).toContain('cx=test-engine-id')
+        expect(u).toContain('q=test%20query') // URL encoded query
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ items: [] })
         })
-      })
+      }) as any
       
       await searchEngine.search('test query')
       expect(fetch).toHaveBeenCalled()
     })
 
     it('should properly encode special characters in search query', async () => {
+      process.env.GOOGLE_SEARCH_API_KEY = 'test-api-key'
+      process.env.GOOGLE_SEARCH_ENGINE_ID = 'test-engine-id'
       const searchEngine = new GoogleSearchEngine()
-      const specialQuery = 'test & query + special!'
+      const specialQuery = 'test \u0026 query + special!'
       
       // Mock fetch to verify URL encoding
-      global.fetch = vi.fn().mockImplementation((url) => {
-        expect(url).toContain(encodeURIComponent(specialQuery))
+      global.fetch = jest.fn().mockImplementation((url) => {
+        expect(String(url)).toContain(encodeURIComponent(specialQuery))
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ items: [] })
         })
-      })
+      }) as any
       
       await searchEngine.search(specialQuery)
       expect(fetch).toHaveBeenCalled()

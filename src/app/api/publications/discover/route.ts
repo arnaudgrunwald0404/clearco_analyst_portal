@@ -179,7 +179,7 @@ export async function GET() {
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
-    const supabase = adminSupabase || await createClient()
+    const supabase = adminSupabase || createClient()
     
     // Get all analysts
     const { data: analysts, error: analystsError } = await supabase

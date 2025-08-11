@@ -150,6 +150,7 @@ const mockBriefings = [
 
 export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawerProps) {
   const [activeTab, setActiveTab] = useState('overview')
+  const [refreshTick, setRefreshTick] = useState(0)
   const [publications, setPublications] = useState([])
   const [socialPosts, setSocialPosts] = useState([])
   const [briefings, setBriefings] = useState([])
@@ -200,9 +201,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     relationshipHealth: analyst?.relationshipHealth || 'GOOD',
     email: analyst?.email || '',
     phone: analyst?.phone || '',
-    linkedIn: analyst?.linkedIn || '',
-    twitter: analyst?.twitter || '',
-    website: analyst?.website || '',
+    linkedIn: (analyst as any)?.linkedIn || (analyst as any)?.linkedinUrl || '',
+    twitter: (analyst as any)?.twitter || (analyst as any)?.twitterHandle || '',
+    website: (analyst as any)?.website || (analyst as any)?.personalWebsite || '',
     coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
     company: analyst?.company || '',
     title: analyst?.title || ''
@@ -226,9 +227,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       relationshipHealth: analyst.relationshipHealth || 'GOOD',
       email: analyst.email || '',
       phone: analyst.phone || '',
-      linkedIn: analyst.linkedIn || '',
-      twitter: analyst.twitter || '',
-      website: analyst.website || '',
+      linkedIn: (analyst as any).linkedIn || (analyst as any).linkedinUrl || '',
+      twitter: (analyst as any).twitter || (analyst as any).twitterHandle || '',
+      website: (analyst as any).website || (analyst as any).personalWebsite || '',
       coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
       company: analyst.company || '',
       title: analyst.title || ''
@@ -247,9 +248,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       relationshipHealth: analyst?.relationshipHealth || 'GOOD',
       email: analyst?.email || '',
       phone: analyst?.phone || '',
-      linkedIn: analyst?.linkedIn || '',
-      twitter: analyst?.twitter || '',
-      website: analyst?.website || '',
+      linkedIn: (analyst as any)?.linkedIn || (analyst as any)?.linkedinUrl || '',
+      twitter: (analyst as any)?.twitter || (analyst as any)?.twitterHandle || '',
+      website: (analyst as any)?.website || (analyst as any)?.personalWebsite || '',
       coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
       company: analyst?.company || '',
       title: analyst?.title || ''
@@ -295,7 +296,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
           })
           setIsEditMode(false)
           // Force a re-render
-          setActiveTab(activeTab)
+          setRefreshTick((t) => t + 1)
         } else {
           alert('Failed to save changes: ' + (result.error || 'Unknown error'))
         }
@@ -367,19 +368,24 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   // Update edit data when analyst changes
   useEffect(() => {
     if (analyst) {
-      setEditedData({
+      // Preserve all existing keys and update known fields to avoid dropping values,
+      // which can turn controlled inputs into uncontrolled.
+      setEditedData(prev => ({
+        ...prev,
+        firstName: analyst.firstName || '',
+        lastName: analyst.lastName || '',
         status: analyst.status || 'ACTIVE',
         influence: analyst.influence || 'MEDIUM',
         relationshipHealth: analyst.relationshipHealth || 'GOOD',
         email: analyst.email || '',
         phone: analyst.phone || '',
-        linkedIn: analyst.linkedIn || '',
-        twitter: analyst.twitter || '',
-        website: analyst.website || '',
+        linkedIn: (analyst as any).linkedIn || (analyst as any).linkedinUrl || '',
+        twitter: (analyst as any).twitter || (analyst as any).twitterHandle || '',
+        website: (analyst as any).website || (analyst as any).personalWebsite || '',
         coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
         company: analyst.company || '',
         title: analyst.title || ''
-      })
+      }))
     }
   }, [analyst])
 
@@ -701,7 +707,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
           }
           
           // Force a re-render to show the updated value
-          setActiveTab(activeTab)
+          setRefreshTick((t) => t + 1)
           
           // Show success message
           const displayValue = fieldValue.length > 50 ? fieldValue.substring(0, 50) + '...' : fieldValue
@@ -722,32 +728,35 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     if (selectedResults.length === 0 || !searchResultsModal.type) return
     
     try {
+      // Map modal type to backend field names used elsewhere
+      let fieldName: 'linkedIn' | 'twitter' | 'phone' | 'website'
+      switch (searchResultsModal.type) {
+        case 'linkedin': fieldName = 'linkedIn'; break
+        case 'twitter': fieldName = 'twitter'; break
+        case 'phone': fieldName = 'phone'; break
+        default: fieldName = 'website'
+      }
+      const fieldValue = selectedResults[0]
+
       const response = await fetch(`/api/analysts/${analyst.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          [searchResultsModal.type]: selectedResults
-        })
+        body: JSON.stringify({ [fieldName]: fieldValue })
       })
       
       if (response.ok) {
         // Update the analyst object inline instead of reloading
-        if (searchResultsModal.type === 'linkedin') {
-          analyst.linkedIn = selectedResults[0] // Assuming we take the first one for LinkedIn
-        } else if (searchResultsModal.type === 'twitter') {
-          analyst.twitter = selectedResults[0] // Assuming we take the first one for Twitter
-        } else if (searchResultsModal.type === 'phone') {
-          analyst.phone = selectedResults[0] // Assuming we take the first one for Phone
-        } else if (searchResultsModal.type === 'website') {
-          analyst.website = selectedResults[0] // Assuming we take the first one for Website
+        ;(analyst as any)[fieldName] = fieldValue
+        // Also keep the edit buffer in sync if open
+        if (isEditMode) {
+          setEditedData(prev => ({ ...prev, [fieldName]: fieldValue } as any))
         }
         
         setSearchResultsModal({ isOpen: false, type: null, results: [] })
         setSelectedResults([])
         
-        // Force a re-render by updating state
-        // This is a simple way to trigger re-render without full page reload
-        setActiveTab(activeTab)
+        // Force a re-render to reflect the new value
+        setRefreshTick((t) => t + 1)
       } else {
         alert('Failed to save selected results')
       }
@@ -800,7 +809,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   style={{ display: analyst.profileImageUrl ? 'none' : 'flex' }}
                 >
                   <span className="text-lg font-medium text-blue-800">
-                    {analyst.firstName.charAt(0)}{analyst.lastName.charAt(0)}
+                    {analyst.firstName?.charAt(0) || ''}{analyst.lastName?.charAt(0) || ''}
                   </span>
                 </div>
               </div>
@@ -1033,13 +1042,28 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       <div className="flex-1">
                         <div className="text-xs font-medium text-gray-500">Phone</div>
                         {isEditMode ? (
-                          <input
-                            type="tel"
-                            value={editedData.phone}
-                            onChange={(e) => setEditedData(prev => ({ ...prev, phone: e.target.value }))}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter phone number"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="tel"
+                              value={editedData.phone}
+                              onChange={(e) => setEditedData(prev => ({ ...prev, phone: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter phone number"
+                            />
+                            <button
+                              onClick={() => searchSocialProfile('phone')}
+                              disabled={socialSearchLoading.phone}
+                              className="flex items-center space-x-1 px-2 py-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                              title="Search with AI"
+                            >
+                              {socialSearchLoading.phone ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Search className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Search with AI</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center space-x-2">
                             {analyst.phone ? (
@@ -1047,21 +1071,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                                 {analyst.phone}
                               </a>
                             ) : (
-                              <>
-                                <span className="text-gray-500 text-sm">N/A</span>
-                                <button
-                                  onClick={() => searchSocialProfile('phone')}
-                                  disabled={socialSearchLoading.phone}
-                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
-                                >
-                                  {socialSearchLoading.phone ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Search className="w-3 h-3" />
-                                  )}
-                                  <span>Search with AI</span>
-                                </button>
-                              </>
+                              <span className="text-gray-500 text-sm">N/A</span>
                             )}
                           </div>
                         )}
@@ -1074,35 +1084,34 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       <div className="flex-1">
                         <div className="text-xs font-medium text-gray-500">LinkedIn</div>
                         {isEditMode ? (
-                          <input
-                            type="url"
-                            value={editedData.linkedIn}
-                            onChange={(e) => setEditedData(prev => ({ ...prev, linkedIn: e.target.value }))}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter LinkedIn URL"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="url"
+                              value={editedData.linkedIn}
+                              onChange={(e) => setEditedData(prev => ({ ...prev, linkedIn: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter LinkedIn URL"
+                            />
+                            <button
+                              onClick={() => searchSocialProfile('linkedin')}
+                              disabled={socialSearchLoading.linkedin}
+                              className="flex items-center space-x-1 px-2 py-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                              title="Search with AI"
+                            >
+                              {socialSearchLoading.linkedin ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Search className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Search with AI</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center space-x-2">
-                            {analyst.linkedIn ? (
-                              <a href={analyst.linkedIn} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                                LinkedIn Profile
-                              </a>
+                            {((analyst as any).linkedIn || (analyst as any).linkedinUrl) ? (
+                              <span className="text-sm text-gray-800 break-all">{(analyst as any).linkedIn || (analyst as any).linkedinUrl}</span>
                             ) : (
-                              <>
-                                <span className="text-gray-500 text-sm">N/A</span>
-                                <button
-                                  onClick={() => searchSocialProfile('linkedin')}
-                                  disabled={socialSearchLoading.linkedin}
-                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
-                                >
-                                  {socialSearchLoading.linkedin ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Search className="w-3 h-3" />
-                                  )}
-                                  <span>Search with AI</span>
-                                </button>
-                              </>
+                              <span className="text-gray-500 text-sm">N/A</span>
                             )}
                           </div>
                         )}
@@ -1115,35 +1124,34 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       <div className="flex-1">
                         <div className="text-xs font-medium text-gray-500">Twitter/X</div>
                         {isEditMode ? (
-                          <input
-                            type="text"
-                            value={editedData.twitter}
-                            onChange={(e) => setEditedData(prev => ({ ...prev, twitter: e.target.value }))}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter Twitter handle"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={editedData.twitter}
+                              onChange={(e) => setEditedData(prev => ({ ...prev, twitter: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter Twitter handle"
+                            />
+                            <button
+                              onClick={() => searchSocialProfile('twitter')}
+                              disabled={socialSearchLoading.twitter}
+                              className="flex items-center space-x-1 px-2 py-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                              title="Search with AI"
+                            >
+                              {socialSearchLoading.twitter ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Search className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Search with AI</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center space-x-2">
-                            {analyst.twitter ? (
-                              <a href={`https://twitter.com/${analyst.twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                                {analyst.twitter}
-                              </a>
+                            {((analyst as any).twitter || (analyst as any).twitterHandle) ? (
+                              <span className="text-sm text-gray-800 break-all">{(analyst as any).twitter || (analyst as any).twitterHandle}</span>
                             ) : (
-                              <>
-                                <span className="text-gray-500 text-sm">N/A</span>
-                                <button
-                                  onClick={() => searchSocialProfile('twitter')}
-                                  disabled={socialSearchLoading.twitter}
-                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
-                                >
-                                  {socialSearchLoading.twitter ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Search className="w-3 h-3" />
-                                  )}
-                                  <span>Search with AI</span>
-                                </button>
-                              </>
+                              <span className="text-gray-500 text-sm">N/A</span>
                             )}
                           </div>
                         )}
@@ -1156,35 +1164,34 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       <div className="flex-1">
                         <div className="text-xs font-medium text-gray-500">Website</div>
                         {isEditMode ? (
-                          <input
-                            type="url"
-                            value={editedData.website}
-                            onChange={(e) => setEditedData(prev => ({ ...prev, website: e.target.value }))}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Enter website URL"
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="url"
+                              value={editedData.website}
+                              onChange={(e) => setEditedData(prev => ({ ...prev, website: e.target.value }))}
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Enter website URL"
+                            />
+                            <button
+                              onClick={() => searchSocialProfile('website')}
+                              disabled={socialSearchLoading.website}
+                              className="flex items-center space-x-1 px-2 py-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
+                              title="Search with AI"
+                            >
+                              {socialSearchLoading.website ? (
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Search className="w-3 h-3" />
+                              )}
+                              <span className="hidden sm:inline">Search with AI</span>
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex items-center space-x-2">
-                            {analyst.website ? (
-                              <a href={analyst.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                                Website
-                              </a>
+                            {((analyst as any).website || (analyst as any).personalWebsite) ? (
+                              <span className="text-sm text-gray-800 break-all">{(analyst as any).website || (analyst as any).personalWebsite}</span>
                             ) : (
-                              <>
-                                <span className="text-gray-500 text-sm">N/A</span>
-                                <button
-                                  onClick={() => searchSocialProfile('website')}
-                                  disabled={socialSearchLoading.website}
-                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
-                                >
-                                  {socialSearchLoading.website ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Search className="w-3 h-3" />
-                                  )}
-                                  <span>Search with AI</span>
-                                </button>
-                              </>
+                              <span className="text-gray-500 text-sm">N/A</span>
                             )}
                           </div>
                         )}

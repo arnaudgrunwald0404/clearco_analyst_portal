@@ -4,71 +4,20 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Calendar,
-  Clock,
-  Users,
-  Video,
-  FileText,
   Plus,
   Search,
   Filter,
-  ExternalLink,
-  Edit3,
   CheckCircle,
   AlertCircle,
-  Calendar as CalendarIcon,
-  User,
-  MessageSquare,
   X,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  Download,
-  Upload,
-  Mic,
-  Bot,
-  Eye,
-  Settings
+  RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import type { Briefing } from './types'
+import BriefingCard from './components/BriefingCard'
+import Drawer from './components/drawer/Drawer'
 
-interface Briefing {
-  id: string
-  title: string
-  description?: string
-  scheduledAt: string
-  completedAt?: string
-  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED'
-  agenda?: string[]
-  notes?: string
-  outcomes?: string[]
-  followUpActions?: string[]
-  recordingUrl?: string
-  transcript?: string
-  aiSummary?: string
-  followUpSummary?: string
-  duration?: number
-  attendeeEmails?: string[]
-  analysts: {
-    id: string
-    firstName: string
-    lastName: string
-    email: string
-    company?: string
-    title?: string
-    profileImageUrl?: string
-    role?: string
-  }[]
-  calendarMeeting?: {
-    id: string
-    title: string
-    startTime: string
-    endTime: string
-    attendees?: string[]
-  }
-  createdAt: string
-  updatedAt: string
-}
 
 interface SyncProgress {
   type: string
@@ -92,12 +41,6 @@ const briefingStatuses = [
   { value: 'RESCHEDULED', label: 'Rescheduled' }
 ]
 
-const statusColors = {
-  SCHEDULED: 'bg-blue-100 text-blue-800',
-  COMPLETED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-800',
-  RESCHEDULED: 'bg-yellow-100 text-yellow-800'
-}
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
@@ -536,8 +479,12 @@ export default function ClientBriefingsPage() {
       }
       
       if (!syncResponse.ok) {
-        const errorData = await syncResponse.json()
-        throw new Error(errorData.error || 'Failed to start calendar sync')
+        let errorMessage = 'Failed to start calendar sync'
+        try {
+          const errorData = await syncResponse.json()
+          if (errorData?.error) errorMessage = errorData.error
+        } catch {}
+        throw new Error(errorMessage)
       }
 
       // Create EventSource for real-time progress updates
@@ -545,7 +492,12 @@ export default function ClientBriefingsPage() {
       
       eventSource.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data)
+          const raw = (event as MessageEvent).data
+          // Some servers may send keepalive/heartbeat pings that aren't JSON
+          if (typeof raw !== 'string' || raw.trim().length === 0 || raw.trim()[0] !== '{') {
+            return
+          }
+          const data = JSON.parse(raw)
           setSyncProgress(prev => [...prev, data])
           
           // Close modal when sync is complete
@@ -565,21 +517,29 @@ export default function ClientBriefingsPage() {
       
       eventSource.onerror = (error) => {
         console.error('EventSource error:', error)
-        eventSource.close()
+        try { eventSource.close() } catch {}
+        setIsSyncInProgress(false)
+        setSyncStatus({ isInProgress: false })
         setSyncProgress(prev => [...prev, {
           type: 'sync_failed',
           message: 'Sync failed due to connection error',
-          error: 'Connection error'
+          error: (error instanceof Error ? error.message : 'Connection error')
         }])
+        // Auto-hide modal after showing the error briefly
+        setTimeout(() => setShowSyncModal(false), 2000)
       }
 
     } catch (error) {
       console.error('Error syncing calendar meetings:', error)
+      setIsSyncInProgress(false)
+      setSyncStatus({ isInProgress: false })
       setSyncProgress(prev => [...prev, {
         type: 'sync_failed',
         message: 'Failed to start calendar sync',
         error: error instanceof Error ? error.message : 'Unknown error'
       }])
+      setShowSyncModal(true)
+      setTimeout(() => setShowSyncModal(false), 2000)
     }
   }
 
@@ -767,7 +727,7 @@ export default function ClientBriefingsPage() {
       {/* Briefing Drawer */}
       {selectedBriefing && (
         <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
-          <BriefingDrawer
+          <Drawer
             briefing={selectedBriefing}
             activeTab={drawerTab}
             onTabChange={setDrawerTab}
@@ -778,480 +738,12 @@ export default function ClientBriefingsPage() {
       )}
 
       {/* Sync Progress Modal */}
-      <SyncProgressModal
+      	<SyncProgressModal
         isOpen={showSyncModal}
         onClose={() => setShowSyncModal(false)}
         progress={syncProgress}
         connectionTitle={connectionTitle}
       />
-    </div>
-  )
-}
-
-// BriefingCard Component
-function BriefingCard({ 
-  briefing, 
-  onSelect, 
-  isUpcoming 
-}: { 
-  briefing: Briefing
-  onSelect: (briefing: Briefing) => void
-  isUpcoming: boolean 
-}) {
-  const { date, time } = formatDateTime(briefing.scheduledAt)
-  
-  return (
-    <div 
-      className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => onSelect(briefing)}
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-start space-x-4 flex-1">
-          <div className={cn(
-            "flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center",
-            isUpcoming ? "bg-blue-100" : "bg-gray-100"
-          )}>
-            <Calendar className={cn(
-              "w-6 h-6",
-              isUpcoming ? "text-blue-600" : "text-gray-600"
-            )} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
-              {briefing.title}
-            </h3>
-            <div className="flex items-center text-sm text-gray-600 space-x-4 mb-3">
-              <div className="flex items-center">
-                <CalendarIcon className="w-4 h-4 mr-1" />
-                {date}
-              </div>
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
-                {time}
-                {briefing.duration && ` (${briefing.duration} min)`}
-              </div>
-              <div className="flex items-center">
-                <Users className="w-4 h-4 mr-1" />
-                {briefing.analysts.length} analyst{briefing.analysts.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-            {/* Analyst chips */}
-            <div className="flex flex-wrap gap-2">
-              {briefing.analysts.slice(0, 3).map((analyst) => (
-                <div key={analyst.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs">
-                  <span className="font-medium">
-                    {analyst.firstName} {analyst.lastName}
-                  </span>
-                  {analyst.company && (
-                    <span className="text-gray-500 ml-1">• {analyst.company}</span>
-                  )}
-                </div>
-              ))}
-              {briefing.analysts.length > 3 && (
-                <div className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-500">
-                  +{briefing.analysts.length - 3} more
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex flex-col items-end space-y-2">
-          <span className={cn(
-            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-            statusColors[briefing.status]
-          )}>
-            {briefing.status}
-          </span>
-          {briefing.transcript && (
-            <div className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-              <FileText className="w-3 h-3 mr-1" />
-              Transcript
-            </div>
-          )}
-          {briefing.aiSummary && (
-            <div className="flex items-center text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
-              <Bot className="w-3 h-3 mr-1" />
-              AI Summary
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// BriefingDrawer Component
-function BriefingDrawer({ 
-  briefing, 
-  activeTab, 
-  onTabChange, 
-  onClose, 
-  onUpdate 
-}: {
-  briefing: Briefing
-  activeTab: 'overview' | 'transcript'
-  onTabChange: (tab: 'overview' | 'transcript') => void
-  onClose: () => void
-  onUpdate: () => void
-}) {
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [transcript, setTranscript] = useState(briefing.transcript || '')
-  const [notes, setNotes] = useState(briefing.notes || '')
-  
-  const { date, time } = formatDateTime(briefing.scheduledAt)
-  
-  const handleSaveTranscript = async () => {
-    try {
-      setIsUpdating(true)
-      const response = await fetch(`/api/briefings/${briefing.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          transcript,
-          notes,
-          status: briefing.status === 'SCHEDULED' ? 'COMPLETED' : briefing.status
-        })
-      })
-      
-      if (response.ok) {
-        onUpdate()
-      }
-    } catch (error) {
-      console.error('Error updating briefing:', error)
-    } finally {
-      setIsUpdating(false)
-    }
-  }
-
-  const handleRemoveBriefing = async () => {
-    if (!confirm('Remove this briefing? This will delete it from your briefings.')) return
-    try {
-      const response = await fetch(`/api/briefings/${briefing.id}`, { method: 'DELETE' })
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({} as any))
-        throw new Error(err.error || 'Failed to delete briefing')
-      }
-      onUpdate()
-      onClose()
-    } catch (e) {
-      console.error('Failed to delete briefing:', e)
-      alert(e instanceof Error ? e.message : 'Failed to delete briefing')
-    }
-  }
-
-  
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold text-gray-900 truncate">
-            {briefing.title}
-          </h2>
-          <div className="flex items-center text-sm text-gray-600 mt-1">
-            <CalendarIcon className="w-4 h-4 mr-1" />
-            {date} at {time}
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        <button
-          onClick={() => onTabChange('overview')}
-          className={cn(
-            "flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors",
-            activeTab === 'overview'
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          )}
-        >
-          <div className="flex items-center justify-center">
-            <Eye className="w-4 h-4 mr-2" />
-            Overview
-          </div>
-        </button>
-        <button
-          onClick={() => onTabChange('transcript')}
-          className={cn(
-            "flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors",
-            activeTab === 'transcript'
-              ? "border-blue-500 text-blue-600"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-          )}
-        >
-          <div className="flex items-center justify-center">
-            <FileText className="w-4 h-4 mr-2" />
-            Transcript
-          </div>
-        </button>
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        {activeTab === 'overview' && (
-          <OverviewTab briefing={briefing} />
-        )}
-        
-        {activeTab === 'transcript' && (
-          <TranscriptTab 
-            briefing={briefing}
-            transcript={transcript}
-            setTranscript={setTranscript}
-            notes={notes}
-            setNotes={setNotes}
-            isUpdating={isUpdating}
-            onSave={handleSaveTranscript}
-          />
-        )}
-      </div>
-
-      {/* Drawer Footer Actions */}
-      <div className="border-t border-gray-200 p-4 flex justify-end gap-2">
-        <button
-          className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-          onClick={() => onTabChange('overview')}
-          aria-label="Edit details"
-        >
-          Edit Details
-        </button>
-        <button
-          onClick={handleRemoveBriefing}
-          className="px-3 py-2 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
-          aria-label="Remove briefing"
-        >
-          Remove
-        </button>
-      </div>
-    </div>
-  )
-}
-
-// OverviewTab Component
-function OverviewTab({ briefing }: { briefing: Briefing }) {
-  // Normalize fields that may come as string or array
-  const agendaItems: string[] = Array.isArray((briefing as any).agenda)
-    ? ((briefing as any).agenda as string[])
-    : typeof (briefing as any).agenda === 'string' && (briefing as any).agenda.trim().length > 0
-    ? [(briefing as any).agenda as string]
-    : []
-
-  const outcomesItems: string[] = Array.isArray((briefing as any).outcomes)
-    ? ((briefing as any).outcomes as string[])
-    : typeof (briefing as any).outcomes === 'string' && (briefing as any).outcomes.trim().length > 0
-    ? [(briefing as any).outcomes as string]
-    : []
-
-  return (
-    <div className="p-6 space-y-6">
-      {/* AI Summary */}
-      {briefing.aiSummary && (
-        <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
-          <div className="flex items-center mb-3">
-            <Bot className="w-5 h-5 text-purple-600 mr-2" />
-            <h3 className="font-semibold text-gray-900">AI Summary</h3>
-          </div>
-          <div className="text-sm text-gray-700 whitespace-pre-wrap">
-            {briefing.aiSummary}
-          </div>
-        </div>
-      )}
-      
-      {/* Follow-ups */}
-      {briefing.followUpSummary && (
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Follow-up Actions</h3>
-          <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
-            {briefing.followUpSummary}
-          </div>
-        </div>
-      )}
-      
-      {/* Analysts */}
-      <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Analysts</h3>
-        <div className="space-y-3">
-          {briefing.analysts.map((analyst) => (
-            <div key={analyst.id} className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-blue-600">
-                  {analyst.firstName[0]}{analyst.lastName[0]}
-                </span>
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-gray-900">
-                  {analyst.firstName} {analyst.lastName}
-                  {analyst.role && (
-                    <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                      {analyst.role}
-                    </span>
-                  )}
-                </div>
-                <div className="text-sm text-gray-600">
-                  {analyst.title}{analyst.company && ` • ${analyst.company}`}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* Agenda */}
-      {agendaItems.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Agenda</h3>
-          <ul className="space-y-2">
-            {agendaItems.map((item, index) => (
-              <li key={index} className="flex items-start text-sm text-gray-700">
-                <span className="w-4 h-4 mt-0.5 mr-2 text-gray-400">•</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {/* Notes */}
-      {briefing.notes && (
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Notes</h3>
-          <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
-            {briefing.notes}
-          </div>
-        </div>
-      )}
-      
-      {/* Outcomes */}
-      {outcomesItems.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-gray-900 mb-3">Outcomes</h3>
-          <ul className="space-y-2">
-            {outcomesItems.map((outcome, index) => (
-              <li key={index} className="flex items-start text-sm text-gray-700">
-                <CheckCircle className="w-4 h-4 mt-0.5 mr-2 text-green-500" />
-                {outcome}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {/* Actions */}
-      <div className="border-t border-gray-200 pt-6">
-        <div className="flex flex-wrap gap-2">
-          {briefing.recordingUrl && (
-            <a
-              href={briefing.recordingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Video className="w-4 h-4 mr-2" />
-              View Recording
-            </a>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// TranscriptTab Component
-function TranscriptTab({ 
-  briefing, 
-  transcript, 
-  setTranscript, 
-  notes, 
-  setNotes, 
-  isUpdating, 
-  onSave 
-}: {
-  briefing: Briefing
-  transcript: string
-  setTranscript: (value: string) => void
-  notes: string
-  setNotes: (value: string) => void
-  isUpdating: boolean
-  onSave: () => void
-}) {
-  return (
-    <div className="p-6 space-y-6">
-      {/* Upload Options */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Transcript Management</h3>
-          <div className="flex items-center space-x-2">
-            <button className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
-              <Upload className="w-4 h-4 mr-1" />
-              Upload File
-            </button>
-            <button className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
-              <Mic className="w-4 h-4 mr-1" />
-              Record
-            </button>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600">
-          Upload a transcript file, record audio, or manually enter the transcript below.
-        </p>
-      </div>
-      
-      {/* Transcript Editor */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Transcript
-        </label>
-        <textarea
-          value={transcript}
-          onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Enter or paste the meeting transcript here..."
-          className="w-full h-64 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-        />
-      </div>
-      
-      {/* Notes Editor */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Additional Notes
-        </label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add any additional notes or observations..."
-          className="w-full h-32 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-        />
-      </div>
-      
-      {/* Save Button */}
-      <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-        <div className="text-sm text-gray-600">
-          {briefing.transcript ? 'Last updated: ' + new Date(briefing.updatedAt).toLocaleDateString() : 'No transcript saved yet'}
-        </div>
-        <button
-          onClick={onSave}
-          disabled={isUpdating}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isUpdating ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Saving...
-            </>
-          ) : (
-            <>
-              <Bot className="w-4 h-4 mr-2" />
-              Save & Generate AI Summary
-            </>
-          )}
-        </button>
-      </div>
     </div>
   )
 }

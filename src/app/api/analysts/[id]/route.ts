@@ -170,7 +170,11 @@ export async function PATCH(
   try {
     const { id: analystIdToUpdate } = await params
     const body = await request.json()
-    const supabase = await createClient()
+    // Prefer service-role for updates to avoid RLS blocking admin-approved edits
+    const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
+      ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      : null
+    const supabase = adminSupabase || await createClient()
 
     // 1. Authentication & Authorization
     const authResult = await requireAuth()
@@ -227,11 +231,13 @@ export async function PATCH(
     }
 
     // Accept both legacy column names and new alias fields
-    // Columns in DB (see types): linkedIn, twitter, website, phone
+    // Columns in DB (see types): linkedinUrl, twitterHandle, personalWebsite
     // Only columns that actually exist in DB; social fields are mapped below
     const directFields = [
       'firstName', 'lastName', 'email', 'company', 'title', 'bio',
-      'profileImageUrl', 'notes'
+      'profileImageUrl', 'notes',
+      // Persist social/contact directly to DB columns
+      'linkedinUrl', 'twitterHandle', 'personalWebsite'
     ] as const
 
     // Admin-only fields
@@ -253,28 +259,27 @@ export async function PATCH(
       })
     }
 
-    // Handle aliases from newer schema or UI
-    // Map UI/social aliases to actual DB columns
-    // linkedin
+    // Handle aliases from newer schema or UI → map to actual DB columns
+    // LinkedIn
     if (body.linkedin !== undefined) {
       updateData.linkedinUrl = Array.isArray(body.linkedin) ? body.linkedin[0] : body.linkedin
     }
     if (body.linkedinUrl !== undefined) {
-      updateData.linkedinUrl = body.linkedinUrl
+      updateData.linkedinUrl = Array.isArray(body.linkedinUrl) ? body.linkedinUrl[0] : body.linkedinUrl
     }
-    // twitter
-    if (body.twitterHandle !== undefined) {
-      updateData.twitterHandle = body.twitterHandle
-    }
+    // Twitter
     if (body.twitter !== undefined) {
       updateData.twitterHandle = Array.isArray(body.twitter) ? body.twitter[0] : body.twitter
     }
-    // website
-    if (body.personalWebsite !== undefined) {
-      updateData.personalWebsite = body.personalWebsite
+    if (body.twitterHandle !== undefined) {
+      updateData.twitterHandle = Array.isArray(body.twitterHandle) ? body.twitterHandle[0] : body.twitterHandle
     }
+    // Website
     if (body.website !== undefined) {
       updateData.personalWebsite = Array.isArray(body.website) ? body.website[0] : body.website
+    }
+    if (body.personalWebsite !== undefined) {
+      updateData.personalWebsite = Array.isArray(body.personalWebsite) ? body.personalWebsite[0] : body.personalWebsite
     }
 
     // 4. Update the analyst
@@ -323,9 +328,9 @@ export async function PATCH(
       try {
         await syncAnalystSocialHandlesOnUpdate({
           id: updatedAnalyst.id,
-          twitterHandle: (updatedAnalyst as any).twitter || body.twitterHandle || null,
-          linkedinUrl: (updatedAnalyst as any).linkedIn || body.linkedinUrl || null,
-          personalWebsite: (updatedAnalyst as any).website || body.personalWebsite || null
+          twitterHandle: (updatedAnalyst as any).twitterHandle || body.twitter || body.twitterHandle || null,
+          linkedinUrl: (updatedAnalyst as any).linkedinUrl || body.linkedin || body.linkedinUrl || null,
+          personalWebsite: (updatedAnalyst as any).personalWebsite || body.website || body.personalWebsite || null
         })
       } catch (syncError) {
         console.error('Error syncing social handles:', syncError)

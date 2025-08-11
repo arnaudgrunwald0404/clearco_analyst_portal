@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     }
     const authUser = authResult
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check user role
     const { data: userProfile } = await supabase
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
     const authUser = authResult
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // 1. Get the analyst's profile to determine their tags
     const { data: analyst } = await supabase

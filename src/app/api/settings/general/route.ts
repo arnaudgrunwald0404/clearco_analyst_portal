@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import { requireAuth } from '@/lib/auth-utils'
 import type { Database } from '@/types/supabase'
+import { requireAuth } from '@/lib/auth-utils'
 
 type general_settings = Database['public']['Tables']['general_settings']['Row']
 type general_settingsInsert = Database['public']['Tables']['general_settings']['Insert']
@@ -21,17 +21,6 @@ let cacheTimestamp: number = 0;
 
 export async function GET() {
   try {
-    // Check authentication first
-    const authResult = await requireAuth()
-    
-    // If it's a NextResponse (error), return it directly
-    if (authResult instanceof NextResponse) {
-      return authResult
-    }
-    
-    // Otherwise it's the user
-    const user = authResult
-
     const now = Date.now();
     
     // Return cached data if still valid

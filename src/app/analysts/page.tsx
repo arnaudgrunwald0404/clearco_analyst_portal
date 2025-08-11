@@ -826,7 +826,7 @@ export default function AnalystsPage() {
                         <div className="text-sm font-medium text-gray-900 truncate">
                           {analyst.firstName} {analyst.lastName}
                         </div>
-                        <div className="text-sm text-gray-500 truncate">{analyst.email}</div>
+              <div className="text-sm text-gray-500 truncate">{analyst.email}</div>
                       </div>
                     </div>
                   </div>

@@ -9,7 +9,7 @@ interface AnalystSocialData {
 
 export class SocialHandleSync {
   private async getSupabase() {
-    return await createClient()
+    return createClient()
   }
 
   /**

@@ -131,7 +131,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
                   Transcript
                 </button>
               )}
-              {latestBriefing.aiSummary && (
+              {latestBriefing.ai_summary && (
                 <button className="flex items-center px-3 py-2 bg-green-50 text-green-700 text-sm rounded-lg hover:bg-green-100 transition-colors">
                   <Bot className="w-4 h-4 mr-2" />
                   AI Summary

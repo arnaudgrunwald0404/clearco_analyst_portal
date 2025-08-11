@@ -50,19 +50,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    // Add timeout to prevent hanging requests
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort('timeout'), 8000) // 8s timeout
+
     try {
       setLoading(true)
       setError(null)
       
-      // Add timeout to prevent hanging requests
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
-      
-      const response = await fetch('/api/settings/general', {
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
+      const response = await fetch('/api/settings/general', { signal: controller.signal })
       if (response.ok) {
         const data = await response.json()
         // Extract only the settings data, excluding cache metadata
@@ -91,13 +87,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         // Set fallback settings for other errors too
         setSettings(createFallbackSettings())
       }
-    } catch (error) {
-      console.error('Failed to fetch settings:', error)
-      setError('Failed to load company settings')
-      
-      // Set fallback settings so the app can still function
-      setSettings(createFallbackSettings())
+    } catch (error: any) {
+      // Swallow abort timeouts to avoid noisy overlay errors
+      if (error?.name === 'AbortError' || (typeof error?.message === 'string' && error.message.includes('aborted'))) {
+        console.warn('Settings request aborted (timeout) – using fallback settings')
+        // Use fallback silently without setting an error banner
+        setSettings(current => createFallbackSettings(current || undefined))
+      } else {
+        console.error('Failed to fetch settings:', error)
+        setError('Failed to load company settings')
+        setSettings(createFallbackSettings())
+      }
     } finally {
+      clearTimeout(timeoutId)
       setLoading(false)
       setIsInitialized(true)
     }

@@ -138,13 +138,14 @@ export default function CreateNewsletterPage() {
   const [filterStatuses, setFilterStatuses] = useState<string[]>([])
   const [filterTypes, setFilterTypes] = useState<string[]>([])
   const [filterRelationshipHealths, setFilterRelationshipHealths] = useState<string[]>([])
-  const [filterOptions, setFilterOptions] = useState<any>({
-    companies: [],
-    influences: [],
-    statuses: [],
-    types: [],
-    relationshipHealths: []
-  })
+  const DEFAULT_FILTER_OPTIONS = {
+    companies: [] as string[],
+    influences: [] as string[],
+    statuses: [] as string[],
+    types: [] as string[],
+    relationshipHealths: [] as string[],
+  }
+  const [filterOptions, setFilterOptions] = useState<any>(DEFAULT_FILTER_OPTIONS)
   const [filteredAnalysts, setFilteredAnalysts] = useState<any[]>([])
   const [filterLoading, setFilterLoading] = useState(false)
   
@@ -234,7 +235,10 @@ export default function CreateNewsletterPage() {
         })
         const data = await response.json()
         if (data.success) {
-          setFilterOptions(data.data.filterOptions || {})
+          setFilterOptions({
+            ...DEFAULT_FILTER_OPTIONS,
+            ...(data.data.filterOptions || {}),
+          })
         }
       } catch (e) {
         console.error('Failed to load filter options:', e)
@@ -285,7 +289,10 @@ export default function CreateNewsletterPage() {
       const data = await response.json()
       if (data.success) {
         setFilteredAnalysts(data.data.analysts || [])
-        setFilterOptions(data.data.filterOptions || {})
+        setFilterOptions({
+          ...DEFAULT_FILTER_OPTIONS,
+          ...(data.data.filterOptions || {}),
+        })
       } else {
         setError(data.error || 'Failed to find analysts')
       }

@@ -206,8 +206,7 @@ async function seedBriefings() {
         await prisma.briefing.update({
           where: { id: briefing.id },
           data: {
-            aiSummary: aiSummary.summary,
-            followUpSummary: aiSummary.followUps
+            ai_summary: aiSummary.summary
           }
         })
       }

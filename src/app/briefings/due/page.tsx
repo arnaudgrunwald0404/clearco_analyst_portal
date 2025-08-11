@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Clock,
   Users,
@@ -18,6 +18,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+// Avoid next/image for external hosts; use native img with onError fallback
 
 interface AnalystDue {
   id: string
@@ -33,6 +34,7 @@ interface AnalystDue {
   tier: {
     name: string
     briefingFrequency: number
+    normalized?: string
   }
   lastBriefing?: {
     id: string
@@ -42,8 +44,8 @@ interface AnalystDue {
     id: string
     scheduledAt: string
   } | null
-  daysSinceLastBriefing: number
-  overdueDays: number
+  daysSinceLastBriefing: number | null
+  overdueDays: number | null
   needsBriefing: boolean
 }
 
@@ -168,38 +170,115 @@ function BulkActionModal({ isOpen, onClose, selectedAnalysts, onAction }: BulkAc
   )
 }
 
+// Cache key and helper functions
+const CACHE_KEY = 'briefings-due-cache'
+const CACHE_DURATION = 24 * 60 * 60 * 1000 // 24 hours
+
+interface CachedData {
+  data: AnalystDue[]
+  timestamp: number
+  counts: Record<string, number>
+}
+
+const getCachedData = (): CachedData | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY)
+    if (!cached) return null
+    
+    const parsedCache: CachedData = JSON.parse(cached)
+    const now = Date.now()
+    
+    // Check if cache is still valid (same day)
+    const cacheDate = new Date(parsedCache.timestamp)
+    const today = new Date()
+    const isSameDay = cacheDate.toDateString() === today.toDateString()
+    
+    if (isSameDay && (now - parsedCache.timestamp) < CACHE_DURATION) {
+      console.log('📋 Using cached briefings due data')
+      return parsedCache
+    }
+    
+    // Cache expired, remove it
+    localStorage.removeItem(CACHE_KEY)
+    return null
+  } catch (error) {
+    console.error('Error reading cache:', error)
+    localStorage.removeItem(CACHE_KEY)
+    return null
+  }
+}
+
+const setCachedData = (data: AnalystDue[], counts: Record<string, number>) => {
+  try {
+    const cacheData: CachedData = {
+      data,
+      timestamp: Date.now(),
+      counts
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+    console.log('💾 Cached briefings due data')
+  } catch (error) {
+    console.error('Error saving cache:', error)
+  }
+}
+
 export default function BriefingsDuePage() {
   const [analysts, setAnalysts] = useState<AnalystDue[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTier, setSelectedTier] = useState('ALL')
+  // Multi-select tier filter (defaults to Very High + High)
+  const [selectedTiers, setSelectedTiers] = useState<string[]>(['VERY_HIGH', 'HIGH'])
   const [selectedAnalysts, setSelectedAnalysts] = useState<string[]>([])
   const [showBulkModal, setShowBulkModal] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [sortBy, setSortBy] = useState<'overdue' | 'tier' | 'name'>('overdue')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [usingCache, setUsingCache] = useState(false)
 
   useEffect(() => {
     fetchAnalystsDue()
-  }, [searchTerm, selectedTier, currentPage, sortBy, sortOrder])
+  }, [searchTerm, currentPage, sortBy, sortOrder])
 
-  const fetchAnalystsDue = async () => {
+  const fetchAnalystsDue = async (forceRefresh = false) => {
     try {
       setLoading(true)
+      setUsingCache(false)
+      
+      // Try to load from cache first if no search term and not forcing refresh
+      if (!searchTerm && !forceRefresh) {
+        const cachedData = getCachedData()
+        if (cachedData) {
+          setAnalysts(cachedData.data)
+          setUsingCache(true)
+          setLoading(false)
+          console.log('📋 Loaded from cache:', cachedData.data.length, 'analysts')
+          return
+        }
+      }
       
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20',
-        ...(searchTerm && { search: searchTerm }),
-        ...(selectedTier !== 'ALL' && { tier: selectedTier })
+        ...(searchTerm && { search: searchTerm })
       })
       
+      // Only force server cache bypass if searching or explicitly refreshing
+      if (searchTerm || forceRefresh) {
+        params.append('force', 'true')
+      }
+      
+      console.log('🌐 Fetching fresh data from API...')
       const response = await fetch(`/api/briefings/due?${params}`)
       const data = await response.json()
       
       if (data.success) {
         let sortedAnalysts = [...data.data]
+        
+        // Cache the data if this is a full load (no search, no pagination)
+        if (!searchTerm && currentPage === 1) {
+          setCachedData(data.data, data.counts || {})
+        }
         
         // Apply sorting
         sortedAnalysts.sort((a, b) => {
@@ -230,7 +309,7 @@ export default function BriefingsDuePage() {
         })
         
         setAnalysts(sortedAnalysts)
-        setTotalPages(data.pagination.pages)
+        setTotalPages(1)
       }
     } catch (error) {
       console.error('Error fetching analysts due for briefings:', error)
@@ -381,6 +460,107 @@ export default function BriefingsDuePage() {
   }
 
   const selectedAnalystsData = analysts.filter(a => selectedAnalysts.includes(a.id))
+  const visibleAnalysts = useMemo(() => {
+    const norm = (s: string | undefined) => (s || '').toUpperCase()
+    return analysts.filter(a => selectedTiers.includes(norm(a.tier?.normalized || a.tier?.name)))
+  }, [analysts, selectedTiers])
+
+  function TierChip({ label }: { label: string }) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 border border-gray-200 text-gray-800">
+        {label}
+      </span>
+    )
+  }
+
+  function TierMultiSelect({
+    value,
+    onChange,
+  }: {
+    value: string[]
+    onChange: (v: string[]) => void
+  }) {
+    const [open, setOpen] = useState(false)
+    const options = [
+      { value: 'VERY_HIGH', label: 'Very High' },
+      { value: 'HIGH', label: 'High' },
+      { value: 'MEDIUM', label: 'Medium' },
+      { value: 'LOW', label: 'Low' },
+    ]
+
+    const toggle = (val: string) => {
+      if (value.includes(val)) onChange(value.filter(v => v !== val))
+      else onChange([...value, val])
+    }
+
+    const allLabels = new Map(options.map(o => [o.value, o.label]))
+    const display = value.length > 0 ? value.map(v => allLabels.get(v) || v) : []
+
+    return (
+      <div className="relative w-64 sm:w-72">
+        <button
+          type="button"
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen(o => !o)}
+          className="w-full h-9 flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <div className="flex gap-1 flex-wrap items-center text-gray-700">
+            {display.length === 0 ? (
+              <span className="text-gray-400">Filter influence tiers</span>
+            ) : (
+              display.map(label => <TierChip key={label as string} label={label as string} />)
+            )}
+          </div>
+          <ChevronDown className="w-4 h-4 text-gray-400 ml-2" />
+        </button>
+
+        {open && (
+          <div
+            role="listbox"
+            aria-multiselectable="true"
+            className="absolute z-30 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg"
+          >
+            <ul className="max-h-56 overflow-auto py-1">
+              {options.map(opt => {
+                const checked = value.includes(opt.value)
+                return (
+                  <li key={opt.value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={checked}
+                      onClick={() => toggle(opt.value)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+                    >
+                      <input type="checkbox" checked={checked} readOnly className="h-4 w-4" />
+                      <span>{opt.label}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="border-t p-2 flex items-center justify-between">
+              <button
+                type="button"
+                className="text-xs text-gray-600 hover:text-gray-900 underline"
+                onClick={() => onChange([])}
+              >
+                Clear all
+              </button>
+              <button
+                type="button"
+                className="text-xs text-blue-600 hover:text-blue-800"
+                onClick={() => setOpen(false)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -393,6 +573,26 @@ export default function BriefingsDuePage() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
+          {/* Cache Status & Refresh */}
+          <div className="flex items-center gap-2">
+            {usingCache && (
+              <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                📋 Cached
+              </span>
+            )}
+            <button
+              onClick={() => fetchAnalystsDue(true)}
+              disabled={loading}
+              className="flex items-center px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              title="Refresh data"
+            >
+              <svg className={cn("w-4 h-4 mr-1", loading && "animate-spin")} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+          </div>
+          
           {selectedAnalysts.length > 0 && (
             <button
               onClick={() => setShowBulkModal(true)}
@@ -417,19 +617,19 @@ export default function BriefingsDuePage() {
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
           />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-[260px]">
           <Filter className="w-4 h-4 text-gray-400" />
-          <select
-            value={selectedTier}
-            onChange={(e) => setSelectedTier(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="ALL">All Tiers</option>
-            <option value="TIER_1">Tier 1</option>
-            <option value="TIER_2">Tier 2</option>
-            <option value="TIER_3">Tier 3</option>
-            <option value="TIER_4">Tier 4</option>
-          </select>
+          <TierMultiSelect value={selectedTiers} onChange={setSelectedTiers} />
+          {selectedTiers.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedTiers([])}
+              className="text-xs text-gray-600 hover:text-gray-800 underline"
+              aria-label="Clear all filters"
+            >
+              Clear all
+            </button>
+          )}
         </div>
       </div>
 
@@ -449,7 +649,7 @@ export default function BriefingsDuePage() {
             <Clock className="w-8 h-8 text-orange-500" />
             <div className="ml-3">
               <p className="text-2xl font-bold text-gray-900">
-                {analysts.filter(a => a.overdueDays > 30).length}
+                {analysts.filter(a => (a.overdueDays ?? 0) > 30).length}
               </p>
               <p className="text-sm text-gray-600">Overdue 30+ Days</p>
             </div>
@@ -460,22 +660,16 @@ export default function BriefingsDuePage() {
             <Users className="w-8 h-8 text-blue-500" />
             <div className="ml-3">
               <p className="text-2xl font-bold text-gray-900">
-                {analysts.filter(a => a.tier.name === 'TIER_1').length}
+                {analysts.filter(a => (a.tier?.normalized || a.tier.name || '').toUpperCase() === 'VERY_HIGH').length}
               </p>
-              <p className="text-sm text-gray-600">Tier 1 (Critical)</p>
+              <p className="text-sm text-gray-600">Very High tier</p>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center">
-            <CheckCircle2 className="w-8 h-8 text-green-500" />
-            <div className="ml-3">
-              <p className="text-2xl font-bold text-gray-900">{selectedAnalysts.length}</p>
-              <p className="text-sm text-gray-600">Selected</p>
-            </div>
-          </div>
-        </div>
+        {/* Removed Selected metric per request */}
       </div>
+
+      {/* Removed redundant "Showing" chips for selected filters */}
 
       {/* Loading State */}
       {loading && (
@@ -485,160 +679,139 @@ export default function BriefingsDuePage() {
         </div>
       )}
 
-      {/* Analysts Table */}
+      {/* Grouped Tables by Tier (Very High, High, Medium, Low) */}
       {!loading && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          {/* Table Header */}
-          <div className="border-b border-gray-200 bg-gray-50">
-            <div className="px-4 py-3 flex items-center">
-              <input
-                type="checkbox"
-                checked={selectedAnalysts.length === analysts.length && analysts.length > 0}
-                onChange={handleSelectAll}
-                className="mr-3"
-              />
-              <div className="flex-1 grid grid-cols-6 gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                <button
-                  onClick={() => handleSort('name')}
-                  className="text-left flex items-center hover:text-gray-700"
-                >
-                  Analyst
-                  {sortBy === 'name' && (
-                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                  )}
-                </button>
-                <button
-                  onClick={() => handleSort('tier')}
-                  className="text-left flex items-center hover:text-gray-700"
-                >
-                  Tier & Score
-                  {sortBy === 'tier' && (
-                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                  )}
-                </button>
-                <span>Health</span>
-                <span>Last Briefing</span>
-                <button
-                  onClick={() => handleSort('overdue')}
-                  className="text-left flex items-center hover:text-gray-700"
-                >
-                  Days Overdue
-                  {sortBy === 'overdue' && (
-                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />
-                  )}
-                </button>
-                <span>Actions</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-gray-200">
-            {analysts.map((analyst) => (
-              <div key={analyst.id} className="px-4 py-3 hover:bg-gray-50">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedAnalysts.includes(analyst.id)}
-                    onChange={() => handleSelectAnalyst(analyst.id)}
-                    className="mr-3"
-                  />
-                  <div className="flex-1 grid grid-cols-6 gap-4 items-center">
-                    {/* Analyst Info */}
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                        <User className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {analyst.firstName} {analyst.lastName}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {analyst.title} {analyst.company}
-                        </div>
-                      </div>
+        <div className="space-y-8">
+          {(['VERY_HIGH','HIGH','MEDIUM','LOW'] as const).map(tier => {
+            const show = selectedTiers.includes(tier)
+            if (!show) return null
+            const rows = analysts.filter(a => (a.tier?.normalized || a.tier?.name || '').toUpperCase() === tier)
+            if (rows.length === 0) return null
+            const label = tier === 'VERY_HIGH' ? 'Very High' : tier.charAt(0) + tier.slice(1).toLowerCase()
+            return (
+              <div key={tier} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="px-4 py-3 border-b bg-gray-50 font-semibold">{label} Influence ({rows.length})</div>
+                {/* Column headers */}
+                <div className="px-4 py-2 bg-gray-50 border-b">
+                  <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide items-center">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all"
+                        checked={rows.every(r => selectedAnalysts.includes(r.id)) && rows.length > 0}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4"
+                      />
                     </div>
-
-                    {/* Tier & Score */}
-                    <div>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">
-                        {analyst.tier.name}
-                      </span>
-
-                    </div>
-
-                    {/* Health */}
-                    <div>
-                      <span className={cn(
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        healthColors[analyst.relationshipHealth] || 'bg-gray-100 text-gray-800'
-                      )}>
-                        {analyst.relationshipHealth}
-                      </span>
-                    </div>
-
-                    {/* Last Briefing */}
-                    <div className="text-sm">
-                      {analyst.lastBriefing ? (
-                        <div>
-                          <div className="text-gray-900">
-                            {formatDate(analyst.lastBriefing.scheduledAt)}
-                          </div>
-                          <div className="text-gray-600">
-                            {analyst.daysSinceLastBriefing} days ago
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">Never</span>
-                      )}
-                    </div>
-
-                    {/* Days Overdue */}
-                    <div>
-                      <span className={cn(
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                        analyst.overdueDays > 30
-                          ? 'bg-red-100 text-red-800'
-                          : analyst.overdueDays > 7
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      )}>
-                        +{analyst.overdueDays} days
-                      </span>
-                      <div className="text-xs text-gray-600 mt-1">
-                        Due every {analyst.tier.briefingFrequency} days
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleStartScheduling(analyst.id, analyst.firstName, analyst.lastName)}
-                        className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Start Scheduling"
-                      >
-                        <CalendarIcon className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 text-gray-400 hover:text-green-600 transition-colors">
-                        <MessageSquare className="w-4 h-4" />
-                      </button>
-                      <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <span className="text-left">Analyst</span>
+                    <span className="text-left">Influence Tier</span>
+                    <span className="text-left">Health</span>
+                    <span className="text-left">Last Briefing</span>
+                    <span className="text-left">Days Overdue</span>
+                    <span className="text-left">Actions</span>
                   </div>
                 </div>
+                <div className="divide-y divide-gray-200">
+                  {rows.map(analyst => (
+                    <div key={analyst.id} className="px-4 py-3 hover:bg-gray-50">
+                      <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 items-center">
+                        {/* Select */}
+                        <div className="flex items-center justify-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedAnalysts.includes(analyst.id)}
+                            onChange={() => handleSelectAnalyst(analyst.id)}
+                            className="h-4 w-4"
+                          />
+                        </div>
+
+                        {/* Analyst Info */}
+                        <div className="flex items-center whitespace-normal break-words">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 mr-3 flex items-center justify-center relative">
+                            {analyst.profileImageUrl ? (
+                              <img
+                                src={analyst.profileImageUrl}
+                                alt={`${analyst.firstName} ${analyst.lastName}`}
+                                width={40}
+                                height={40}
+                                className="object-cover w-10 h-10"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).style.display = 'none'
+                                }}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : null}
+                            {!analyst.profileImageUrl && (
+                              <span className="text-sm font-medium text-blue-600">
+                                {(analyst.firstName?.[0] || '').toUpperCase()}
+                                {(analyst.lastName?.[0] || '').toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{analyst.firstName} {analyst.lastName}</div>
+                            <div className="text-sm text-gray-600">{analyst.title} {analyst.company}</div>
+                          </div>
+                        </div>
+
+                        {/* Tier */}
+                        <div>
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">{analyst.tier.name}</span>
+                        </div>
+
+                        {/* Health */}
+                        <div>
+                          <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', healthColors[analyst.relationshipHealth] || 'bg-gray-100 text-gray-800')}>{analyst.relationshipHealth}</span>
+                        </div>
+
+                        {/* Last Briefing */}
+                        <div className="text-sm">
+                          {analyst.lastBriefing ? (
+                            <div>
+                              <div className="text-gray-900">{formatDate(analyst.lastBriefing.scheduledAt)}</div>
+                              <div className="text-gray-600">{analyst.daysSinceLastBriefing ?? '—'} days ago</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Never</span>
+                          )}
+                        </div>
+
+                        {/* Days Overdue */}
+                        <div>
+                          {analyst.lastBriefing ? (
+                            <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', (analyst.overdueDays ?? 0) > 30 ? 'bg-red-100 text-red-800' : (analyst.overdueDays ?? 0) > 7 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800')}>+{Math.max(analyst.overdueDays ?? 0, 0)} days</span>
+                          ) : null}
+                          <div className="text-xs text-gray-600 mt-1">Due every {analyst.tier.briefingFrequency} days</div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center space-x-2 justify-start">
+                          <button onClick={() => handleStartScheduling(analyst.id, analyst.firstName, analyst.lastName)} className="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="Start Scheduling">
+                            <CalendarIcon className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-green-600 transition-colors">
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                          <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })}
 
           {/* Empty State */}
-          {analysts.length === 0 && !loading && (
+          {analysts.length === 0 && (
             <div className="text-center py-12">
               <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
               <p className="text-gray-600">
-                {searchTerm || selectedTier !== 'ALL'
+                {searchTerm || selectedTiers.length < 4
                   ? 'No analysts match your current filters'
                   : 'No analysts currently need briefings'
                 }

@@ -19,24 +19,24 @@ export default function PortalLayout({
 }) {
   const [companySettings, setCompanySettings] = useState<any>(null)
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
-  // Redirect if not authenticated or not an analyst
+  // Redirect if not authenticated or not an analyst (wait for auth to finish loading)
   useEffect(() => {
+    if (loading) return
     if (!user) {
-      router.push('/analyst-login')
+      router.push('/auth')
       return
     }
-    
-    // Only allow ANALYST users in the portal
     if (user.role !== 'ANALYST') {
       router.push('/')
       return
     }
-  }, [user, router])
+  }, [user, loading, router])
 
-  // Fetch company settings
+  // Fetch company settings after auth is ready
   useEffect(() => {
+    if (loading || !user) return
     const fetchCompanySettings = async () => {
       try {
         const response = await fetch('/api/settings/general')
@@ -47,10 +47,10 @@ export default function PortalLayout({
       }
     }
     fetchCompanySettings()
-  }, [])
+  }, [loading, user])
 
   // Show loading while checking authentication
-  if (!user) {
+  if (loading || !user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

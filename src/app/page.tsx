@@ -19,7 +19,7 @@ interface DashboardMetrics {
   engagementRate: number
   briefingsPast90Days: number
   briefingsYTD: number
-  briefingsPlanned: number
+  briefingsScheduled: number
   briefingsDue: number
   briefingFollowUps: number
   newslettersYTD: number
@@ -27,6 +27,12 @@ interface DashboardMetrics {
   upcomingPublications: number
   recentContentItems: ContentItem[]
   newAnalysts: NewAnalyst[]
+  coverageByTier?: {
+    VERY_HIGH: number
+    HIGH: number
+    MEDIUM: number
+    LOW: number
+  }
 }
 
 interface ContentItem {
@@ -207,7 +213,7 @@ function DashboardContent() {
           engagementRate: 0,
           briefingsPast90Days: 0,
           briefingsYTD: 0,
-          briefingsPlanned: 0,
+          briefingsScheduled: 0,
           briefingsDue: 0,
           briefingFollowUps: 0,
           newslettersYTD: 0,
@@ -432,25 +438,39 @@ function DashboardContent() {
               </CardContent>
             </Card>
 
-            {/* Coverage % */}
+            {/* Coverage by Tier */}
             <Card>
               <CardContent className="p-5">
-                <div className="flex items-center">
+                <div className="flex items-start">
                   <div className="flex-shrink-0">
-                    <TrendingUp className="h-6 w-6 text-green-400" />
+                    <TrendingUp className="h-6 w-6 text-green-400 mt-1" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
-                    <div className="flex items-start justify-between">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Coverage %
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.engagementRate ? `${metrics.engagementRate}%` : '0%'}
-                        </dd>
-                      </dl>
-                      <CoverageSparkline />
-                    </div>
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 pb-2 truncate">
+                        Trailing 12m coverage by influence
+                      </dt>
+                      <dd>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Very High</span>
+                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.VERY_HIGH ?? 0}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">High</span>
+                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.HIGH ?? 0}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Medium</span>
+                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.MEDIUM ?? 0}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-600">Low</span>
+                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.LOW ?? 0}%</span>
+                          </div>
+                        </div>
+                      </dd>
+                    </dl>
                   </div>
                 </div>
               </CardContent>
@@ -562,8 +582,27 @@ function DashboardContent() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
+                      <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
                         Briefings Due
+                        <a
+                          href="#"
+                          onClick={async (e) => {
+                            e.preventDefault()
+                            try {
+                              const resp = await fetch('/api/briefings/due?force=true', { cache: 'no-store' })
+                              const json = await resp.json()
+                              const counts = json?.countsByTier || {}
+                              const vh = counts.VERY_HIGH || 0
+                              const h = counts.HIGH || 0
+                              setMetrics((prev) => ({ ...(prev || {} as any), briefingsDue: vh + h } as any))
+                              // Navigate to Briefings Due page and let it render
+                              router.push('/briefings/due')
+                            } catch {}
+                          }}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          Refresh
+                        </a>
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
                         {metrics?.briefingsDue || 0}
@@ -584,10 +623,10 @@ function DashboardContent() {
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Briefings Planned
+                        Briefings Scheduled
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsPlanned || 0}
+                        {metrics?.briefingsScheduled || 0}
                       </dd>
                     </dl>
                   </div>

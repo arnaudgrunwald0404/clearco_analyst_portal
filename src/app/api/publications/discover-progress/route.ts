@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import * as cheerio from 'cheerio'
+import { isAbortLike } from '@/lib/utils/abort-error-handler'
 
 interface Publication {
   title: string
@@ -266,17 +267,37 @@ export async function GET(request: NextRequest) {
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
-    const supabase = adminSupabase || await createClient()
+    const supabase = adminSupabase || createClient()
 
     // Set up SSE headers
     const responseStream = new TransformStream()
     const writer = responseStream.writable.getWriter()
     const encoder = new TextEncoder()
 
-    const sendProgress = (update: ProgressUpdate) => {
-      const data = `data: ${JSON.stringify(update)}\n\n`
-      writer.write(encoder.encode(data))
+    // Guarded writer helpers to ignore aborts
+    const safeWrite = async (chunk: string) => {
+      try {
+        await writer.write(encoder.encode(chunk))
+      } catch (e) {
+        if (isAbortLike(e)) {
+          // Client disconnected; ignore further writes
+          return
+        }
+        throw e
+      }
     }
+
+    const sendProgress = async (update: ProgressUpdate) => {
+      const data = `data: ${JSON.stringify(update)}\n\n`
+      await safeWrite(data)
+    }
+
+    // If the client disconnects, close the writer gracefully
+    try {
+      (request as any).signal?.addEventListener?.('abort', async () => {
+        try { await writer.close() } catch {}
+      })
+    } catch {}
 
     // Start processing in the background
     ;(async () => {
@@ -446,6 +467,7 @@ export async function GET(request: NextRequest) {
               analyst: `${source.analyst.firstName} ${source.analyst.lastName}`,
               publicationsFound: publications.length,
               publicationsInserted: inserted,
+              topTitles: publications.slice(0, 3).map(p => p.title).filter(Boolean),
               progress: Math.round((processedAnalysts / analystSources.length) * 100),
               currentAnalyst: processedAnalysts,
               totalAnalysts: analystSources.length
@@ -464,17 +486,19 @@ export async function GET(request: NextRequest) {
         })
 
       } catch (error) {
-        sendProgress({
-          type: 'error',
-          data: { 
-            message: 'Discovery failed',
-            error: error instanceof Error ? error.message : 'Unknown error'
+          await sendProgress({
+            type: 'error',
+            data: { 
+              message: 'Discovery failed',
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }
+          })
+        } finally {
+          try { await writer.close() } catch (e) {
+            if (!isAbortLike(e)) throw e
           }
-        })
-      } finally {
-        writer.close()
-      }
-    })()
+        }
+      })()
 
     return new Response(responseStream.readable, {
       headers: {

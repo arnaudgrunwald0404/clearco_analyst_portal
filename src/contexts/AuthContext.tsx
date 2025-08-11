@@ -32,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  
+  console.log('🚀 [AuthContext] Provider initialized')
 
   // Internal logout used when we must force sign-out from within the context
   const forceLogout = async () => {
@@ -61,53 +63,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let loadingTimeout: ReturnType<typeof setTimeout> | null = null
 
     const loadUser = async () => {
+      const ctxId = Math.random().toString(36).slice(2, 8)
+      console.group(`[AuthContext ${ctxId}] Initial load`)
       try {
+        console.log('[AuthContext] Calling supabase.auth.getSession()')
         const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('[AuthContext] getSession result:', { 
+          hasSession: !!session, 
+          hasUser: !!session?.user, 
+          userEmail: session?.user?.email,
+          error: error?.message 
+        })
 
         if (error) {
-          console.error('Error getting session:', error)
+          console.error('[AuthContext] Error getting session:', error)
           setLoading(false)
+          console.groupEnd()
           return
         }
 
         if (session?.user) {
+          console.log('[AuthContext] Session user present. Loading user profile...')
           await loadUserProfile(session.user)
         } else {
+          console.log('[AuthContext] No Supabase session. Checking localStorage user...')
           // No Supabase session: support analyst login via validated localStorage user
           const storedUserRaw = localStorage.getItem('user')
           if (storedUserRaw) {
             try {
               const parsed = JSON.parse(storedUserRaw)
+              console.log('[AuthContext] Found local user. Validating shape...')
               if (isValidLocalUser(parsed)) {
+                console.log('[AuthContext] Local user valid. Setting user from localStorage (analyst guest).')
                 setUser(parsed)
               } else {
-                console.warn('Invalid local user data found; clearing')
+                console.warn('[AuthContext] Invalid local user data found; clearing')
                 localStorage.removeItem('user')
                 setUser(null)
               }
             } catch (parseErr) {
-              console.warn('Failed to parse local user; clearing')
+              console.warn('[AuthContext] Failed to parse local user; clearing')
               localStorage.removeItem('user')
               setUser(null)
             }
           } else {
+            console.log('[AuthContext] No local user stored. Setting user=null')
             setUser(null)
           }
         }
       } catch (error) {
-        console.error('Error loading user:', error)
+        console.error('[AuthContext] Error loading user:', error)
         // Clear any stale data on error
         localStorage.removeItem('user')
         setUser(null)
       } finally {
         setLoading(false)
+        console.groupEnd()
       }
     }
 
     // Add a soft timeout so the UI never spins forever. We DO NOT clear user
     // state here; we only end the loading spinner and rely on later events.
     loadingTimeout = setTimeout(() => {
-      console.warn('Auth load taking too long; ending loading state for UX. Session will continue initializing in background.')
+      console.warn('[AuthContext] Auth load taking too long; ending loading state for UX. Session will continue initializing in background.')
       setLoading(false)
     }, 12000)
 
@@ -116,12 +134,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, !!session)
+        console.log('🔄 [AuthContext] Auth state changed:', event, 'session user:', !!session?.user, 'user email:', session?.user?.email)
         
         if (event === 'SIGNED_IN' && session?.user) {
+          console.log('[AuthContext] SIGNED_IN -> loading profile')
           await loadUserProfile(session.user)
         } else if (event === 'SIGNED_OUT') {
+          console.log('[AuthContext] SIGNED_OUT -> clearing user')
           setUser(null)
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log('[AuthContext] TOKEN_REFRESHED')
+        } else if (event === 'USER_UPDATED') {
+          console.log('[AuthContext] USER_UPDATED')
         }
       }
     )
@@ -133,18 +157,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [supabase])
 
   const loadUserProfile = async (authUser: User) => {
+    const ctxId = Math.random().toString(36).slice(2, 8)
+    console.group(`[AuthContext ${ctxId}] loadUserProfile ${authUser.id}`)
     try {
-      // Get user profile for role information
-      const { data: profile, error: profileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
+      // Get user profile via API endpoint to avoid RLS issues
+      console.log('[AuthContext] Fetching user profile via API for user:', authUser.id, 'email:', authUser.email)
+      
+      const response = await fetch('/api/auth/profile')
+      const result = await response.json()
+      
+      console.log('[AuthContext] Profile API result:', { 
+        status: response.status, 
+        hasProfile: !!result.profile, 
+        error: result.error 
+      })
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch profile')
+      }
+      
+      const profile = result.profile
 
-      if (profileError && profileError.code === 'PGRST116') {
+      if (!profile) {
+        console.warn('[AuthContext] Profile not found; constructing minimal profile if domain authorized')
         // Profile doesn't exist. Keep authorized domain users signed in with minimal profile.
         const email = authUser.email || ''
         const domain = email.split('@')[1]?.toLowerCase()
+        console.log('[AuthContext] Domain:', domain)
         if (domain === 'clearcompany.com') {
           const firstName = authUser.user_metadata?.first_name || email.split('@')[0] || 'User'
           const lastName = authUser.user_metadata?.last_name || ''
@@ -158,13 +197,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             createdAt: authUser.created_at,
             updatedAt: new Date().toISOString()
           }
+          console.log('[AuthContext] Setting minimal admin profile from domain authorization')
           setUser(userData)
           localStorage.setItem('user', JSON.stringify(userData))
         } else {
+          console.warn('[AuthContext] Unauthorized domain without profile. Forcing logout.')
           await forceLogout()
         }
       } else if (profile) {
         // Set user with existing profile
+        console.log('[AuthContext] Profile found. Role:', profile.role)
         const userData: UserProfile = {
           id: authUser.id,
           email: authUser.email || '',
@@ -181,7 +223,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (profileError) {
         // Non-"not found" profile errors should NOT force logout.
         // Instead, keep the user signed in with a minimal profile if allowed.
-        console.warn('Profile load error, falling back to minimal profile:', profileError)
+        console.warn('[AuthContext] Profile load error, falling back to minimal profile:', profileError)
         const email = authUser.email || ''
         const domain = email.split('@')[1]?.toLowerCase()
         if (domain === 'clearcompany.com') {
@@ -197,24 +239,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             createdAt: authUser.created_at,
             updatedAt: new Date().toISOString()
           }
+          console.log('[AuthContext] Setting minimal admin profile due to profile error')
           setUser(userData)
           localStorage.setItem('user', JSON.stringify(userData))
         } else {
           // For unrecognized domains, do not force sign-out; just clear local state
           // and allow routes to redirect gracefully.
+          console.warn('[AuthContext] Clearing local state for unrecognized domain after profile error')
           setUser(null)
           localStorage.removeItem('user')
         }
         return
       }
     } catch (error) {
-      console.error('Error loading user profile:', error)
+      console.error('[AuthContext] Error loading user profile:', error)
       await forceLogout()
       return
+    } finally {
+      console.groupEnd()
     }
   }
 
   const signIn = async (email: string, password: string) => {
+    console.log('[AuthContext] signIn called for', email)
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -224,7 +271,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
+      console.log('[AuthContext] /api/auth/login status:', response.status)
       const result = await response.json()
+      console.log('[AuthContext] /api/auth/login result:', { success: result.success, role: result.user?.role, redirectTo: result.redirectTo })
 
       if (result.success && result.user) {
         setUser(result.user)
@@ -240,7 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('Sign in error:', error)
+      console.error('[AuthContext] Sign in error:', error)
       return { 
         success: false, 
         error: 'An unexpected error occurred' 
@@ -309,7 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      console.log('🔄 Starting sign out process...')
+      console.log('[AuthContext] 🔄 Starting sign out process...')
       
       // Start API call and Supabase signout in parallel
       const [apiResponse] = await Promise.all([
@@ -321,7 +370,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ])
 
       if (!apiResponse.ok) {
-        console.warn('Logout API call failed:', await apiResponse.text())
+        console.warn('[AuthContext] Logout API call failed:', await apiResponse.text())
       }
 
       // Clear all storage
@@ -334,12 +383,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Add a small delay to ensure state is cleared
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      console.log('✅ Sign out completed, redirecting to /auth')
+      console.log('[AuthContext] ✅ Sign out completed, redirecting to /auth')
       
       // Use window.location.href instead of replace for more reliable redirect
       window.location.href = '/auth'
     } catch (error) {
-      console.error('Sign out error:', error)
+      console.error('[AuthContext] Sign out error:', error)
       // Emergency cleanup and redirect
       localStorage.removeItem('user')
       sessionStorage.clear()

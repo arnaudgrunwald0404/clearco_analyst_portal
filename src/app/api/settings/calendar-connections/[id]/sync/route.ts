@@ -455,7 +455,7 @@ export async function POST(
       }
       supabaseClient = createServiceClient<Database>(supabaseUrl, serviceRoleKey)
     } else {
-      supabaseClient = await createClient()
+      supabaseClient = createClient()
     }
 
     // Start the sync process asynchronously

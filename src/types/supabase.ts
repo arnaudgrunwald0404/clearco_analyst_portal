@@ -259,6 +259,9 @@ export interface Database {
           notes: string | null
           outcomes: string | null
           followUpActions: string | null
+          contentUrl: string | null
+          transcript: string | null
+          ai_summary: Json | null
           createdAt: string
           updatedAt: string
         }
@@ -273,6 +276,9 @@ export interface Database {
           notes?: string | null
           outcomes?: string | null
           followUpActions?: string | null
+          contentUrl?: string | null
+          transcript?: string | null
+          ai_summary?: Json | null
           createdAt?: string
           updatedAt?: string
         }
@@ -287,6 +293,9 @@ export interface Database {
           notes?: string | null
           outcomes?: string | null
           followUpActions?: string | null
+          contentUrl?: string | null
+          transcript?: string | null
+          ai_summary?: Json | null
           createdAt?: string
           updatedAt?: string
         }

@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
   try {
-    const authResult = await requireAuth()
-    if (authResult instanceof NextResponse) {
-      return authResult
-    }
-
     const supabase = createClient()
 
     const { data, error } = await supabase

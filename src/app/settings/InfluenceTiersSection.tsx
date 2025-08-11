@@ -217,10 +217,14 @@ export default function InfluenceTiersSection() {
           Analyst Tiers
         </CardTitle>
         <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
-        Tiers allow to prioritize communication to the most influential analysts. We recommend 2-5 tiers, each with target briefing frequencies and touchpoint frequencies.
-          <p>• Analysts tier assignment is based on their "influence" field</p>
-          <p>• System will suggest next contact dates based on tier frequencies</p>
-          </CardDescription>
+          Tiers allow to prioritize communication to the most influential analysts. We recommend 2-5 tiers, each with target briefing frequencies and touchpoint frequencies.
+        </CardDescription>
+        <div className="mt-2 text-gray-600">
+          <ul className="list-disc pl-5 space-y-1 text-sm">
+            <li>Analysts tier assignment is based on their "influence" field</li>
+            <li>System will suggest next contact dates based on tier frequencies</li>
+          </ul>
+        </div>
       </CardHeader>
       <CardContent className="pt-2 px-8 pb-8">
         {/* Tiers List */}

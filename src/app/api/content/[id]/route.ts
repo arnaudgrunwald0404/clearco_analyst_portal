@@ -15,7 +15,7 @@ export async function GET(
       return authResult
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: content, error } = await supabase
       .from('content')
       .select('*')
@@ -48,7 +48,7 @@ export async function PATCH(
     }
     const authUser = authResult
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check user role
     const { data: userProfile } = await supabase
@@ -124,7 +124,7 @@ export async function DELETE(
     }
     const authUser = authResult
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // Check user role
     const { data: userProfile } = await supabase
