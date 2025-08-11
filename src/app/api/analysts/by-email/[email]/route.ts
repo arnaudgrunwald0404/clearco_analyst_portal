@@ -17,7 +17,7 @@ export async function GET(
 
     // Authorization: Ensure the authenticated user is requesting their own data, or is an admin.
     if (authUser.email !== email) {
-        const supabase = createClient()
+        const supabase = await createClient()
         const { data: userProfile } = await supabase
             .from('user_profiles')
             .select('role')
@@ -29,7 +29,7 @@ export async function GET(
         }
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: analyst, error } = await supabase
       .from('analysts')
       .select('*')

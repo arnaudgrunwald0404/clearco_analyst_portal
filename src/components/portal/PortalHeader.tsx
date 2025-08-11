@@ -70,7 +70,7 @@ export function PortalHeader({ companyName = 'ClearCompany' }: PortalHeaderProps
       aria-label="Portal header"
     >
       {/* Dark overlay for text legibility */}
-      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+      <div className="absolute inset-0 bg-opacity-40"></div>
       
       {/* Header content */}
       <div className="relative z-10 h-full flex flex-col justify-between p-6">
@@ -78,7 +78,7 @@ export function PortalHeader({ companyName = 'ClearCompany' }: PortalHeaderProps
         <div className="flex justify-end">
           <button
             onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 text-white rounded-lg transition-all duration-200 backdrop-blur-sm border border-white border-opacity-30"
+            className="flex items-center space-x-2 px-4 py-2 bg-white text-black rounded-lg transition-all duration-200 backdrop-blur-sm border border-black"
             aria-label="Sign out"
           >
             <LogOut className="w-4 h-4" />
@@ -87,7 +87,7 @@ export function PortalHeader({ companyName = 'ClearCompany' }: PortalHeaderProps
         </div>
 
         {/* Bottom row with welcome message */}
-        <div className="text-white">
+        <div className="text-gray">
           <h1 className="text-2xl font-bold mb-1">
             Welcome back, {user?.name || 'Analyst'}!
           </h1>

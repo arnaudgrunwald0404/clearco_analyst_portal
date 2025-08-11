@@ -228,9 +228,10 @@ export async function PATCH(
 
     // Accept both legacy column names and new alias fields
     // Columns in DB (see types): linkedIn, twitter, website, phone
+    // Only columns that actually exist in DB; social fields are mapped below
     const directFields = [
       'firstName', 'lastName', 'email', 'company', 'title', 'bio',
-      'profileImageUrl', 'linkedIn', 'twitter', 'website', 'phone', 'notes'
+      'profileImageUrl', 'notes'
     ] as const
 
     // Admin-only fields
@@ -253,29 +254,27 @@ export async function PATCH(
     }
 
     // Handle aliases from newer schema or UI
-    // linkedin (lowercase) may be string or array → map to linkedIn (first value if array)
+    // Map UI/social aliases to actual DB columns
+    // linkedin
     if (body.linkedin !== undefined) {
-      updateData.linkedIn = Array.isArray(body.linkedin) ? body.linkedin[0] : body.linkedin
-    }
-    if (body.twitterHandle !== undefined) {
-      updateData.twitter = body.twitterHandle
+      updateData.linkedinUrl = Array.isArray(body.linkedin) ? body.linkedin[0] : body.linkedin
     }
     if (body.linkedinUrl !== undefined) {
-      updateData.linkedIn = body.linkedinUrl
+      updateData.linkedinUrl = body.linkedinUrl
     }
+    // twitter
+    if (body.twitterHandle !== undefined) {
+      updateData.twitterHandle = body.twitterHandle
+    }
+    if (body.twitter !== undefined) {
+      updateData.twitterHandle = Array.isArray(body.twitter) ? body.twitter[0] : body.twitter
+    }
+    // website
     if (body.personalWebsite !== undefined) {
-      updateData.website = body.personalWebsite
+      updateData.personalWebsite = body.personalWebsite
     }
-    // twitter/phone/website from selection modal may be arrays
-    if (body.twitter !== undefined && Array.isArray(body.twitter)) {
-      updateData.twitter = body.twitter[0]
-    }
-    if (body.phone !== undefined && Array.isArray(body.phone)) {
-      updateData.phone = body.phone[0]
-    }
-    // website from selection modal may be an array
-    if (body.website !== undefined && Array.isArray(body.website)) {
-      updateData.website = body.website[0]
+    if (body.website !== undefined) {
+      updateData.personalWebsite = Array.isArray(body.website) ? body.website[0] : body.website
     }
 
     // 4. Update the analyst

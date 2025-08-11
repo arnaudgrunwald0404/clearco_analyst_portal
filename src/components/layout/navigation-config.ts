@@ -33,7 +33,7 @@ export const mainNavigation: NavigationItem[] = [
   { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Events', href: '/events', icon: CalendarDays },
 
-  { name: 'Analytics (coming soon)', href: '/analytics', icon: BarChart3 },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 

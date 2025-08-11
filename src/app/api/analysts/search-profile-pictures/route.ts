@@ -33,15 +33,21 @@ async function searchAnalystHeadshotsWithSerpApi(
       return results
     }
 
-    // Primary search query as requested: "Headshot of {industry name} analyst {analyst name}"
-    const primaryQuery = `Headshot of ${industryName} analyst ${analystName}`
+    // Primary search query; prefer including company when available for higher precision
+    const primaryQuery = company
+      ? `Headshot of ${analystName} at ${company}`
+      : `Headshot of ${industryName} analyst ${analystName}`
     
     // Additional fallback queries for better results
     const searchQueries = [
       primaryQuery,
       `${analystName} ${industryName} analyst headshot`,
       `${analystName} ${company || industryName} professional headshot`,
-      `${analystName} analyst profile picture`
+      `${analystName} analyst profile picture`,
+      ...(company ? [
+        `${analystName} ${company} headshot`,
+        `${analystName} at ${company} professional headshot`
+      ] : [])
     ]
 
     console.log(`🔍 SerpApi Search Queries:`, searchQueries)
@@ -95,6 +101,13 @@ async function searchAnalystHeadshotsWithSerpApi(
               if (image.title?.toLowerCase().includes(industryName.toLowerCase()) || 
                   image.source?.toLowerCase().includes(industryName.toLowerCase())) {
                 confidence += 10
+              }
+              // Boost confidence if company appears in title or source
+              if (company && (
+                image.title?.toLowerCase().includes(company.toLowerCase()) ||
+                image.source?.toLowerCase().includes(company.toLowerCase())
+              )) {
+                confidence += 12
               }
               
               // Boost confidence for professional sources
@@ -209,12 +222,15 @@ export async function POST(request: Request) {
       .slice(0, 9)
 
     console.log(`✅ Returning ${sortedResults.length} profile picture options`)
-    console.log(`🎯 Primary search query: "Headshot of ${industry} analyst ${analystName}"`)
+    const primaryDescriptor = company
+      ? `Headshot of ${analystName} at ${company}`
+      : `Headshot of ${industry} analyst ${analystName}`
+    console.log(`🎯 Primary search query: "${primaryDescriptor}"`)
 
     return NextResponse.json({
       success: true,
       results: sortedResults,
-      searchQuery: `Headshot of ${industry} analyst ${analystName}`,
+      searchQuery: primaryDescriptor,
       industryName: industry,
       totalFound: uniqueResults.length
     })

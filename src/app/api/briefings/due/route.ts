@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     
     const offset = (page - 1) * limit
     const now = new Date()
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     console.log('🔍 [Briefings Due API] Fetching analysts due for briefings...')
 
@@ -55,58 +54,98 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter and process analysts who need briefings
-    const analystsDueForBriefings = []
+    const analystsDueForBriefings: any[] = []
     
     for (const analyst of analysts || []) {
-      // Map influence to tier information from the database
-      const tier = influenceTiers?.find(t => {
-        if (t.name === 'Very High' && analyst.influence === 'VERY_HIGH') return true
-        if (t.name === 'High' && analyst.influence === 'HIGH') return true
-        if (t.name === 'Medium' && analyst.influence === 'MEDIUM') return true
-        if (t.name === 'Low' && analyst.influence === 'LOW') return true
-        return false
-      })
+      // Map influence to tier information from the database (name-insensitive)
+      const name = (influenceTiers || []).map(t => ({
+        key: t.name.trim().toUpperCase(),
+        row: t
+      }))
+      const influenceKey = analyst.influence.toUpperCase()
+      const wanted = influenceKey // VERY_HIGH, HIGH, MEDIUM, LOW
+      const tier = (name.find(n =>
+        (wanted === 'VERY_HIGH' && (n.key.includes('VERY') && n.key.includes('HIGH'))) ||
+        (wanted === 'HIGH' && n.key === 'HIGH') ||
+        (wanted === 'MEDIUM' && n.key === 'MEDIUM') ||
+        (wanted === 'LOW' && n.key === 'LOW')
+      ) || {}).row || null
       
       if (!tier) continue
       
       // Skip analysts from inactive tiers
       if (!tier.isActive) continue
 
-      const daysBetweenBriefings = tier.briefingFrequency
+      const daysBetweenBriefings = tier?.briefingFrequency ?? 0
+
+      // Get all briefing IDs linked to this analyst
+      const { data: baRows } = await supabase
+        .from('briefing_analysts')
+        .select('briefingId')
+        .eq('analystId', analyst.id)
+
+      const briefingIds: string[] = (baRows || []).map(r => r.briefingId)
+
+      // Fetch last completed briefing for this analyst
+      let lastCompleted: any = null
+      if (briefingIds.length > 0) {
+        const { data: completedRows } = await supabase
+          .from('briefings')
+          .select('id, title, completedAt, scheduledAt, status')
+          .in('id', briefingIds)
+          .eq('status', 'COMPLETED')
+          .order('completedAt', { ascending: false })
+          .limit(1)
+        lastCompleted = (completedRows && completedRows[0]) || null
+      }
+
+      // Fetch next scheduled briefing for this analyst
+      let nextScheduled: any = null
+      if (briefingIds.length > 0) {
+        const { data: scheduledRows } = await supabase
+          .from('briefings')
+          .select('id, title, scheduledAt, status')
+          .in('id', briefingIds)
+          .gt('scheduledAt', now.toISOString())
+          .in('status', ['SCHEDULED', 'RESCHEDULED'])
+          .order('scheduledAt', { ascending: true })
+          .limit(1)
+        nextScheduled = (scheduledRows && scheduledRows[0]) || null
+      }
+
+      // Fallback to last analyst calendar meeting if no completed briefing
+      let lastMeetingDate: string | null = null
+      if (lastCompleted?.completedAt) {
+        lastMeetingDate = lastCompleted.completedAt
+      } else {
+        const { data: lastMeeting } = await supabase
+          .from('calendar_meetings')
+          .select('start_time, end_time')
+          .eq('is_analyst_meeting', true)
+          .eq('analyst_id', analyst.id)
+          .lte('start_time', now.toISOString())
+          .order('start_time', { ascending: false })
+          .limit(1)
+          .single()
+        if (lastMeeting) {
+          lastMeetingDate = lastMeeting.end_time || lastMeeting.start_time
+        }
+      }
       
-      // Get the analyst's last briefing
-      const { data: lastBriefing } = await supabase
-        .from('briefings')
-        .select('id, title, completedAt')
-        .eq('status', 'COMPLETED')
-        .order('completedAt', { ascending: false })
-        .limit(1)
-        .single()
-      
-      // Check for future briefings
-      const { data: futureBriefing } = await supabase
-        .from('briefings')
-        .select('id, title, scheduledAt, status')
-        .gt('scheduledAt', now.toISOString())
-        .in('status', ['SCHEDULED', 'RESCHEDULED'])
-        .order('scheduledAt', { ascending: true })
-        .limit(1)
-        .single()
-      
-      // Calculate days since last briefing
-      const daysSinceLastBriefing = lastBriefing?.completedAt 
-        ? Math.floor((now.getTime() - new Date(lastBriefing.completedAt).getTime()) / (1000 * 60 * 60 * 24))
+      // Calculate days since last meeting/briefing
+      const daysSinceLastBriefing = lastMeetingDate
+        ? Math.floor((now.getTime() - new Date(lastMeetingDate).getTime()) / (1000 * 60 * 60 * 24))
         : null
       
       // Check if analyst needs a briefing based on tier frequency
       // Skip if they have a future briefing scheduled
-      const needsBriefing = !futureBriefing && (!lastBriefing || (daysSinceLastBriefing && daysSinceLastBriefing >= daysBetweenBriefings))
+      const needsBriefing = !nextScheduled && (!lastMeetingDate || (daysSinceLastBriefing !== null && daysSinceLastBriefing >= daysBetweenBriefings))
       
       if (needsBriefing) {
         // Calculate overdue days
-        const overdueDays = daysSinceLastBriefing && daysSinceLastBriefing > daysBetweenBriefings 
-          ? daysSinceLastBriefing - daysBetweenBriefings 
-          : 0
+        const overdueDays = daysSinceLastBriefing !== null && daysBetweenBriefings > 0 && daysSinceLastBriefing > daysBetweenBriefings
+          ? (daysSinceLastBriefing - daysBetweenBriefings)
+          : (daysSinceLastBriefing !== null && daysBetweenBriefings === 0 ? 0 : 0)
         
         analystsDueForBriefings.push({
           id: analyst.id,
@@ -119,25 +158,37 @@ export async function GET(request: NextRequest) {
           relationshipHealth: analyst.relationshipHealth || 'GOOD',
           profileImageUrl: analyst.profileImageUrl,
           tier: {
-            name: tier.name,
-            briefingFrequency: tier.briefingFrequency
+            name: tier?.name || influenceKey,
+            briefingFrequency: daysBetweenBriefings
           },
-          lastBriefing: lastBriefing ? {
-            id: lastBriefing.id,
-            title: lastBriefing.title,
-            completedAt: lastBriefing.completedAt
+          lastBriefing: lastMeetingDate ? {
+            id: lastCompleted?.id || '',
+            scheduledAt: lastMeetingDate
           } : null,
-          nextBriefing: futureBriefing ? {
-            id: futureBriefing.id,
-            title: futureBriefing.title,
-            scheduledAt: futureBriefing.scheduledAt,
-            status: futureBriefing.status
+          nextBriefing: nextScheduled ? {
+            id: nextScheduled.id,
+            scheduledAt: nextScheduled.scheduledAt,
+            status: nextScheduled.status
           } : null,
           daysSinceLastBriefing: daysSinceLastBriefing || 0,
           overdueDays,
           needsBriefing: true
         })
       }
+    }
+
+    // Optional backend tier filter support (TIER_1..4), map by order if present
+    let filtered = analystsDueForBriefings
+    if (tierFilter && tierFilter !== 'ALL') {
+      const normalized = tierFilter.toUpperCase()
+      filtered = analystsDueForBriefings.filter(a => {
+        const name = (a.tier?.name || '').toString().toUpperCase()
+        if (normalized === 'TIER_1') return name.includes('VERY') && name.includes('HIGH')
+        if (normalized === 'TIER_2') return name === 'HIGH'
+        if (normalized === 'TIER_3') return name === 'MEDIUM'
+        if (normalized === 'TIER_4') return name === 'LOW'
+        return true
+      })
     }
 
     // Get total count of all analysts (for reference)
@@ -150,11 +201,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: analystsDueForBriefings,
+      data: filtered,
       pagination: {
-        page: 1,
-        limit: 'all',
-        total: analystsDueForBriefings.length,
+        page,
+        limit,
+        total: filtered.length,
         totalAnalysts: totalAnalysts || 0,
         totalPages: 1
       },

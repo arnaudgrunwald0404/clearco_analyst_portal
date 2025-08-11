@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { SettingsProvider } from "@/contexts/SettingsContext";
-import LayoutWrapper from "@/components/layout/LayoutWrapper";
-import { ToastProvider } from "@/components/ui/toast";
-import { MantineProvider } from '@mantine/core';
+import ClientProviders from "@/components/ClientProviders";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -27,17 +23,9 @@ export default function RootLayout({
       <head>
       </head>
       <body className={inter.className}>
-        <MantineProvider withCssVariables>
-          <ToastProvider>
-            <AuthProvider>
-              <SettingsProvider>
-                <LayoutWrapper>
-                  {children}
-                </LayoutWrapper>
-              </SettingsProvider>
-            </AuthProvider>
-          </ToastProvider>
-        </MantineProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );

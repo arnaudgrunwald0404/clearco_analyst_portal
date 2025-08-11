@@ -31,7 +31,6 @@ export async function POST(request: NextRequest) {
       website?: string
       bio?: string
       type?: 'Analyst' | 'Press' | 'Investor' | 'Practitioner' | 'Influencer'
-      eligibleNewsletters?: string[]
       influence?: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH'
       status?: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
       coveredTopics?: string[]
@@ -104,8 +103,6 @@ export async function POST(request: NextRequest) {
           website: analystData.website || null,
           bio: analystData.bio || null,
           type: analystData.type || 'Analyst',
-          eligibleNewsletters: analystData.eligibleNewsletters ? 
-            JSON.stringify(analystData.eligibleNewsletters) : null,
           influence: analystData.influence || 'MEDIUM',
           status: analystData.status || 'ACTIVE',
           createdAt: new Date().toISOString(),

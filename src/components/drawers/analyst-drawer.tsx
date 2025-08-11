@@ -179,6 +179,8 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   const [selectedResults, setSelectedResults] = useState<string[]>([])
   const [isEditMode, setIsEditMode] = useState(false)
   const [editedData, setEditedData] = useState<{
+    firstName: string
+    lastName: string
     status: string
     influence: string
     relationshipHealth: string
@@ -188,7 +190,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     twitter: string
     website: string
     coveredTopics: string[]
+    company: string
+    title: string
   }>({
+    firstName: analyst?.firstName || '',
+    lastName: analyst?.lastName || '',
     status: analyst?.status || 'ACTIVE',
     influence: analyst?.influence || 'MEDIUM',
     relationshipHealth: analyst?.relationshipHealth || 'GOOD',
@@ -197,7 +203,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     linkedIn: analyst?.linkedIn || '',
     twitter: analyst?.twitter || '',
     website: analyst?.website || '',
-    coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+    coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
+    company: analyst?.company || '',
+    title: analyst?.title || ''
   })
   const [isSaving, setIsSaving] = useState(false)
   const [profilePictureModal, setProfilePictureModal] = useState<{
@@ -211,6 +219,8 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     if (!analyst) return
     
     setEditedData({
+      firstName: analyst.firstName || '',
+      lastName: analyst.lastName || '',
       status: analyst.status || 'ACTIVE',
       influence: analyst.influence || 'MEDIUM',
       relationshipHealth: analyst.relationshipHealth || 'GOOD',
@@ -219,7 +229,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       linkedIn: analyst.linkedIn || '',
       twitter: analyst.twitter || '',
       website: analyst.website || '',
-      coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+      coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
+      company: analyst.company || '',
+      title: analyst.title || ''
     })
     setIsEditMode(true)
   }
@@ -228,6 +240,8 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   const handleCancelEdit = () => {
     setIsEditMode(false)
     setEditedData({
+      firstName: analyst?.firstName || '',
+      lastName: analyst?.lastName || '',
       status: analyst?.status || 'ACTIVE',
       influence: analyst?.influence || 'MEDIUM',
       relationshipHealth: analyst?.relationshipHealth || 'GOOD',
@@ -236,7 +250,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       linkedIn: analyst?.linkedIn || '',
       twitter: analyst?.twitter || '',
       website: analyst?.website || '',
-      coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+      coveredTopics: analyst?.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
+      company: analyst?.company || '',
+      title: analyst?.title || ''
     })
   }
 
@@ -246,10 +262,15 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     
     setIsSaving(true)
     try {
+      const payload: any = { ...editedData }
+      // Backend expects `topics` not `coveredTopics`
+      payload.topics = editedData.coveredTopics || []
+      delete payload.coveredTopics
+
       const response = await fetch(`/api/analysts/${analyst.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editedData)
+        body: JSON.stringify(payload)
       })
 
       if (response.ok) {
@@ -257,24 +278,35 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
         if (result.success) {
           // Update the analyst object inline
           Object.assign(analyst, {
+            firstName: editedData.firstName,
+            lastName: editedData.lastName,
             status: editedData.status,
             influence: editedData.influence,
             relationshipHealth: editedData.relationshipHealth,
             email: editedData.email,
             phone: editedData.phone,
-            linkedIn: editedData.linkedIn,
-            twitter: editedData.twitter,
-            website: editedData.website,
+            company: editedData.company,
+            title: editedData.title,
+            // Keep local object aligned to DB field names used by API
+            linkedinUrl: editedData.linkedIn,
+            twitterHandle: editedData.twitter,
+            personalWebsite: editedData.website,
             coveredTopics: editedData.coveredTopics.map(topic => ({ topic }))
           })
           setIsEditMode(false)
           // Force a re-render
           setActiveTab(activeTab)
         } else {
-          alert('Failed to save changes: ' + result.error)
+          alert('Failed to save changes: ' + (result.error || 'Unknown error'))
         }
       } else {
-        alert('Failed to save changes')
+        const text = await response.text().catch(() => '')
+        try {
+          const json = JSON.parse(text)
+          alert('Failed to save changes: ' + (json.error || text || response.statusText))
+        } catch {
+          alert('Failed to save changes: ' + (text || response.statusText))
+        }
       }
     } catch (error) {
       console.error('Error saving changes:', error)
@@ -344,7 +376,9 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
         linkedIn: analyst.linkedIn || '',
         twitter: analyst.twitter || '',
         website: analyst.website || '',
-        coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : []
+        coveredTopics: analyst.coveredTopics ? analyst.coveredTopics.map(t => typeof t === 'string' ? t : t.topic) : [],
+        company: analyst.company || '',
+        title: analyst.title || ''
       })
     }
   }, [analyst])
@@ -771,12 +805,50 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 </div>
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
-                  {analyst.firstName} {analyst.lastName}
-                </h2>
-                <p className="text-sm text-gray-600">
-                  {analyst.title} {analyst.company && `at ${analyst.company}`}
-                </p>
+                {!isEditMode ? (
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {analyst.firstName} {analyst.lastName}
+                  </h2>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={editedData.firstName}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, firstName: e.target.value }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="First name"
+                    />
+                    <input
+                      type="text"
+                      value={editedData.lastName}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, lastName: e.target.value }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Last name"
+                    />
+                  </div>
+                )}
+                {!isEditMode ? (
+                  <p className="text-sm text-gray-600">
+                    {analyst.title} {analyst.company && `at ${analyst.company}`}
+                  </p>
+                ) : (
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={editedData.title}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, title: e.target.value }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Title (e.g., VP Analyst)"
+                    />
+                    <input
+                      type="text"
+                      value={editedData.company}
+                      onChange={(e) => setEditedData(prev => ({ ...prev, company: e.target.value }))}
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Company (e.g., Gartner)"
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-2">

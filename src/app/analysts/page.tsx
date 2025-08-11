@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Check, ChevronDown, Trash2, AlertTriangle } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
@@ -48,6 +48,8 @@ export default function AnalystsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { addToast } = useToast()
+  const influenceDropdownRef = useRef<HTMLDivElement | null>(null)
+  const [openInfluenceFor, setOpenInfluenceFor] = useState<string | null>(null)
 
   // Multi-select state
   const [selectedAnalysts, setSelectedAnalysts] = useState<Set<string>>(new Set())
@@ -112,6 +114,42 @@ export default function AnalystsPage() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // Close influence dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (
+        openInfluenceFor &&
+        influenceDropdownRef.current &&
+        !influenceDropdownRef.current.contains(target)
+      ) {
+        setOpenInfluenceFor(null)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [openInfluenceFor])
+
+  const updateAnalystInfluence = async (analystId: string, newInfluence: 'VERY_HIGH' | 'HIGH' | 'MEDIUM' | 'LOW') => {
+    try {
+      const res = await fetch(`/api/analysts/${analystId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ influence: newInfluence })
+      })
+      if (!res.ok) {
+        const t = await res.text().catch(() => '')
+        throw new Error(t || 'Failed to update influence')
+      }
+      // Update local list without refetch
+      setAnalysts(prev => (prev || []).map(a => a.id === analystId ? { ...a, influence: newInfluence } as any : a))
+      setOpenInfluenceFor(null)
+      addToast({ type: 'success', message: 'Influence updated' })
+    } catch (err) {
+      addToast({ type: 'error', message: err instanceof Error ? err.message : 'Failed to update influence' })
+    }
+  }
 
   // Handle clicking outside dropdowns
   useEffect(() => {
@@ -813,14 +851,48 @@ export default function AnalystsPage() {
                     </div>
                   </div>
                   
-                  {/* Influence - 1/13 */}
-                  <div className="col-span-1 cursor-pointer" onClick={() => handleRowClick(analyst)}>
-                    <span className={cn(
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      getInfluenceColor(analyst.influence)
-                    )}>
+                  {/* Influence - inline editable pill */}
+                  <div className="col-span-1 relative">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setOpenInfluenceFor(openInfluenceFor === analyst.id ? null : analyst.id) }}
+                      className={cn(
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-transparent hover:opacity-90',
+                        getInfluenceColor(analyst.influence)
+                      )}
+                      aria-haspopup="listbox"
+                      aria-expanded={openInfluenceFor === analyst.id}
+                      aria-label="Change influence"
+                    >
                       {analyst.influence.replace('_', ' ')}
-                    </span>
+                    </button>
+                    {openInfluenceFor === analyst.id && (
+                      <div
+                        ref={influenceDropdownRef}
+                        className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
+                        role="listbox"
+                      >
+                        {([
+                          ['VERY_HIGH', 'Very High'],
+                          ['HIGH', 'High'],
+                          ['MEDIUM', 'Medium'],
+                          ['LOW', 'Low']
+                        ] as const).map(([value, label]) => (
+                          <button
+                            key={value}
+                            className={cn(
+                              'w-full text-left px-3 py-2 text-sm hover:bg-gray-50',
+                              value === analyst.influence ? 'font-semibold text-gray-900' : 'text-gray-700'
+                            )}
+                            onClick={(e) => { e.stopPropagation(); updateAnalystInfluence(analyst.id, value) }}
+                            role="option"
+                            aria-selected={value === analyst.influence}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   

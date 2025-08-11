@@ -176,7 +176,17 @@ export async function DELETE(
     const { id } = await params
     const supabase = await createClient()
 
-    // Delete briefing (associations will be deleted via CASCADE)
+    // Ensure junction rows are removed to keep data clean in case CASCADE is not present
+    const { error: junctionError } = await supabase
+      .from('briefing_analysts')
+      .delete()
+      .eq('briefingId', id)
+
+    if (junctionError) {
+      console.error('Error deleting briefing_analysts for briefing:', id, junctionError)
+      // Continue anyway; we'll still attempt to delete the briefing
+    }
+
     const { error: deleteError } = await supabase
       .from('briefings')
       .delete()

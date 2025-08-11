@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Calendar,
@@ -30,6 +30,7 @@ import {
   Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Briefing {
   id: string
@@ -71,7 +72,9 @@ interface Briefing {
 
 interface SyncProgress {
   type: string
-  message: string
+  message?: string
+  month?: string
+  foundAnalystMeetings?: number
   totalEventsProcessed?: number
   relevantMeetingsCount?: number
   newMeetingsCount?: number
@@ -132,17 +135,96 @@ function SyncProgressModal({
   progress: SyncProgress[]
   connectionTitle: string
 }) {
+  // Guard before any hooks to keep hook order consistent across renders
+  if (!isOpen) return null
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Bump animations when counters change
+  const [bumpProcessed, setBumpProcessed] = useState(false)
+  const [bumpRelevant, setBumpRelevant] = useState(false)
+  const [bumpNew, setBumpNew] = useState(false)
+
+  const latestProgress = progress[progress.length - 1]
+  const isComplete = latestProgress?.isComplete
+  const hasError = latestProgress?.error
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [progress])
 
-  if (!isOpen) return null
+  // Derive month completion and aggregates from progress events
+  const completedMonthsSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of progress) {
+      if (item.type === 'month_result' && item.month) set.add(item.month)
+    }
+    return set
+  }, [progress])
 
-  const latestProgress = progress[progress.length - 1]
-  const isComplete = latestProgress?.isComplete
-  const hasError = latestProgress?.error
+  const lastCompletedIdx = useMemo(() => {
+    for (let i = progress.length - 1; i >= 0; i--) {
+      if (progress[i]?.type === 'month_result') return i
+    }
+    return -1
+  }, [progress])
+
+  const meetingsParsed = useMemo(() => {
+    if (lastCompletedIdx < 0) return 0
+    let count = 0
+    for (let i = 0; i <= lastCompletedIdx; i++) {
+      if (progress[i]?.type === 'event_processed') count += 1
+    }
+    return count
+  }, [progress, lastCompletedIdx])
+
+  const analystMeetings = useMemo(() => {
+    let sum = 0
+    for (const item of progress) {
+      if (item.type === 'month_result' && typeof item.foundAnalystMeetings === 'number') {
+        sum += item.foundAnalystMeetings
+      }
+    }
+    return sum
+  }, [progress])
+
+  const newMeetings = useMemo(() => {
+    let sum = 0
+    for (const item of progress) {
+      // Prefer explicit per-month counts if provided
+      if (item.type === 'month_result' && (item as any).newMeetingsCount) {
+        sum += (item as any).newMeetingsCount as number
+      }
+      // Fallback to per-event signals if emitted
+      if (item.type === 'new_meeting') sum += 1
+    }
+    return sum
+  }, [progress])
+
+  // Trigger bumps when derived totals change (update only on month completion)
+  useEffect(() => {
+    if (lastCompletedIdx >= 0) {
+      setBumpProcessed(true)
+      const t = setTimeout(() => setBumpProcessed(false), 200)
+      return () => clearTimeout(t)
+    }
+  }, [meetingsParsed, lastCompletedIdx])
+
+  useEffect(() => {
+    if (lastCompletedIdx >= 0) {
+      setBumpRelevant(true)
+      const t = setTimeout(() => setBumpRelevant(false), 200)
+      return () => clearTimeout(t)
+    }
+  }, [analystMeetings, lastCompletedIdx])
+
+  useEffect(() => {
+    if (lastCompletedIdx >= 0) {
+      setBumpNew(true)
+      const t = setTimeout(() => setBumpNew(false), 200)
+      return () => clearTimeout(t)
+    }
+  }, [newMeetings, lastCompletedIdx])
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -174,34 +256,26 @@ function SyncProgressModal({
         {/* Progress Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Summary Stats */}
-          {latestProgress && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-600">
-                  {latestProgress.totalEventsProcessed || 0}
-                </div>
-                <div className="text-sm text-blue-700">Meetings Parsed</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className={cn("text-2xl font-bold text-blue-600 transition-transform duration-200", bumpProcessed && "scale-110")}>
+                {meetingsParsed}
               </div>
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-600">
-                  {latestProgress.relevantMeetingsCount || 0}
-                </div>
-                <div className="text-sm text-green-700">Relevant Meetings</div>
-              </div>
-              <div className="bg-emerald-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-emerald-600">
-                  {latestProgress.newMeetingsCount || 0}
-                </div>
-                <div className="text-sm text-emerald-700">New Meetings</div>
-              </div>
-              <div className="bg-orange-50 rounded-lg p-4">
-                <div className="text-2xl font-bold text-orange-600">
-                  {latestProgress.existingMeetingsCount || 0}
-                </div>
-                <div className="text-sm text-orange-700">Existing Meetings</div>
-              </div>
+              <div className="text-sm text-blue-700">Meetings Parsed</div>
             </div>
-          )}
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className={cn("text-2xl font-bold text-green-600 transition-transform duration-200", bumpRelevant && "scale-110")}>
+                {analystMeetings}
+              </div>
+              <div className="text-sm text-green-700">Analyst Meetings</div>
+            </div>
+            <div className="bg-emerald-50 rounded-lg p-4">
+              <div className={cn("text-2xl font-bold text-emerald-600 transition-transform duration-200", bumpNew && "scale-110")}>
+                {newMeetings}
+              </div>
+              <div className="text-sm text-emerald-700">New Meetings</div>
+            </div>
+          </div>
 
           {/* Progress Messages */}
           <div className="space-y-3">
@@ -213,19 +287,36 @@ function SyncProgressModal({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {progress.map((item, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                      <div className="flex-1">
-                        <div className="text-sm text-gray-900">{item.message}</div>
-                        {item.type === 'meeting_found' && item.lastAnalystFound && (
-                          <div className="text-xs text-gray-600 mt-1">
-                            Found meeting with {item.lastAnalystFound}
+                  {progress.map((item, index) => {
+                    if (item.type === 'month_started') {
+                      const isCompleted = item.month ? completedMonthsSet.has(item.month) : false
+                      return (
+                        <div key={index} className="flex items-center text-sm text-gray-700">
+                          <span className="font-medium mr-2">Analyzing {item.month}...</span>
+                          {!isCompleted && <span className="animate-pulse">•••</span>}
+                        </div>
+                      )
+                    }
+                    if (item.type === 'month_result') {
+                      return (
+                        <div key={index} className="flex items-center text-sm text-gray-900">
+                          <span className="font-medium mr-2">{item.month}</span>
+                          <span>→ Found {item.foundAnalystMeetings || 0} analyst meetings</span>
+                        </div>
+                      )
+                    }
+                    if (item.type === 'progress' && item.message) {
+                      return (
+                        <div key={index} className="flex items-start space-x-3">
+                          <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div className="flex-1">
+                            <div className="text-sm text-gray-900">{item.message}</div>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        </div>
+                      )
+                    }
+                    return null
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               )}
@@ -262,17 +353,15 @@ function SyncProgressModal({
               </button>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-blue-600">
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Syncing in progress...</span>
-              </div>
+            <div className="flex justify-end">
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 disabled
+                aria-busy="true"
               >
-                Please wait...
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Sync in progress...</span>
               </button>
             </div>
           )}
@@ -283,6 +372,7 @@ function SyncProgressModal({
 }
 
 export default function ClientBriefingsPage() {
+  const { user } = useAuth()
   const [briefings, setBriefings] = useState<Briefing[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -299,7 +389,7 @@ export default function ClientBriefingsPage() {
   const [connectionTitle, setConnectionTitle] = useState('')
   const [isSyncInProgress, setIsSyncInProgress] = useState(false)
   const [syncStatus, setSyncStatus] = useState<{ isInProgress: boolean; timeElapsed?: number }>({ isInProgress: false })
-  const [hasCalendarConnection, setHasCalendarConnection] = useState(false)
+  const [hasCalendarConnection, setHasCalendarConnection] = useState<boolean | null>(null)
   
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef<HTMLDivElement>(null)
@@ -330,7 +420,7 @@ export default function ClientBriefingsPage() {
       const connectionsResponse = await fetch('/api/settings/calendar-connections')
       const connectionsData = await connectionsResponse.json()
       if (connectionsData.success && connectionsData.data.length > 0) {
-        const activeConnection = connectionsData.data.some((conn: any) => conn.isActive)
+        const activeConnection = connectionsData.data.some((conn: any) => conn.is_active)
         setHasCalendarConnection(activeConnection)
       } else {
         setHasCalendarConnection(false)
@@ -410,6 +500,10 @@ export default function ClientBriefingsPage() {
 
   const syncCalendarMeetings = async () => {
     try {
+      if (!user) {
+        alert('You must be logged in to sync your calendar.')
+        return
+      }
       // First, get the calendar connections
       const connectionsResponse = await fetch('/api/settings/calendar-connections')
       const connectionsData = await connectionsResponse.json()
@@ -455,7 +549,7 @@ export default function ClientBriefingsPage() {
           setSyncProgress(prev => [...prev, data])
           
           // Close modal when sync is complete
-          if (data.type === 'sync_completed' || data.type === 'sync_failed' || data.type === 'sync_error') {
+          if (data.type === 'complete' || data.type === 'error') {
             eventSource.close()
             setIsSyncInProgress(false)
             setSyncStatus({ isInProgress: false })
@@ -518,7 +612,7 @@ export default function ClientBriefingsPage() {
             <div className="flex items-center space-x-3">
               <button 
                 onClick={syncCalendarMeetings}
-                disabled={isSyncInProgress || !hasCalendarConnection}
+                disabled={isSyncInProgress || hasCalendarConnection !== true}
                 className={cn(
                   "flex items-center px-4 py-2 border rounded-lg transition-colors",
                   (isSyncInProgress || !hasCalendarConnection)
@@ -543,7 +637,7 @@ export default function ClientBriefingsPage() {
           </div>
 
           {/* Conditional Banner */}
-          {!hasCalendarConnection && (
+          {hasCalendarConnection === false && (
             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -601,10 +695,10 @@ export default function ClientBriefingsPage() {
           {/* Briefings Content */}
           {!loading && (
             <div className="space-y-8">
-              {/* Upcoming Briefings */}
+              {/* Scheduled (Upcoming) Briefings */}
               {upcomingBriefings.length > 0 && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Briefings</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Scheduled Briefings ({upcomingBriefings.length})</h2>
                   <div className="space-y-4">
                     {upcomingBriefings.map((briefing, index) => (
                       <div key={briefing.id} ref={index === upcomingBriefings.length - 1 ? lastElementRef : null}>
@@ -622,7 +716,7 @@ export default function ClientBriefingsPage() {
               {/* Past Briefings */}
               {pastBriefings.length > 0 && (
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Past Briefings</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Past Briefings ({pastBriefings.length})</h2>
                   <div className="space-y-4">
                     {pastBriefings.map((briefing, index) => (
                       <div key={briefing.id} ref={index === pastBriefings.length - 1 ? lastElementRef : null}>
@@ -829,6 +923,23 @@ function BriefingDrawer({
       setIsUpdating(false)
     }
   }
+
+  const handleRemoveBriefing = async () => {
+    if (!confirm('Remove this briefing? This will delete it from your briefings.')) return
+    try {
+      const response = await fetch(`/api/briefings/${briefing.id}`, { method: 'DELETE' })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({} as any))
+        throw new Error(err.error || 'Failed to delete briefing')
+      }
+      onUpdate()
+      onClose()
+    } catch (e) {
+      console.error('Failed to delete briefing:', e)
+      alert(e instanceof Error ? e.message : 'Failed to delete briefing')
+    }
+  }
+
   
   return (
     <div className="h-full flex flex-col">
@@ -901,12 +1012,43 @@ function BriefingDrawer({
           />
         )}
       </div>
+
+      {/* Drawer Footer Actions */}
+      <div className="border-t border-gray-200 p-4 flex justify-end gap-2">
+        <button
+          className="px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
+          onClick={() => onTabChange('overview')}
+          aria-label="Edit details"
+        >
+          Edit Details
+        </button>
+        <button
+          onClick={handleRemoveBriefing}
+          className="px-3 py-2 border border-red-300 text-red-600 text-sm rounded-lg hover:bg-red-50 transition-colors"
+          aria-label="Remove briefing"
+        >
+          Remove
+        </button>
+      </div>
     </div>
   )
 }
 
 // OverviewTab Component
 function OverviewTab({ briefing }: { briefing: Briefing }) {
+  // Normalize fields that may come as string or array
+  const agendaItems: string[] = Array.isArray((briefing as any).agenda)
+    ? ((briefing as any).agenda as string[])
+    : typeof (briefing as any).agenda === 'string' && (briefing as any).agenda.trim().length > 0
+    ? [(briefing as any).agenda as string]
+    : []
+
+  const outcomesItems: string[] = Array.isArray((briefing as any).outcomes)
+    ? ((briefing as any).outcomes as string[])
+    : typeof (briefing as any).outcomes === 'string' && (briefing as any).outcomes.trim().length > 0
+    ? [(briefing as any).outcomes as string]
+    : []
+
   return (
     <div className="p-6 space-y-6">
       {/* AI Summary */}
@@ -962,11 +1104,11 @@ function OverviewTab({ briefing }: { briefing: Briefing }) {
       </div>
       
       {/* Agenda */}
-      {briefing.agenda && briefing.agenda.length > 0 && (
+      {agendaItems.length > 0 && (
         <div>
           <h3 className="font-semibold text-gray-900 mb-3">Agenda</h3>
           <ul className="space-y-2">
-            {briefing.agenda.map((item, index) => (
+            {agendaItems.map((item, index) => (
               <li key={index} className="flex items-start text-sm text-gray-700">
                 <span className="w-4 h-4 mt-0.5 mr-2 text-gray-400">•</span>
                 {item}
@@ -987,11 +1129,11 @@ function OverviewTab({ briefing }: { briefing: Briefing }) {
       )}
       
       {/* Outcomes */}
-      {briefing.outcomes && briefing.outcomes.length > 0 && (
+      {outcomesItems.length > 0 && (
         <div>
           <h3 className="font-semibold text-gray-900 mb-3">Outcomes</h3>
           <ul className="space-y-2">
-            {briefing.outcomes.map((outcome, index) => (
+            {outcomesItems.map((outcome, index) => (
               <li key={index} className="flex items-start text-sm text-gray-700">
                 <CheckCircle className="w-4 h-4 mt-0.5 mr-2 text-green-500" />
                 {outcome}
@@ -1015,10 +1157,6 @@ function OverviewTab({ briefing }: { briefing: Briefing }) {
               View Recording
             </a>
           )}
-          <button className="flex items-center px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors">
-            <Edit3 className="w-4 h-4 mr-2" />
-            Edit Details
-          </button>
         </div>
       </div>
     </div>

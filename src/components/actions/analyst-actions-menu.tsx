@@ -120,6 +120,25 @@ export default function AnalystActionsMenu({
     setIsOpen(false)
   }
 
+  const handlePreviewAsAnalyst = async () => {
+    try {
+      const res = await fetch(`/api/analysts/preview?analystId=${encodeURIComponent(analystId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      if (!res.ok) {
+        const msg = await res.text().catch(() => 'Failed to enable preview')
+        addToast({ type: 'error', message: msg })
+        return
+      }
+      window.location.href = `/analysts/${analystId}`
+    } catch (e) {
+      addToast({ type: 'error', message: 'Failed to enable preview' })
+    } finally {
+      setIsOpen(false)
+    }
+  }
+
   const handleArchiveClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
@@ -258,6 +277,17 @@ export default function AnalystActionsMenu({
             >
               <Eye className="w-4 h-4 mr-3" />
               View Details
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePreviewAsAnalyst()
+              }}
+              className="w-full flex items-center px-4 py-2 text-sm text-blue-700 hover:bg-blue-50"
+            >
+              <Eye className="w-4 h-4 mr-3" />
+              Preview as Analyst
             </button>
             
             <button
