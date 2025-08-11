@@ -1,16 +1,9 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextRequest } from 'next/server'
+import { updateSession } from '@/lib/supabase/middleware'
 
 export async function middleware(request: NextRequest) {
-  // Allow static assets to pass through
-  if (request.nextUrl.pathname.startsWith('/banner-art/') ||
-      request.nextUrl.pathname.startsWith('/_next/') ||
-      request.nextUrl.pathname.startsWith('/favicon.ico') ||
-      request.nextUrl.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/)) {
-    return NextResponse.next()
-  }
-
-  // Disabled authentication - always allow access for all other routes
-  return NextResponse.next()
+  // update user's auth session
+  return await updateSession(request)
 }
 
 export const config = {
