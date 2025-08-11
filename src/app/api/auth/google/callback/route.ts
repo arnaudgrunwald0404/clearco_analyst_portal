@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
         const { data: connection, error: connectionError } = await supabase
           .from('calendar_connections')
           .insert({
-            user_id: userInfo.data.email,
+            user_id: state.userId,
             provider: 'google',
             email: userInfo.data.email,
             access_token: tokens.access_token,
