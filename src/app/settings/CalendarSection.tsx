@@ -1,10 +1,9 @@
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Calendar, CheckCircle, AlertCircle, Clock, RefreshCw, Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Calendar, Plus, RefreshCw, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
+import { useState } from 'react'
 
 interface CalendarConnection {
   id: string
@@ -34,7 +33,7 @@ interface CalendarSectionProps {
   onAddConnection: () => void
   onToggleConnection: (connectionId: string, is_active: boolean) => void
   onDeleteConnection: (connectionId: string) => void
-  onStartSync: (connectionId: string) => void
+  onStartSync: (connectionId: string, timeWindowOptions?: any) => void
 }
 
 export default function CalendarSection({
@@ -47,6 +46,9 @@ export default function CalendarSection({
   onDeleteConnection,
   onStartSync
 }: CalendarSectionProps) {
+  const [showSyncOptions, setShowSyncOptions] = useState(false)
+  const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null)
+
   const getConnectionStatus = (connection: CalendarConnection) => {
     if (!connection.is_active) {
       return { icon: AlertCircle, text: 'Inactive', color: 'text-gray-500' }
@@ -186,7 +188,10 @@ export default function CalendarSection({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => onStartSync(connection.id)}
+                        onClick={() => {
+                          setSelectedConnectionId(connection.id)
+                          setShowSyncOptions(true)
+                        }}
                         disabled={progress?.isRunning}
                         className="flex items-center gap-1"
                       >
@@ -211,6 +216,23 @@ export default function CalendarSection({
           </div>
         )}
       </CardContent>
+
+      {/* Calendar Sync Options Modal */}
+      <CalendarSyncOptionsModal
+        isOpen={showSyncOptions}
+        onClose={() => {
+          setShowSyncOptions(false)
+          setSelectedConnectionId(null)
+        }}
+        onConfirm={(timeWindowOptions) => {
+          if (selectedConnectionId) {
+            onStartSync(selectedConnectionId, timeWindowOptions)
+          }
+          setShowSyncOptions(false)
+          setSelectedConnectionId(null)
+        }}
+        isStarting={false}
+      />
     </Card>
   );
 } 

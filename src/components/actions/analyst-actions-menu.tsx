@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast'
 interface AnalystActionsMenuProps {
   analystId: string
   analystName: string
+  analystStatus: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED'
   onDelete?: () => void
   onView?: () => void
 }
@@ -16,17 +17,22 @@ interface AnalystActionsMenuProps {
 export default function AnalystActionsMenu({ 
   analystId, 
   analystName, 
+  analystStatus,
   onDelete, 
   onView 
 }: AnalystActionsMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showHardDeleteConfirm, setShowHardDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isHardDeleting, setIsHardDeleting] = useState(false)
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 })
   const [mounted, setMounted] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const { addToast } = useToast()
+
+  const isArchived = analystStatus === 'ARCHIVED'
 
   // Mount effect for portal
   useEffect(() => {
@@ -112,6 +118,82 @@ export default function AnalystActionsMenu({
       addToast({ type: 'error', message: 'Network error. Please check your connection and try again.' })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleHardDelete = async () => {
+    setIsHardDeleting(true)
+    try {
+      const response = await fetch(`/api/analysts/${analystId}?hardDelete=true`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          console.log('Analyst permanently deleted successfully:', result.message)
+          
+          // Close the confirmation modal immediately
+          setShowHardDeleteConfirm(false)
+          setIsOpen(false)
+          
+          // Show success message
+          addToast({ type: 'success', message: `${analystName} has been permanently deleted` })
+          
+          // Call the onDelete callback to refresh the list
+          onDelete?.()
+        } else {
+          console.error('Failed to permanently delete analyst:', result.error)
+          addToast({ type: 'error', message: result.error || 'Failed to permanently delete analyst' })
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
+        console.error('Failed to permanently delete analyst:', errorData)
+        addToast({ type: 'error', message: errorData.error || 'Failed to permanently delete analyst. Please try again.' })
+      }
+    } catch (error) {
+      console.error('Error permanently deleting analyst:', error)
+      addToast({ type: 'error', message: 'Network error. Please check your connection and try again.' })
+    } finally {
+      setIsHardDeleting(false)
+    }
+  }
+
+  const handleRestore = async () => {
+    try {
+      const response = await fetch(`/api/analysts/${analystId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'restore'
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success) {
+          console.log('Analyst restored successfully:', result.message)
+          
+          // Close the dropdown
+          setIsOpen(false)
+          
+          // Show success message
+          addToast({ type: 'success', message: `${analystName} has been restored successfully` })
+          
+          // Call the onDelete callback to refresh the list
+          onDelete?.()
+        } else {
+          console.error('Failed to restore analyst:', result.error)
+          addToast({ type: 'error', message: result.error || 'Failed to restore analyst' })
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
+        console.error('Failed to restore analyst:', errorData)
+        addToast({ type: 'error', message: errorData.error || 'Failed to restore analyst. Please try again.' })
+      }
+    } catch (error) {
+      console.error('Error restoring analyst:', error)
+      addToast({ type: 'error', message: 'Network error. Please check your connection and try again.' })
     }
   }
 
@@ -250,6 +332,89 @@ export default function AnalystActionsMenu({
         </>
       )}
 
+      {/* Hard Delete Confirmation Modal */}
+      {showHardDeleteConfirm && (
+        <>
+          {/* Backdrop with subtle transparency */}
+          <div 
+            className="fixed inset-0 z-50 transition-opacity duration-300"
+            style={{ backgroundColor: 'rgba(15, 23, 42, 0.15)' }}
+            onClick={() => setShowHardDeleteConfirm(false)}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full pointer-events-auto transform transition-all duration-300 scale-100">
+              {/* Header */}
+              <div className="flex items-start p-6 pb-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-xl font-semibold text-red-900">
+                    Permanently Delete Analyst
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700">
+                    This action will permanently remove the analyst and all associated data
+                  </p>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="px-6 pb-6">
+                <div className="bg-red-50 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-red-700 mb-3">
+                    Are you absolutely sure you want to permanently delete <span className="font-semibold text-red-900">{analystName}</span>?
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm text-red-600">
+                      <div className="w-2 h-2 bg-red-400 rounded-full mr-3 flex-shrink-0"></div>
+                      <span>This action cannot be undone</span>
+                    </div>
+                    <div className="flex items-center text-sm text-red-600">
+                      <div className="w-2 h-2 bg-red-400 rounded-full mr-3 flex-shrink-0"></div>
+                      <span>All publications, topics, and relationships will be lost</span>
+                    </div>
+                    <div className="flex items-center text-sm text-red-600">
+                      <div className="w-2 h-2 bg-red-400 rounded-full mr-3 flex-shrink-0"></div>
+                      <span>Historical data will be permanently removed</span>
+                    </div>
+                    <div className="flex items-center text-sm text-red-600">
+                      <div className="w-2 h-2 bg-red-400 rounded-full mr-3 flex-shrink-0"></div>
+                      <span>This is irreversible</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowHardDeleteConfirm(false)}
+                    disabled={isHardDeleting}
+                    className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gray-200 disabled:opacity-50 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleHardDelete}
+                    disabled={isHardDeleting}
+                    className={cn(
+                      "px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-2 focus:ring-red-200 disabled:opacity-50 flex items-center gap-2 transition-colors font-medium",
+                      isHardDeleting && "cursor-not-allowed"
+                    )}
+                  >
+                    {isHardDeleting && (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    )}
+                    {isHardDeleting ? 'Deleting...' : 'Delete Permanently'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Portal-based Dropdown */}
       {mounted && isOpen && createPortal(
         <>
@@ -315,13 +480,38 @@ export default function AnalystActionsMenu({
             {/* Divider */}
             <div className="border-t border-gray-100 my-1" />
             
-            <button
-              onClick={handleArchiveClick}
-              className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4 mr-3" />
-              Archive Analyst
-            </button>
+            {isArchived ? (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRestore()
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+                >
+                  <Edit className="w-4 h-4 mr-3" />
+                  Restore Analyst
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowHardDeleteConfirm(true)
+                  }}
+                  className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4 mr-3" />
+                  Delete Permanently
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={handleArchiveClick}
+                className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4 mr-3" />
+                Archive Analyst
+              </button>
+            )}
           </div>
         </>,
         document.body

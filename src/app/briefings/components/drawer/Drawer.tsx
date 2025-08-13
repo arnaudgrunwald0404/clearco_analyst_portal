@@ -51,6 +51,82 @@ export default function Drawer({
   const [highlightSections, setHighlightSections] = useState(false)
   const { date, time } = formatDateTime(briefing.scheduledAt)
 
+  // State for Add as Testimonial modal
+  const [showTestimonialModal, setShowTestimonialModal] = useState(false)
+  const [testimonialQuote, setTestimonialQuote] = useState('')
+  const defaultAnalyst = briefing.analysts && briefing.analysts.length > 0 ? `${briefing.analysts[0].firstName} ${briefing.analysts[0].lastName}` : 'The analyst'
+  const [testimonialAuthor, setTestimonialAuthor] = useState(defaultAnalyst)
+  const [testimonialDate, setTestimonialDate] = useState(() => {
+    const d = briefing.completedAt || briefing.scheduledAt
+    return new Date(d).toISOString().slice(0, 10)
+  })
+  const [savingTestimonial, setSavingTestimonial] = useState(false)
+
+  const handleAddAsTestimonial = (quote: string) => {
+    setTestimonialQuote(quote.replace(/^"|"$/g, ''))
+    setTestimonialAuthor(defaultAnalyst)
+    setShowTestimonialModal(true)
+  }
+
+  const handleSaveTestimonial = async () => {
+    console.log('🔄 Starting testimonial save...')
+    try {
+      setSavingTestimonial(true)
+      
+      // Get the first analyst's ID if available
+      const analystId = briefing.analysts && briefing.analysts.length > 0 ? briefing.analysts[0].id : null
+      
+      const payload = {
+        text: testimonialQuote,
+        author: testimonialAuthor,
+        date: testimonialDate,
+        rating: 5,
+        analystId: analystId, // Include the analyst ID
+      }
+      
+      console.log('📤 Sending payload:', payload)
+      
+      const resp = await fetch('/api/testimonials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      
+      console.log('📥 Response status:', resp.status)
+      
+      const json = await resp.json().catch(() => ({} as any))
+      console.log('📥 Response JSON:', json)
+      
+      if (!resp.ok || json?.success === false) {
+        const msg = json?.error || 'Failed to add testimonial'
+        console.error('❌ API error:', msg)
+        alert(msg)
+        return
+      }
+      
+      console.log('✅ Testimonial saved successfully')
+      setShowTestimonialModal(false)
+      alert('Testimonial saved. You can review it in the testimonials section.')
+    } catch (error) {
+      console.error('💥 Failed to save testimonial:', error)
+      console.error('💥 Error type:', typeof error)
+      console.error('💥 Error constructor:', error?.constructor?.name)
+      
+      // Better error handling to prevent [object Event] errors
+      let errorMessage = 'Failed to save testimonial'
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message)
+      }
+      alert(errorMessage)
+    } finally {
+      setSavingTestimonial(false)
+    }
+  }
+
   const handleSaveTranscript = async () => {
     try {
       setIsUpdating(true)
@@ -223,6 +299,8 @@ export default function Drawer({
             briefing={briefing}
             onEdit={() => onTabChange("overview")}
             onRemove={handleRemoveBriefing}
+            onAddAsTestimonial={handleAddAsTestimonial}
+            onUpdate={onUpdate}
             highlightSections={highlightSections}
           />
         )}
@@ -240,11 +318,89 @@ export default function Drawer({
           />
         )}
       </div>
+
+      {showTestimonialModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div className="p-5 border-b">
+              <h3 className="text-lg font-semibold">Add Testimonial</h3>
+              <p className="text-sm text-gray-600 mt-1">Review and edit before saving.</p>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quote</label>
+                <textarea
+                  value={testimonialQuote}
+                  onChange={(e) => setTestimonialQuote(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  rows={4}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Analyst</label>
+                {briefing.analysts && briefing.analysts.length > 0 ? (
+                  <select
+                    value={testimonialAuthor}
+                    onChange={(e) => setTestimonialAuthor(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                  >
+                    {briefing.analysts.map((a) => (
+                      <option key={a.id} value={`${a.firstName} ${a.lastName}`}>
+                        {a.firstName} {a.lastName}{a.company ? ` — ${a.company}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={testimonialAuthor}
+                    onChange={(e) => setTestimonialAuthor(e.target.value)}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="The analyst"
+                  />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={testimonialDate}
+                  onChange={(e) => setTestimonialDate(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                />
+              </div>
+            </div>
+            <div className="p-5 border-t flex justify-end gap-2">
+              <button
+                className="px-4 py-2 text-sm rounded-md border"
+                onClick={() => setShowTestimonialModal(false)}
+                disabled={savingTestimonial}
+              >
+                Cancel
+              </button>
+              <button
+                className={cn(
+                  "px-4 py-2 text-sm rounded-md text-white",
+                  savingTestimonial ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+                )}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleSaveTestimonial()
+                }}
+                disabled={savingTestimonial || !testimonialQuote.trim() || !testimonialAuthor.trim()}
+              >
+                {savingTestimonial ? 'Saving...' : 'Save Testimonial'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function OverviewTab({ briefing, onEdit, onRemove, highlightSections = false }: { briefing: Briefing; onEdit: () => void; onRemove: () => void; highlightSections?: boolean }) {
+function OverviewTab({ briefing, onEdit, onRemove, onAddAsTestimonial, onUpdate, highlightSections = false }: { briefing: Briefing; onEdit: () => void; onRemove: () => void; onAddAsTestimonial: (quote: string) => void; onUpdate: () => void; highlightSections?: boolean }) {
   // Extract structured sections from ai_summary (handle both string and object types)
   let ai = ''
   if (typeof briefing.ai_summary === 'string') {
@@ -345,7 +501,7 @@ function OverviewTab({ briefing, onEdit, onRemove, highlightSections = false }: 
   return (
     <div className="p-6 space-y-6">
       {/* Content Section - Moved to top */}
-      <ContentSection briefing={briefing} />
+      <ContentSection briefing={briefing} onUpdate={onUpdate} />
 
       {/* AI-derived Content with specific formatting */}
       <div className="grid grid-cols-1 gap-4">
@@ -386,9 +542,17 @@ function OverviewTab({ briefing, onEdit, onRemove, highlightSections = false }: 
           {quotesList.length > 0 ? (
             <ul className="space-y-2">
               {quotesList.map((quote, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="text-gray-600 mr-2 mt-1">–</span>
-                  <span className="text-sm text-gray-700 italic">{quote}</span>
+                <li key={index} className="flex items-start justify-between gap-3">
+                  <div className="flex items-start">
+                    <span className="text-gray-600 mr-2 mt-1">–</span>
+                    <span className="text-sm text-gray-700 italic">{quote}</span>
+                  </div>
+                  <button
+                    className="text-xs text-blue-600 hover:text-blue-700 underline flex-shrink-0"
+                    onClick={() => onAddAsTestimonial(quote)}
+                  >
+                    Add as Testimonial
+                  </button>
                 </li>
               ))}
             </ul>

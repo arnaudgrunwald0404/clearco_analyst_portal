@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   console.log(`[LOGIN ${reqId}] ⇢ POST ${pathname}`)
   try {
     const { email, password, provider }: LoginRequest = await request.json()
-    console.log(`[LOGIN ${reqId}] Body: email=${email || 'missing'} provider=${provider || 'password'} password_present=${!!password}`)
+    console.log(`[LOGIN ${reqId}] Body: email=${email || 'missing'} provider=${provider || 'magic'} password_present=${!!password}`)
 
     if (!email) {
       console.warn(`[LOGIN ${reqId}] Missing email`)
@@ -105,6 +105,46 @@ export async function POST(request: NextRequest) {
       return resp
     }
 
+    // Handle magic link authentication (default)
+    // Password authentication has been disabled
+    if (password) {
+      console.warn(`[LOGIN ${reqId}] Password authentication is disabled`)
+      const resp = NextResponse.json(
+        { success: false, error: 'Password authentication is not supported. Please use Google OAuth or magic link.' },
+        { status: 400 }
+      )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
+    }
+
+    // Send magic link
+    const { data: magicLinkData, error: magicLinkError } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback`
+      }
+    })
+
+    if (magicLinkError) {
+      console.error(`[LOGIN ${reqId}] Magic link error:`, magicLinkError)
+      const resp = NextResponse.json(
+        { success: false, error: magicLinkError.message },
+        { status: 400 }
+      )
+      resp.headers.set('X-Request-Id', reqId)
+      return resp
+    }
+
+    console.log(`[LOGIN ${reqId}] ✅ Magic link sent successfully to: ${email}`)
+    const resp = NextResponse.json({
+      success: true,
+      message: 'Magic link sent! Check your email and click the link to sign in.'
+    })
+    resp.headers.set('X-Request-Id', reqId)
+    return resp
+
+    // Commented out password authentication
+    /*
     // Handle password authentication
     if (!password) {
       console.warn(`[LOGIN ${reqId}] Missing password for password login`)
@@ -168,6 +208,7 @@ export async function POST(request: NextRequest) {
     })
     resp.headers.set('X-Request-Id', reqId)
     return resp
+    */
 
   } catch (error) {
     console.error(`[LOGIN ${reqId}] Login error:`, error)

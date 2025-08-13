@@ -10,13 +10,19 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  RefreshCw
+  RefreshCw,
+  Clock,
+  MapPin,
+  Users,
+  FileText,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Briefing } from './types'
 import BriefingCard from './components/BriefingCard'
 import Drawer from './components/drawer/Drawer'
+import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
 
 
 interface SyncProgress {
@@ -78,9 +84,6 @@ function SyncProgressModal({
   progress: SyncProgress[]
   connectionTitle: string
 }) {
-  // Guard before any hooks to keep hook order consistent across renders
-  if (!isOpen) return null
-
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Bump animations when counters change
@@ -168,6 +171,9 @@ function SyncProgressModal({
       return () => clearTimeout(t)
     }
   }, [newMeetings, lastCompletedIdx])
+
+  // Only render modal UI when open, but hooks above run unconditionally to satisfy React's rules
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -328,11 +334,13 @@ export default function ClientBriefingsPage() {
   
   // Sync progress modal state
   const [showSyncModal, setShowSyncModal] = useState(false)
+  const [showSyncOptions, setShowSyncOptions] = useState(false)
   const [syncProgress, setSyncProgress] = useState<SyncProgress[]>([])
-  const [connectionTitle, setConnectionTitle] = useState('')
   const [isSyncInProgress, setIsSyncInProgress] = useState(false)
-  const [syncStatus, setSyncStatus] = useState<{ isInProgress: boolean; timeElapsed?: number }>({ isInProgress: false })
+  const [connectionTitle, setConnectionTitle] = useState('')
+  const [syncStatus, setSyncStatus] = useState({ isInProgress: false, timeElapsed: 0 })
   const [hasCalendarConnection, setHasCalendarConnection] = useState<boolean | null>(null)
+  const [syncStarting, setSyncStarting] = useState(false)
   
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef<HTMLDivElement>(null)
@@ -456,25 +464,63 @@ export default function ClientBriefingsPage() {
         return
       }
 
-      // Use the first active connection
-      const connection = connectionsData.data.find((conn: any) => conn.isActive) || connectionsData.data[0]
+      // Use the first active connection (API returns snake_case: is_active)
+      const connection = connectionsData.data.find((conn: any) => conn.is_active) || connectionsData.data[0]
       setConnectionTitle(connection.title || connection.email)
       
-      // Reset progress and show modal
-      setSyncProgress([])
-      setShowSyncModal(true)
-      setIsSyncInProgress(true)
-      setSyncStatus({ isInProgress: true, timeElapsed: 0 })
+      // Show the sync options modal instead of starting sync directly
+      setShowSyncOptions(true)
+    } catch (error) {
+      console.error('Error preparing calendar sync:', error)
+      alert('Failed to prepare calendar sync. Please try again.')
+    }
+  }
+
+  const handleSyncWithOptions = async (timeWindowOptions: any) => {
+    try {
+      if (!user) {
+        alert('You must be logged in to sync your calendar.')
+        return
+      }
       
-      // First trigger the sync process
+      // Get the calendar connections
+      const connectionsResponse = await fetch('/api/settings/calendar-connections')
+      const connectionsData = await connectionsResponse.json()
+      
+      if (!connectionsData.success || connectionsData.data.length === 0) {
+        alert('No calendar connections found. Please set up a calendar connection first.')
+        return
+      }
+
+      // Use the first active connection (API returns snake_case: is_active)
+      const connection = connectionsData.data.find((conn: any) => conn.is_active) || connectionsData.data[0]
+      setConnectionTitle(connection.title || connection.email)
+      
+      // Prepare progress state (do not open modal yet)
+      setSyncProgress([{ type: 'progress', message: 'Starting calendar sync...' } as any])
+      setSyncStatus({ isInProgress: true, timeElapsed: 0 })
+      setSyncStarting(true)
+
+      // Remember baseline last_sync_at to detect completion
+      const baselineLastSync: string | null = connection.last_sync_at || null
+      
+      // Start the sync process with time window options
       const syncResponse = await fetch(`/api/settings/calendar-connections/${connection.id}/sync`, {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ timeWindowOptions })
       })
       
       if (syncResponse.status === 409) {
         // Sync already in progress
-        const errorData = await syncResponse.json()
-        alert(`Calendar sync already in progress: ${errorData.details}`)
+        let details = 'already in progress'
+        try {
+          const errorData = await syncResponse.json()
+          details = errorData?.error || details
+        } catch {}
+        alert(`Calendar sync ${details}.`)
         return
       }
       
@@ -487,59 +533,109 @@ export default function ClientBriefingsPage() {
         throw new Error(errorMessage)
       }
 
-      // Create EventSource for real-time progress updates
-      const eventSource = new EventSource(`/api/settings/calendar-connections/${connection.id}/sync`)
-      
-      eventSource.onmessage = (event) => {
+      // Close options modal and open progress modal
+      setShowSyncOptions(false)
+      setShowSyncModal(true)
+      setIsSyncInProgress(true)
+
+      // Polling progress events and completion
+      setSyncProgress(prev => [...prev, { type: 'progress', message: 'Sync started. Monitoring progress...' } as any])
+
+      const startTime = Date.now()
+      const timeoutMs = 90_000 // 90s timeout
+      const intervalMs = 2000
+      let lastEventId: number | null = null
+
+      const poll = async () => {
         try {
-          const raw = (event as MessageEvent).data
-          // Some servers may send keepalive/heartbeat pings that aren't JSON
-          if (typeof raw !== 'string' || raw.trim().length === 0 || raw.trim()[0] !== '{') {
-            return
+          // 1) Fetch incremental progress events
+          const eventsResp = await fetch(`/api/settings/calendar-connections/${connection.id}/progress${lastEventId ? `?sinceId=${lastEventId}` : ''}`)
+          const eventsBody = await eventsResp.json()
+          if (eventsBody.success && Array.isArray(eventsBody.data)) {
+            const newEvents = eventsBody.data as any[]
+            if (newEvents.length > 0) {
+              lastEventId = newEvents[newEvents.length - 1].id
+              // Map DB fields to UI event shape
+              const mapped = newEvents.map(e => ({
+                type: e.type,
+                month: e.month,
+                message: e.message,
+                foundAnalystMeetings: e.found_analyst_meetings,
+                totalEventsProcessed: e.total_events_processed,
+                relevantMeetingsCount: e.relevant_meetings_count,
+              }))
+              setSyncProgress(prev => [...prev, ...mapped])
+              // If we received a complete or error event, finish
+              if (mapped.some(m => m.type === 'complete' || m.type === 'error')) {
+                setIsSyncInProgress(false)
+                setSyncStatus({ isInProgress: false, timeElapsed: Math.round((Date.now() - startTime) / 60000) })
+                setTimeout(() => {
+                  setShowSyncModal(false)
+                  fetchBriefings(true)
+                }, 1000)
+                return true
+              }
+            }
           }
-          const data = JSON.parse(raw)
-          setSyncProgress(prev => [...prev, data])
-          
-          // Close modal when sync is complete
-          if (data.type === 'complete' || data.type === 'error') {
-            eventSource.close()
-            setIsSyncInProgress(false)
-            setSyncStatus({ isInProgress: false })
-            setTimeout(() => {
-              setShowSyncModal(false)
-              fetchBriefings(true) // Refresh the briefings list
-            }, 2000)
+
+          // 2) Also check last_sync_at as a fallback completion signal
+          const resp = await fetch('/api/settings/calendar-connections')
+          const body = await resp.json()
+          const list = Array.isArray(body.data) ? body.data : []
+          const updated = list.find((c: any) => c.id === connection.id)
+          if (updated) {
+            const changed = updated.last_sync_at && updated.last_sync_at !== baselineLastSync
+            if (changed) {
+              setSyncProgress(prev => [...prev, { type: 'complete', message: 'Calendar sync completed' } as any])
+              setIsSyncInProgress(false)
+              setSyncStatus({ isInProgress: false, timeElapsed: Math.round((Date.now() - startTime) / 60000) })
+              setTimeout(() => {
+                setShowSyncModal(false)
+                fetchBriefings(true)
+              }, 1000)
+              return true
+            }
           }
-        } catch (error) {
-          console.error('Error parsing SSE data:', error)
+
+          if (Date.now() - startTime > timeoutMs) {
+            throw new Error('Timed out waiting for sync to complete')
+          }
+          return false
+        } catch (err) {
+          console.error('Polling error:', err)
+          setSyncProgress(prev => [...prev, { type: 'error', message: err instanceof Error ? err.message : 'Polling failed' } as any])
+          setIsSyncInProgress(false)
+          setSyncStatus({ isInProgress: false, timeElapsed: 0 })
+          setTimeout(() => setShowSyncModal(false), 2000)
+          return true
         }
       }
-      
-      eventSource.onerror = (error) => {
-        console.error('EventSource error:', error)
-        try { eventSource.close() } catch {}
-        setIsSyncInProgress(false)
-        setSyncStatus({ isInProgress: false })
-        setSyncProgress(prev => [...prev, {
-          type: 'sync_failed',
-          message: 'Sync failed due to connection error',
-          error: (error instanceof Error ? error.message : 'Connection error')
-        }])
-        // Auto-hide modal after showing the error briefly
-        setTimeout(() => setShowSyncModal(false), 2000)
+
+      // Loop polling with delay
+      const pollLoop = async () => {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const done = await poll()
+          if (done) break
+          await new Promise(r => setTimeout(r, intervalMs))
+        }
       }
+      pollLoop()
 
     } catch (error) {
       console.error('Error syncing calendar meetings:', error)
       setIsSyncInProgress(false)
-      setSyncStatus({ isInProgress: false })
+      setSyncStatus({ isInProgress: false, timeElapsed: 0 })
       setSyncProgress(prev => [...prev, {
         type: 'sync_failed',
         message: 'Failed to start calendar sync',
         error: error instanceof Error ? error.message : 'Unknown error'
       }])
+      // Keep options modal open if start failed, show a quick error modal
       setShowSyncModal(true)
       setTimeout(() => setShowSyncModal(false), 2000)
+    } finally {
+      setSyncStarting(false)
     }
   }
 
@@ -743,6 +839,14 @@ export default function ClientBriefingsPage() {
         onClose={() => setShowSyncModal(false)}
         progress={syncProgress}
         connectionTitle={connectionTitle}
+      />
+
+      {/* Calendar Sync Options Modal */}
+      <CalendarSyncOptionsModal
+        isOpen={showSyncOptions}
+        onClose={() => setShowSyncOptions(false)}
+        onConfirm={handleSyncWithOptions}
+        isStarting={syncStarting}
       />
     </div>
   )

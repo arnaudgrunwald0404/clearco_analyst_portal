@@ -81,8 +81,8 @@ export default function TestimonialsPage() {
           }
         }
         
-        // Fetch testimonials
-        const testimonialsResponse = await fetch('/api/testimonials')
+        // Fetch testimonials (including unpublished ones for admin view)
+        const testimonialsResponse = await fetch('/api/testimonials?all=true')
         if (testimonialsResponse.ok) {
           const testimonialsData = await testimonialsResponse.json()
           if (testimonialsData.success) {
@@ -220,6 +220,49 @@ export default function TestimonialsPage() {
     } catch (error) {
       console.error('Error deleting testimonial:', error)
       alert(error instanceof Error ? error.message : 'Failed to delete testimonial')
+    }
+  }
+
+  const handleTogglePublished = async (testimonial: Testimonial) => {
+    const newStatus = !testimonial.isPublished
+    const action = newStatus ? 'publish' : 'unpublish'
+    
+    if (!confirm(`Are you sure you want to ${action} this testimonial?`)) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/testimonials/${testimonial.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          isPublished: newStatus
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Failed to ${action} testimonial`)
+      }
+
+      const result = await response.json()
+      
+      if (result.success) {
+        // Update testimonial in the list
+        setTestimonials(prev => prev.map(t => 
+          t.id === testimonial.id 
+            ? { ...t, isPublished: newStatus }
+            : t
+        ))
+        
+        // Show success message
+        alert(`Testimonial ${action}ed successfully!`)
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing testimonial:`, error)
+      alert(error instanceof Error ? error.message : `Failed to ${action} testimonial`)
     }
   }
 
@@ -389,14 +432,18 @@ export default function TestimonialsPage() {
           <Card key={testimonial.id} className="p-6 hover:shadow-lg transition-shadow">
             {/* Header with status and actions */}
             <div className="flex justify-between items-start mb-4">
-              <span className={cn(
-                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                testimonial.isPublished 
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-yellow-100 text-yellow-800'
-              )}>
+              <button
+                onClick={() => handleTogglePublished(testimonial)}
+                className={cn(
+                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity',
+                  testimonial.isPublished 
+                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                )}
+                title={`Click to ${testimonial.isPublished ? 'unpublish' : 'publish'} this testimonial`}
+              >
                 {testimonial.isPublished ? 'Published' : 'Draft'}
-              </span>
+              </button>
               
               <div className="flex items-center space-x-2">
                 <button
@@ -429,12 +476,20 @@ export default function TestimonialsPage() {
 
             {/* Analyst Info */}
             <div className="flex items-center">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
-                getAvatarColor(testimonial.analyst.firstName, testimonial.analyst.lastName)
-              )}>
-                {getInitials(testimonial.analyst.firstName, testimonial.analyst.lastName)}
-              </div>
+              {testimonial.analyst.profileImageUrl ? (
+                <img 
+                  src={testimonial.analyst.profileImageUrl} 
+                  alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
+                  className="w-10 h-10 rounded-full object-cover"
+                />
+              ) : (
+                <div className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
+                  getAvatarColor(testimonial.analyst.firstName, testimonial.analyst.lastName)
+                )}>
+                  {getInitials(testimonial.analyst.firstName, testimonial.analyst.lastName)}
+                </div>
+              )}
               <div className="ml-3">
                 <p className="font-semibold text-gray-900 text-sm">
                   {testimonial.analyst.firstName} {testimonial.analyst.lastName}

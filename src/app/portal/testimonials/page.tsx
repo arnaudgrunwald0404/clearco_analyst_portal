@@ -12,6 +12,9 @@ import {
   Filter
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Caveat } from 'next/font/google'
+
+const caveat = Caveat({ subsets: ['latin'], weight: ['400', '700'] })
 
 // Mock testimonials data
 const mockTestimonials = [
@@ -205,72 +208,49 @@ export default function PortalTestimonialsPage() {
         </div>
       </div>
 
-      {/* Testimonials Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredTestimonials.map((testimonial) => (
-          <div
-            key={testimonial.id}
-            className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            {/* Quote */}
-            <div className="relative mb-4">
-              <Quote className="absolute -top-2 -left-2 w-8 h-8 text-blue-100" />
-              <blockquote className="text-gray-700 italic text-lg leading-relaxed pl-6">
-                "{testimonial.quote}"
-              </blockquote>
-            </div>
+      {/* Testimonials Grid - Post-it style masonry */}
+      <div className="columns-1 sm:columns-2 lg:columns-3 gap-8">
+        {filteredTestimonials.map((t, idx) => {
+          const rotations = ['rotate-1', '-rotate-1', 'rotate-2', '-rotate-2']
+          const rotation = rotations[idx % rotations.length]
+          return (
+            <div key={t.id} className="inline-block w-full break-inside-avoid mb-8">
+              <div className={cn(
+'relative w-full bg-yellow-100 rounded-sm shadow-[0_10px_20px_rgba(0,0,0,0.12)] p-4 border border-yellow-200',
+                'transition-transform hover:rotate-0 hover:scale-[1.02]',
+                rotation
+              )}>
+                {/* Tape at top */}
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-24 h-4 bg-yellow-200/80 rounded-sm shadow-sm" />
 
-            {/* Rating */}
-            <div className="flex items-center mb-4">
-              <div className="flex items-center mr-3">
-                {renderStars(testimonial.rating)}
-              </div>
-              <span className="text-sm text-gray-500">({testimonial.rating}/5)</span>
-            </div>
+                {/* Quote */}
+                <div className="h-full flex flex-col">
+                  <div className="flex-1">
+                    <Quote className="w-6 h-6 text-yellow-500/70 mb-2" />
+                    <blockquote className={cn('text-gray-800 text-[1.05rem] leading-relaxed italic', caveat.className)}>
+                      “{t.quote}”
+                    </blockquote>
+                  </div>
 
-            {/* Author Info */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                  <User className="w-6 h-6 text-gray-500" />
-                </div>
-                <div>
-                  <div className="font-semibold text-gray-900">{testimonial.author}</div>
-                  <div className="text-sm text-gray-600">{testimonial.title}</div>
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Building className="w-3 h-3 mr-1" />
-                    {testimonial.company}
+                  {/* Bottom area with avatar and name */}
+                  <div className="mt-4 pt-3 border-t border-yellow-200 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-yellow-300 flex items-center justify-center">
+                      {/* Prefer provided image, fallback to user icon */}
+                      {t.image ? (
+                        <img src={t.image} alt={t.author} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-6 h-6 text-yellow-900" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-gray-900 truncate">{t.author}</div>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {testimonial.verified && (
-                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  Verified
-                </span>
-              )}
             </div>
-
-            {/* Metadata */}
-            <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-              <div className="flex items-center">
-                <Calendar className="w-3 h-3 mr-1" />
-                {formatDate(testimonial.date)}
-              </div>
-              <div className="flex items-center">
-                <MessageSquare className="w-3 h-3 mr-1" />
-                {testimonial.context}
-              </div>
-            </div>
-
-            {/* Category Tag */}
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                {testimonial.category}
-              </span>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       {filteredTestimonials.length === 0 && (

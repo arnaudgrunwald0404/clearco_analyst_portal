@@ -1,3 +1,6 @@
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
@@ -87,7 +90,25 @@ function releaseSyncLock(connectionId: string) {
   }
 }
 
-// Function to send SSE message
+// Function to send SSE message and persist progress
+async function recordProgress(supabase: SupabaseClient<Database>, connectionId: string, data: any) {
+  try {
+    // Persist only known event types
+    const payload: any = {
+      connection_id: connectionId,
+      type: data.type || 'progress',
+      month: data.month || null,
+      message: data.message || null,
+      found_analyst_meetings: data.foundAnalystMeetings ?? null,
+      total_events_processed: data.totalEventsProcessed ?? null,
+      relevant_meetings_count: data.relevantMeetingsCount ?? null,
+    }
+    await supabase.from('calendar_sync_progress').insert(payload)
+  } catch (err) {
+    console.error('Failed to record sync progress:', err)
+  }
+}
+
 function sendSSEMessage(connectionId: string, data: any) {
   const connection = syncConnections.get(connectionId)
   if (connection) {
@@ -124,13 +145,20 @@ function matchAnalystByEmail(email: string, analysts: any[]): any | null {
   return match || null
 }
 
-async function startCalendarSync(connectionId: string, forceSync: boolean = false, supabase: SupabaseClient<Database>) {
+async function startCalendarSync(
+  connectionId: string, 
+  forceSync: boolean = false, 
+  supabase: SupabaseClient<Database>,
+  timeWindowOptions?: {
+    timeWindow: 'future' | 'custom' | 'all'
+    startDate?: string
+    endDate?: string
+    includePast: boolean
+  }
+) {
   try {
-    sendSSEMessage(connectionId, { 
-      type: 'progress', 
-      message: 'Starting calendar sync...', 
-      progress: 0 
-    })
+    sendSSEMessage(connectionId, { type: 'progress', message: 'Starting calendar sync...', progress: 0 })
+    await recordProgress(supabase, connectionId, { type: 'progress', message: 'Starting calendar sync...' })
 
     // Get calendar connection
     const { data: connection, error: connectionError } = await supabase
@@ -147,28 +175,52 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
       throw new Error('Calendar connection is not active')
     }
 
-    sendSSEMessage(connectionId, { 
-      type: 'progress', 
-      message: 'Validating calendar connection...', 
-      progress: 10 
-    })
+    sendSSEMessage(connectionId, { type: 'progress', message: 'Validating calendar connection...', progress: 10 })
+    await recordProgress(supabase, connectionId, { type: 'progress', message: 'Validating calendar connection...' })
 
     // Set up Google Calendar API
     const access_token = decryptToken(connection.access_token)
     oauth2Client.setCredentials({ access_token: access_token })
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client })
 
+    sendSSEMessage(connectionId, { type: 'progress', message: 'Fetching calendar events...', progress: 20 })
+    await recordProgress(supabase, connectionId, { type: 'progress', message: 'Fetching calendar events...' })
+
+    // Calculate time range based on options
+    const now = new Date()
+    let timeMin: Date
+    let timeMaxDate: Date
+
+    if (timeWindowOptions?.timeWindow === 'future') {
+      // Future meetings only: from today to 6 months ahead
+      timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
+      timeMaxDate = new Date(now)
+      timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
+    } else if (timeWindowOptions?.timeWindow === 'custom' && timeWindowOptions.startDate && timeWindowOptions.endDate) {
+      // Custom date range
+      timeMin = new Date(timeWindowOptions.startDate)
+      timeMaxDate = new Date(timeWindowOptions.endDate)
+      timeMaxDate.setHours(23, 59, 59, 999) // End of the end date
+    } else {
+      // Default: all meetings from Jan 1, 2024 to 6 months ahead
+      timeMin = new Date(Date.UTC(2024, 0, 1, 0, 0, 0))
+      timeMaxDate = new Date(now)
+      timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
+    }
+
+    // Validate date range
+    if (timeMin >= timeMaxDate) {
+      throw new Error('Invalid date range: start date must be before end date')
+    }
+
+    // Log the time range being used
+    console.log(`📅 Calendar sync time range: ${timeMin.toISOString()} to ${timeMaxDate.toISOString()}`)
+    
     sendSSEMessage(connectionId, { 
       type: 'progress', 
-      message: 'Fetching calendar events...', 
-      progress: 20 
+      message: `Fetching events from ${timeMin.toLocaleDateString()} to ${timeMaxDate.toLocaleDateString()}...`, 
+      progress: 25 
     })
-
-    // Get time range for sync: from Jan 1, 2024 to today + 6 months
-    const now = new Date()
-    const timeMin = new Date(Date.UTC(2024, 0, 1, 0, 0, 0))
-    const timeMaxDate = new Date(now)
-    timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
 
     // Fetch events from Google Calendar with pagination
     const events: any[] = []
@@ -187,11 +239,8 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
       pageToken = resp.data.nextPageToken || undefined
     } while (pageToken)
     
-    sendSSEMessage(connectionId, { 
-      type: 'progress', 
-      message: `Found ${events.length} calendar events`, 
-      progress: 40 
-    })
+    sendSSEMessage(connectionId, { type: 'progress', message: `Found ${events.length} calendar events`, progress: 40 })
+    await recordProgress(supabase, connectionId, { type: 'progress', message: `Found ${events.length} calendar events` })
 
     // Get all analysts for matching
     const { data: analysts, error: analystsError } = await supabase
@@ -243,27 +292,20 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
         if (currentMonthKey === null) {
           currentMonthKey = monthKey
           currentMonthLabel = formatMonthLabel(start_time)
-          sendSSEMessage(connectionId, {
-            type: 'month_started',
-            month: currentMonthLabel
-          })
+          sendSSEMessage(connectionId, { type: 'month_started', month: currentMonthLabel })
+          await recordProgress(supabase, connectionId, { type: 'month_started', month: currentMonthLabel })
         } else if (monthKey !== currentMonthKey) {
           // Emit summary for previous month
           if (currentMonthLabel) {
-            sendSSEMessage(connectionId, {
-              type: 'month_result',
-              month: currentMonthLabel,
-              foundAnalystMeetings: currentMonthAnalystCount
-            })
+            sendSSEMessage(connectionId, { type: 'month_result', month: currentMonthLabel, foundAnalystMeetings: currentMonthAnalystCount })
+            await recordProgress(supabase, connectionId, { type: 'month_result', month: currentMonthLabel, foundAnalystMeetings: currentMonthAnalystCount })
           }
           // Start new month
           currentMonthKey = monthKey
           currentMonthLabel = formatMonthLabel(start_time)
           currentMonthAnalystCount = 0
-          sendSSEMessage(connectionId, {
-            type: 'month_started',
-            month: currentMonthLabel
-          })
+          sendSSEMessage(connectionId, { type: 'month_started', month: currentMonthLabel })
+          await recordProgress(supabase, connectionId, { type: 'month_started', month: currentMonthLabel })
         }
         
         // Check for duplicate briefing
@@ -304,9 +346,8 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
           if (event.summary && matchedAnalysts.length > 0) {
             currentMonthAnalystCount += 1
             // Emit realtime increment for analyst meetings discovered
-            sendSSEMessage(connectionId, {
-              type: 'analyst_meeting_found'
-            })
+            sendSSEMessage(connectionId, { type: 'analyst_meeting_found' })
+            await recordProgress(supabase, connectionId, { type: 'analyst_meeting_found' })
             const briefingData: BriefingInsert = {
               id: generateId(),
               title: event.summary,
@@ -358,11 +399,8 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
 
     // Emit summary for last month
     if (currentMonthLabel) {
-      sendSSEMessage(connectionId, {
-        type: 'month_result',
-        month: currentMonthLabel,
-        foundAnalystMeetings: currentMonthAnalystCount
-      })
+      sendSSEMessage(connectionId, { type: 'month_result', month: currentMonthLabel, foundAnalystMeetings: currentMonthAnalystCount })
+      await recordProgress(supabase, connectionId, { type: 'month_result', month: currentMonthLabel, foundAnalystMeetings: currentMonthAnalystCount })
     }
 
     // Update connection sync timestamp
@@ -371,30 +409,19 @@ async function startCalendarSync(connectionId: string, forceSync: boolean = fals
       .update({ last_sync_at: new Date().toISOString() })
       .eq('id', connection.id)
 
-    sendSSEMessage(connectionId, { 
-      type: 'progress', 
-      message: 'Calendar sync completed successfully', 
-      progress: 100 
-    })
+    sendSSEMessage(connectionId, { type: 'progress', message: 'Calendar sync completed successfully', progress: 100 })
+    await recordProgress(supabase, connectionId, { type: 'progress', message: 'Calendar sync completed successfully' })
 
-    sendSSEMessage(connectionId, { 
-      type: 'complete', 
-      summary: {
-        totalEvents: events.length,
-        processedEvents,
-        createdBriefings,
-        createdMeetings
-      }
-    })
+    sendSSEMessage(connectionId, { type: 'complete', summary: { totalEvents: events.length, processedEvents, createdBriefings, createdMeetings } })
+    await recordProgress(supabase, connectionId, { type: 'complete' })
 
     console.log(`✅ Calendar sync completed: ${createdBriefings} briefings, ${createdMeetings} meetings`)
 
   } catch (error) {
     console.error('Calendar sync error:', error)
-    sendSSEMessage(connectionId, { 
-      type: 'error', 
-      message: error instanceof Error ? error.message : 'Unknown error occurred' 
-    })
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred'
+    sendSSEMessage(connectionId, { type: 'error', message: errMsg })
+    try { await recordProgress(supabase, connectionId, { type: 'error', message: errMsg }) } catch {}
   } finally {
     releaseSyncLock(connectionId)
     setTimeout(() => {
@@ -414,8 +441,18 @@ export async function POST(
   try {
     const { id } = await params
     const connectionId = id
-    const body = await request.json().catch(() => ({})) as { user_id?: string; forceSync?: boolean }
+    const body = await request.json().catch(() => ({})) as { 
+      user_id?: string; 
+      forceSync?: boolean;
+      timeWindowOptions?: {
+        timeWindow: 'future' | 'custom' | 'all'
+        startDate?: string
+        endDate?: string
+        includePast: boolean
+      }
+    }
     const forceSync = body.forceSync
+    const timeWindowOptions = body.timeWindowOptions
 
     // Allow internal jobs to bypass user authentication using a shared secret
     const internalSecret = process.env.INTERNAL_JOB_SECRET
@@ -455,11 +492,11 @@ export async function POST(
       }
       supabaseClient = createServiceClient<Database>(supabaseUrl, serviceRoleKey)
     } else {
-      supabaseClient = createClient()
+      supabaseClient = await createClient()
     }
 
-    // Start the sync process asynchronously
-    startCalendarSync(connectionId, forceSync, supabaseClient)
+    // Start the sync process asynchronously with time window options
+    startCalendarSync(connectionId, forceSync, supabaseClient, timeWindowOptions)
 
     return NextResponse.json({
       success: true,
@@ -469,10 +506,7 @@ export async function POST(
   } catch (error) {
     console.error('Error starting calendar sync:', error)
     return NextResponse.json(
-      { 
-        error: 'Failed to start calendar sync',
-        details: error instanceof Error ? error.message : String(error)
-      },
+      { error: 'Failed to start calendar sync' },
       { status: 500 }
     )
   }
@@ -486,32 +520,49 @@ export async function GET(
   const connectionId = id
 
   // Set up SSE
+  console.log(`🔌 [SSE] GET connect for connectionId=${connectionId} at ${new Date().toISOString()}`)
   const stream = new ReadableStream({
     start(controller) {
+      const encoder = new TextEncoder()
       const connection = {
         write: (data: string) => {
-          controller.enqueue(new TextEncoder().encode(data))
+          controller.enqueue(encoder.encode(data))
         },
         end: () => {
-          controller.close()
+          try { controller.close() } catch {}
         }
-      }
+      } as any
       
+      // Heartbeat to keep the connection alive through proxies/runtimes
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(':keepalive\n\n'))
+        } catch {}
+      }, 15000)
+      ;(connection as any).heartbeat = heartbeat
+
       syncConnections.set(connectionId, connection)
       
       // Send initial connection confirmation
       connection.write('data: {"type":"connected"}\n\n')
+      console.log(`✅ [SSE] Stream opened for connectionId=${connectionId}`)
     },
     cancel() {
+      console.log(`❌ [SSE] Stream canceled for connectionId=${connectionId}`)
+      const existing = syncConnections.get(connectionId) as any
+      if (existing && existing.heartbeat) {
+        clearInterval(existing.heartbeat)
+      }
       syncConnections.delete(connectionId)
     }
   })
 
   return new NextResponse(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Content-Type',
     },

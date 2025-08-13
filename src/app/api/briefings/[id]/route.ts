@@ -60,6 +60,8 @@ export async function GET(
     // Format the response to match the expected structure
     const formattedBriefing = {
       ...briefing,
+      // Normalize DB field name to camelCase for the client
+      contentUrl: (briefing as any).contentUrl ?? (briefing as any).contenturl ?? null,
       analysts: (briefingAnalysts || []).map((ba: any) => ({
         id: ba.id,
         briefingId: briefing.id,
@@ -96,7 +98,8 @@ export async function PUT(
       outcomes,
       followUpActions,
       analystIds,
-      contentUrl
+      contentUrl,
+      contenturl
     } = body
 
     const supabase = await createClient()
@@ -112,7 +115,8 @@ export async function PUT(
         status,
         outcomes,
         followUpActions,
-        contentUrl,
+        // Write to the actual DB column name (contenturl), prefer explicit body key then camelCase
+        contenturl: contenturl !== undefined ? contenturl : (typeof contentUrl !== 'undefined' ? contentUrl : undefined),
         updatedAt: new Date().toISOString()
       })
       .eq('id', id)
@@ -194,7 +198,8 @@ export async function PATCH(
       'recordingUrl',
       'transcript',
       'ai_summary',
-      'contentUrl',
+      'contentUrl', // client may send camelCase
+      'contenturl', // actual DB column
     ] as const
 
     const updateData: Record<string, any> = { updatedAt: new Date().toISOString() }
@@ -202,6 +207,12 @@ export async function PATCH(
       if (Object.prototype.hasOwnProperty.call(body, key) && body[key] !== undefined) {
         updateData[key] = body[key]
       }
+    }
+
+    // Normalize to DB column name if client sent camelCase
+    if (Object.prototype.hasOwnProperty.call(updateData, 'contentUrl')) {
+      updateData['contenturl'] = updateData['contentUrl']
+      delete updateData['contentUrl']
     }
 
     if (Object.keys(updateData).length === 1) {
@@ -217,7 +228,8 @@ export async function PATCH(
 
     if (error) {
       console.error('Error patching briefing:', error)
-      return NextResponse.json({ success: false, error: 'Failed to update briefing' }, { status: 500 })
+      const message = typeof (error as any)?.message === 'string' ? (error as any).message : 'Failed to update briefing'
+      return NextResponse.json({ success: false, error: message }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data: updated })

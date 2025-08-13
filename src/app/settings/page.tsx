@@ -54,6 +54,13 @@ function SettingsPageContent() {
   const [newConnectionTitle, setNewConnectionTitle] = useState('')
   const { currentHelp, targetElement, showHelp, hideHelp } = useHelpText()
 
+  // Auto-dismiss notifications after a short delay
+  useEffect(() => {
+    if (!notification) return
+    const timer = setTimeout(() => setNotification(null), 5000)
+    return () => clearTimeout(timer)
+  }, [notification])
+
   useEffect(() => {
     fetchCalendarConnections()
     
@@ -176,9 +183,16 @@ function SettingsPageContent() {
           console.log('⚠️ [Client] Result not successful or no data, setting empty array')
           setCalendarConnections([])
         }
+      } else if (response.status === 401) {
+        // Unauthenticated – this can happen briefly before auth is established. Don't treat as an error.
+        console.warn('⚠️ [Client] Not authenticated when fetching calendar connections (401). Showing empty list.')
+        setCalendarConnections([])
+        return
       } else {
         const errorText = await response.text()
         console.error('❌ [Client] Response not OK:')
+        console.error('  - Status:', response.status)
+        console.error('  - StatusText:', response.statusText)
         console.error('  - Error body:', errorText)
         throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
       }
@@ -249,19 +263,30 @@ function SettingsPageContent() {
             window.location.href = result.data.authUrl
           } else {
             console.error('❌ [Client] Invalid response format - missing success or authUrl')
-            throw new Error('Invalid response format from server')
+            setNotification({ type: 'error', message: 'Invalid response format from server' })
+            setAdding(false)
+            return
           }
         } else {
           console.error('❌ [Client] Expected JSON but received:', contentType)
-          throw new Error('Invalid response format from server')
+          setNotification({ type: 'error', message: 'Invalid response format from server' })
+          setAdding(false)
+          return
         }
+      } else if (response.status === 401) {
+        console.warn('⚠️ [Client] Not authenticated when initiating calendar connection (401).')
+        setNotification({ type: 'error', message: 'Please log in to connect a Google Calendar.' })
+        setAdding(false)
+        return
       } else {
         console.error('❌ [Client] Response not OK:')
         console.error('  - Status:', response.status)
         console.error('  - StatusText:', response.statusText)
         const errorText = await response.text()
         console.error('  - Response body:', errorText)
-        throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`)
+        setNotification({ type: 'error', message: `Failed to start calendar connection: ${response.status} ${response.statusText}` })
+        setAdding(false)
+        return
       }
     } catch (error) {
       console.error('💥 [Client] Failed to initiate calendar connection:')
@@ -439,7 +464,7 @@ function SettingsPageContent() {
     return date.toLocaleDateString()
   }
 
-  const startCalendarSync = async (connectionId: string) => {
+  const startCalendarSync = async (connectionId: string, timeWindowOptions?: any) => {
     if (!user) {
       console.error("User is not authenticated. Cannot start sync.");
       setNotification({
@@ -458,13 +483,16 @@ function SettingsPageContent() {
         relevantMeetingsCount: 0
       })))
 
-      // Start the sync by sending the user_id in the body
+      // Start the sync by sending the user_id and time window options in the body
       const response = await fetch(`/api/settings/calendar-connections/${connectionId}/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ user_id: user.id })
+        body: JSON.stringify({ 
+          user_id: user.id,
+          timeWindowOptions: timeWindowOptions
+        })
       })
 
       if (!response.ok) {
@@ -582,6 +610,19 @@ function SettingsPageContent() {
           Manage your account settings and integrations
         </p>
       </div>
+
+      {notification && (
+        <div
+          role="alert"
+          className={`mb-6 rounded-md border p-3 text-sm ${
+            notification.type === 'error'
+              ? 'border-red-300 bg-red-50 text-red-800'
+              : 'border-green-300 bg-green-50 text-green-800'
+          }`}
+        >
+          {notification.message}
+        </div>
+      )}
 
       <div className="flex gap-12">
         <SidebarNav activeSection={activeSection} setActiveSection={setActiveSection} menuSections={menuSections} />

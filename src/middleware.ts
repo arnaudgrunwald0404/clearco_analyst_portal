@@ -20,6 +20,14 @@ export async function middleware(request: NextRequest) {
     return resp
   }
 
+  // Bypass middleware for SSE calendar sync endpoint to avoid interfering with streaming
+  // Example: /api/settings/calendar-connections/{id}/sync
+  if (/^\/api\/settings\/calendar-connections\/[^/]+\/sync$/.test(pathname)) {
+    const resp = NextResponse.next()
+    resp.headers.set('X-Request-Id', reqId)
+    return resp
+  }
+
   // Preview gate for public analyst pages
   if (pathname.startsWith('/analysts/')) {
     const previewCookie = request.cookies.get('analyst_preview')?.value

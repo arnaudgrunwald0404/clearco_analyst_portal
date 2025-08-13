@@ -408,6 +408,11 @@ export default function AnalystsPage() {
             aValue = influenceOrder[a.influence] || 0
             bValue = influenceOrder[b.influence] || 0
             break
+          case 'status':
+            const statusOrder = { 'ACTIVE': 1, 'INACTIVE': 2, 'ARCHIVED': 3 }
+            aValue = statusOrder[a.status] || 0
+            bValue = statusOrder[b.status] || 0
+            break
           case 'lastBriefing':
             aValue = new Date(a.updatedAt).getTime()
             bValue = new Date(b.updatedAt).getTime()
@@ -766,6 +771,13 @@ export default function AnalystsPage() {
                 <span>Influence</span>
                 {getSortIcon('influence')}
               </div>
+              <div 
+                className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
+                onClick={() => handleSort('status')}
+              >
+                <span>Status</span>
+                {getSortIcon('status')}
+              </div>
                 <div 
                   className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                   onClick={() => handleSort('lastBriefing')}
@@ -895,6 +907,17 @@ export default function AnalystsPage() {
                     )}
                   </div>
                   
+                  {/* Status - 1/13 */}
+                  <div className="col-span-1 text-center cursor-pointer" onClick={() => handleRowClick(analyst)}>
+                    <span className={cn(
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                      analyst.status === 'ACTIVE' && 'bg-green-100 text-green-800',
+                      analyst.status === 'INACTIVE' && 'bg-yellow-100 text-yellow-800',
+                      analyst.status === 'ARCHIVED' && 'bg-gray-100 text-gray-600'
+                    )}>
+                      {analyst.status}
+                    </span>
+                  </div>
                   
                   {/* Last Briefing - 1/13 */}
                   <div className="col-span-1 text-center cursor-pointer" onClick={() => handleRowClick(analyst)}>
@@ -912,6 +935,7 @@ export default function AnalystsPage() {
                     <AnalystActionsMenu
                       analystId={analyst.id}
                       analystName={`${analyst.firstName || ''} ${analyst.lastName || ''}`.trim()}
+                      analystStatus={analyst.status}
                       onDelete={handleAnalystDeleted}
                       onView={() => handleViewAnalyst(analyst)}
                     />

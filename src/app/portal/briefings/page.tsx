@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Papa from 'papaparse'
+import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
 
 interface Briefing {
   id: string
@@ -117,6 +118,7 @@ export default function PortalBriefingsPage() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'transcript'>('overview')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [showSyncOptions, setShowSyncOptions] = useState(false)
 
   // Fetch briefings on component mount and when filters change
   useEffect(() => {
@@ -154,9 +156,18 @@ export default function PortalBriefingsPage() {
   }
 
   const syncCalendarMeetings = async () => {
+    // Show the sync options modal instead of starting sync directly
+    setShowSyncOptions(true)
+  }
+
+  const handleSyncWithOptions = async (timeWindowOptions: any) => {
     try {
       const response = await fetch('/api/briefings/sync-calendar', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ timeWindowOptions })
       })
       const data = await response.json()
       
@@ -322,6 +333,7 @@ export default function PortalBriefingsPage() {
       {selectedBriefing && (
         <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
           <BriefingDrawer
+            key={selectedBriefing.id}
             briefing={selectedBriefing}
             activeTab={drawerTab}
             onTabChange={setDrawerTab}
@@ -330,6 +342,14 @@ export default function PortalBriefingsPage() {
           />
         </div>
       )}
+
+      {/* Calendar Sync Options Modal */}
+      <CalendarSyncOptionsModal
+        isOpen={showSyncOptions}
+        onClose={() => setShowSyncOptions(false)}
+        onConfirm={handleSyncWithOptions}
+        isStarting={false}
+      />
     </div>
   )
 }

@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import {
-  Clock,
-  Users,
   Search,
   Filter,
-  AlertTriangle,
   CheckCircle2,
   Calendar,
   User,
@@ -633,41 +630,7 @@ export default function BriefingsDuePage() {
         </div>
       </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
-            <div className="ml-3">
-              <p className="text-2xl font-bold text-gray-900">{analysts.length}</p>
-              <p className="text-sm text-gray-600">Total Due</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Clock className="w-8 h-8 text-orange-500" />
-            <div className="ml-3">
-              <p className="text-2xl font-bold text-gray-900">
-                {analysts.filter(a => (a.overdueDays ?? 0) > 30).length}
-              </p>
-              <p className="text-sm text-gray-600">Overdue 30+ Days</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="flex items-center">
-            <Users className="w-8 h-8 text-blue-500" />
-            <div className="ml-3">
-              <p className="text-2xl font-bold text-gray-900">
-                {analysts.filter(a => (a.tier?.normalized || a.tier.name || '').toUpperCase() === 'VERY_HIGH').length}
-              </p>
-              <p className="text-sm text-gray-600">Very High tier</p>
-            </div>
-          </div>
-        </div>
-        {/* Removed Selected metric per request */}
-      </div>
+
 
       {/* Removed redundant "Showing" chips for selected filters */}
 

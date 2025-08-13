@@ -89,11 +89,11 @@ export async function GET(request: NextRequest) {
         .lt('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // Before tomorrow
         .eq('status', 'SCHEDULED'),
       
-      // Briefings planned (scheduled after today in calendar)
+      // Briefings planned (scheduled from now onwards, including later today)
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
-        .gte('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // From tomorrow onwards
+        .gte('scheduledAt', today.toISOString()) // From now onwards
         .eq('status', 'SCHEDULED')
         .order('scheduledAt', { ascending: true }),
       

@@ -14,13 +14,16 @@ export async function DELETE(
 ) {
   try {
     const { id: analystId } = await params
+    const { searchParams } = new URL(request.url)
+    const hardDelete = searchParams.get('hardDelete') === 'true'
+    
     // Prefer service-role client for write ops to avoid RLS blocking profile edits
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
     const supabase = adminSupabase || await createClient()
 
-    // Check if analyst exists and is not already archived
+    // Check if analyst exists
     const { data: existingAnalyst, error: fetchError } = await supabase
       .from('analysts')
       .select('id, firstName, lastName, status')
@@ -34,49 +37,122 @@ export async function DELETE(
       }, { status: 404 })
     }
 
-    if (existingAnalyst.status === 'ARCHIVED') {
-      return NextResponse.json({
-        success: false,
-        error: 'Analyst is already archived'
-      }, { status: 400 })
-    }
-
-    // Soft delete by updating status to ARCHIVED
-    const { data: updatedAnalyst, error: updateError } = await supabase
-      .from('analysts')
-      .update({
-        status: 'ARCHIVED',
-        updatedAt: new Date().toISOString()
-      })
-      .eq('id', analystId)
-      .select('id, firstName, lastName, status')
-      .single()
-
-    if (updateError || !updatedAnalyst) {
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to archive analyst'
-      }, { status: 500 })
-    }
-
-    // Log the deletion activity
-    console.log(`Analyst ${analystId} (${existingAnalyst.firstName} ${existingAnalyst.lastName}) archived at ${new Date().toISOString()}`)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Analyst archived successfully',
-      analyst: {
-        id: updatedAnalyst.id,
-        name: `${updatedAnalyst.firstName} ${updatedAnalyst.lastName}`,
-        status: updatedAnalyst.status
+    if (hardDelete) {
+      // Hard delete - only allowed for archived analysts
+      if (existingAnalyst.status !== 'ARCHIVED') {
+        return NextResponse.json({
+          success: false,
+          error: 'Only archived analysts can be permanently deleted'
+        }, { status: 400 })
       }
-    })
+
+      // Use service role client for hard delete operations
+      if (!adminSupabase) {
+        return NextResponse.json({
+          success: false,
+          error: 'Service role access required for hard delete'
+        }, { status: 500 })
+      }
+
+      // Delete related data first
+      const { error: publicationsError } = await adminSupabase
+        .from('publications')
+        .delete()
+        .eq('analystId', analystId)
+
+      if (publicationsError) {
+        console.error('Error deleting publications:', publicationsError)
+      }
+
+      const { error: newsletterSubsError } = await adminSupabase
+        .from('newsletter_subscriptions')
+        .delete()
+        .eq('analystId', analystId)
+
+      if (newsletterSubsError) {
+        console.error('Error deleting newsletter subscriptions:', newsletterSubsError)
+      }
+
+      const { error: coveredTopicsError } = await adminSupabase
+        .from('covered_topics')
+        .delete()
+        .eq('analystId', analystId)
+
+      if (coveredTopicsError) {
+        console.error('Error deleting covered topics:', coveredTopicsError)
+      }
+
+      // Finally, delete the analyst
+      const { error: deleteError } = await adminSupabase
+        .from('analysts')
+        .delete()
+        .eq('id', analystId)
+
+      if (deleteError) {
+        console.error('Error hard deleting analyst:', deleteError)
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to permanently delete analyst'
+        }, { status: 500 })
+      }
+
+      console.log(`Analyst ${analystId} (${existingAnalyst.firstName} ${existingAnalyst.lastName}) permanently deleted at ${new Date().toISOString()}`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Analyst permanently deleted successfully',
+        analyst: {
+          id: existingAnalyst.id,
+          name: `${existingAnalyst.firstName} ${existingAnalyst.lastName}`,
+          status: 'DELETED'
+        }
+      })
+    } else {
+      // Soft delete (archive) - only allowed for non-archived analysts
+      if (existingAnalyst.status === 'ARCHIVED') {
+        return NextResponse.json({
+          success: false,
+          error: 'Analyst is already archived'
+        }, { status: 400 })
+      }
+
+      // Soft delete by updating status to ARCHIVED
+      const { data: updatedAnalyst, error: updateError } = await supabase
+        .from('analysts')
+        .update({
+          status: 'ARCHIVED',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', analystId)
+        .select('id, firstName, lastName, status')
+        .single()
+
+      if (updateError || !updatedAnalyst) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to archive analyst'
+        }, { status: 500 })
+      }
+
+      // Log the deletion activity
+      console.log(`Analyst ${analystId} (${existingAnalyst.firstName} ${existingAnalyst.lastName}) archived at ${new Date().toISOString()}`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Analyst archived successfully',
+        analyst: {
+          id: updatedAnalyst.id,
+          name: `${updatedAnalyst.firstName} ${updatedAnalyst.lastName}`,
+          status: updatedAnalyst.status
+        }
+      })
+    }
 
   } catch (error) {
-    console.error('Error archiving analyst:', error)
+    console.error('Error processing analyst deletion:', error)
     return NextResponse.json({
       success: false,
-      error: 'Failed to archive analyst'
+      error: 'Failed to process analyst deletion'
     }, { status: 500 })
   }
 }
@@ -170,6 +246,64 @@ export async function PATCH(
   try {
     const { id: analystIdToUpdate } = await params
     const body = await request.json()
+    const { action } = body
+
+    // Handle restore action
+    if (action === 'restore') {
+      const supabase = await createClient()
+      
+      // Check if analyst exists and is archived
+      const { data: existingAnalyst, error: fetchError } = await supabase
+        .from('analysts')
+        .select('id, firstName, lastName, status')
+        .eq('id', analystIdToUpdate)
+        .single()
+
+      if (fetchError || !existingAnalyst) {
+        return NextResponse.json({
+          success: false,
+          error: 'Analyst not found'
+        }, { status: 404 })
+      }
+
+      if (existingAnalyst.status !== 'ARCHIVED') {
+        return NextResponse.json({
+          success: false,
+          error: 'Only archived analysts can be restored'
+        }, { status: 400 })
+      }
+
+      // Restore by updating status to ACTIVE
+      const { data: updatedAnalyst, error: updateError } = await supabase
+        .from('analysts')
+        .update({
+          status: 'ACTIVE',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', analystIdToUpdate)
+        .select('id, firstName, lastName, status')
+        .single()
+
+      if (updateError || !updatedAnalyst) {
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to restore analyst'
+        }, { status: 500 })
+      }
+
+      console.log(`Analyst ${analystIdToUpdate} (${existingAnalyst.firstName} ${existingAnalyst.lastName}) restored at ${new Date().toISOString()}`)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Analyst restored successfully',
+        analyst: {
+          id: updatedAnalyst.id,
+          name: `${updatedAnalyst.firstName} ${updatedAnalyst.lastName}`,
+          status: updatedAnalyst.status
+        }
+      })
+    }
+
     // Prefer service-role for updates to avoid RLS blocking admin-approved edits
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
