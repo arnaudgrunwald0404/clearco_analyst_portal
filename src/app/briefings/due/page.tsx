@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Search,
   Filter,
@@ -233,10 +233,100 @@ export default function BriefingsDuePage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [usingCache, setUsingCache] = useState(false)
 
-  useEffect(() => {
-    fetchAnalystsDue()
-  }, [searchTerm, currentPage, sortBy, sortOrder])
+  // Chunked tier loading state
+  const TIER_ORDER = ['VERY_HIGH', 'HIGH', 'MEDIUM', 'LOW'] as const
+  const tierToParam: Record<string, string> = {
+    VERY_HIGH: 'TIER_1',
+    HIGH: 'TIER_2',
+    MEDIUM: 'TIER_3',
+    LOW: 'TIER_4',
+  }
+  const [tierStatus, setTierStatus] = useState<Record<string, 'idle' | 'loading' | 'loaded'>>({
+    VERY_HIGH: 'idle', HIGH: 'idle', MEDIUM: 'idle', LOW: 'idle'
+  })
+  const runIdRef = useRef(0)
 
+  useEffect(() => {
+    startChunkedLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, sortBy, sortOrder])
+
+  const sortAnalystsInPlace = (arr: AnalystDue[]) => {
+    arr.sort((a, b) => {
+      let aValue: any, bValue: any
+      switch (sortBy) {
+        case 'overdue':
+          aValue = a.overdueDays
+          bValue = b.overdueDays
+          break
+        case 'tier':
+          aValue = a.tier.name
+          bValue = b.tier.name
+          break
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`
+          bValue = `${b.firstName} ${b.lastName}`
+          break
+        default:
+          return 0
+      }
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1
+      } else {
+        return aValue < bValue ? 1 : -1
+      }
+    })
+  }
+
+  const startChunkedLoad = async (forceRefresh = false) => {
+    const myRun = ++runIdRef.current
+    setLoading(true)
+    setUsingCache(false)
+    setAnalysts([])
+    setSelectedAnalysts([])
+    setTierStatus({ VERY_HIGH: 'idle', HIGH: 'idle', MEDIUM: 'idle', LOW: 'idle' })
+
+    // Determine the sequence, always start from VERY_HIGH then others
+    const sequence = [...TIER_ORDER]
+
+    // Helper: fetch a single tier
+    const fetchTier = async (tierKey: typeof TIER_ORDER[number]) => {
+      setTierStatus(prev => ({ ...prev, [tierKey]: 'loading' }))
+      const params = new URLSearchParams()
+      params.append('tier', tierToParam[tierKey])
+      if (searchTerm) params.append('search', searchTerm)
+      if (forceRefresh || searchTerm) params.append('force', 'true')
+
+      const res = await fetch(`/api/briefings/due?${params.toString()}`)
+      const json = await res.json()
+      const data: AnalystDue[] = json?.data || []
+
+      // Only update if still the latest run
+      if (runIdRef.current !== myRun) return
+
+      setAnalysts(prev => {
+        const map = new Map<string, AnalystDue>()
+        for (const a of prev) map.set(a.id, a)
+        for (const a of data) map.set(a.id, a)
+        const merged = Array.from(map.values())
+        sortAnalystsInPlace(merged)
+        return merged
+      })
+      setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
+    }
+
+    // Fetch VERY_HIGH first and render immediately
+    await fetchTier('VERY_HIGH')
+    setLoading(false)
+
+    // Then proceed with remaining tiers in the background (in order)
+    for (const tier of sequence.filter(t => t !== 'VERY_HIGH')) {
+      // Skip tiers not selected to reduce work, but still allow later display if user toggles filter
+      await fetchTier(tier)
+    }
+  }
+
+  // Legacy full-fetch kept for compatibility (e.g., other triggers), but unused by default
   const fetchAnalystsDue = async (forceRefresh = false) => {
     try {
       setLoading(true)
@@ -274,7 +364,8 @@ export default function BriefingsDuePage() {
         
         // Cache the data if this is a full load (no search, no pagination)
         if (!searchTerm && currentPage === 1) {
-          setCachedData(data.data, data.counts || {})
+          // Align with API key countsByTier when present
+          setCachedData(data.data, data.countsByTier || data.counts || {})
         }
         
         // Apply sorting
@@ -370,7 +461,7 @@ export default function BriefingsDuePage() {
         
         alert(`Bulk scheduling results:\n${results.join('\n')}`)
         setSelectedAnalysts([])
-        await fetchAnalystsDue()
+        await startChunkedLoad(true)
       } else {
         // Handle other bulk actions
         const response = await fetch('/api/briefings/due', {
@@ -385,7 +476,7 @@ export default function BriefingsDuePage() {
         
         if (response.ok) {
           setSelectedAnalysts([])
-          await fetchAnalystsDue()
+          await startChunkedLoad(true)
         }
       }
     } catch (error) {
@@ -578,7 +669,7 @@ export default function BriefingsDuePage() {
               </span>
             )}
             <button
-              onClick={() => fetchAnalystsDue(true)}
+              onClick={() => startChunkedLoad(true)}
               disabled={loading}
               className="flex items-center px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               title="Refresh data"
@@ -634,139 +725,157 @@ export default function BriefingsDuePage() {
 
       {/* Removed redundant "Showing" chips for selected filters */}
 
-      {/* Loading State */}
+      {/* Loading State for initial chunk */}
       {loading && (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading analysts...</span>
+          <span className="ml-3 text-gray-600">Loading Very High tier…</span>
         </div>
       )}
 
-      {/* Grouped Tables by Tier (Very High, High, Medium, Low) */}
+      {/* Grouped Tables by Tier (Very High, High, Medium, Low) with per-tier loading */}
       {!loading && (
         <div className="space-y-8">
           {(['VERY_HIGH','HIGH','MEDIUM','LOW'] as const).map(tier => {
             const show = selectedTiers.includes(tier)
             if (!show) return null
             const rows = analysts.filter(a => (a.tier?.normalized || a.tier?.name || '').toUpperCase() === tier)
-            if (rows.length === 0) return null
             const label = tier === 'VERY_HIGH' ? 'Very High' : tier.charAt(0) + tier.slice(1).toLowerCase()
+
             return (
               <div key={tier} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="px-4 py-3 border-b bg-gray-50 font-semibold">{label} Influence ({rows.length})</div>
-                {/* Column headers */}
-                <div className="px-4 py-2 bg-gray-50 border-b">
-                  <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide items-center">
-                    <div className="flex items-center justify-center">
-                      <input
-                        type="checkbox"
-                        aria-label="Select all"
-                        checked={rows.every(r => selectedAnalysts.includes(r.id)) && rows.length > 0}
-                        onChange={handleSelectAll}
-                        className="h-4 w-4"
-                      />
-                    </div>
-                    <span className="text-left">Analyst</span>
-                    <span className="text-left">Influence Tier</span>
-                    <span className="text-left">Health</span>
-                    <span className="text-left">Last Briefing</span>
-                    <span className="text-left">Days Overdue</span>
-                    <span className="text-left">Actions</span>
-                  </div>
+                <div className="px-4 py-3 border-b bg-gray-50 font-semibold flex items-center justify-between">
+                  <span>{label} Influence ({rows.length})</span>
+                  {tierStatus[tier] === 'loading' && (
+                    <span className="text-xs text-gray-500 flex items-center">
+                      <svg className="w-3 h-3 mr-1 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      Loading…
+                    </span>
+                  )}
                 </div>
-                <div className="divide-y divide-gray-200">
-                  {rows.map(analyst => (
-                    <div key={analyst.id} className="px-4 py-3 hover:bg-gray-50">
-                      <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 items-center">
-                        {/* Select */}
+                {rows.length === 0 && tierStatus[tier] === 'loaded' && (
+                  <div className="px-4 py-6 text-sm text-gray-500">No analysts due in this tier.</div>
+                )}
+                {rows.length > 0 && (
+                  <>
+                    {/* Column headers */}
+                    <div className="px-4 py-2 bg-gray-50 border-b">
+                      <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 text-xs font-medium text-gray-500 uppercase tracking-wide items-center">
                         <div className="flex items-center justify-center">
                           <input
                             type="checkbox"
-                            checked={selectedAnalysts.includes(analyst.id)}
-                            onChange={() => handleSelectAnalyst(analyst.id)}
+                            aria-label="Select all"
+                            checked={rows.every(r => selectedAnalysts.includes(r.id)) && rows.length > 0}
+                            onChange={handleSelectAll}
                             className="h-4 w-4"
                           />
                         </div>
-
-                        {/* Analyst Info */}
-                        <div className="flex items-center whitespace-normal break-words">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 mr-3 flex items-center justify-center relative">
-                            {analyst.profileImageUrl ? (
-                              <img
-                                src={analyst.profileImageUrl}
-                                alt={`${analyst.firstName} ${analyst.lastName}`}
-                                width={40}
-                                height={40}
-                                className="object-cover w-10 h-10"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).style.display = 'none'
-                                }}
-                                loading="lazy"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : null}
-                            {!analyst.profileImageUrl && (
-                              <span className="text-sm font-medium text-blue-600">
-                                {(analyst.firstName?.[0] || '').toUpperCase()}
-                                {(analyst.lastName?.[0] || '').toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-medium text-gray-900">{analyst.firstName} {analyst.lastName}</div>
-                            <div className="text-sm text-gray-600">{analyst.title} {analyst.company}</div>
-                          </div>
-                        </div>
-
-                        {/* Tier */}
-                        <div>
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">{analyst.tier.name}</span>
-                        </div>
-
-                        {/* Health */}
-                        <div>
-                          <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', healthColors[analyst.relationshipHealth] || 'bg-gray-100 text-gray-800')}>{analyst.relationshipHealth}</span>
-                        </div>
-
-                        {/* Last Briefing */}
-                        <div className="text-sm">
-                          {analyst.lastBriefing ? (
-                            <div>
-                              <div className="text-gray-900">{formatDate(analyst.lastBriefing.scheduledAt)}</div>
-                              <div className="text-gray-600">{analyst.daysSinceLastBriefing ?? '—'} days ago</div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Never</span>
-                          )}
-                        </div>
-
-                        {/* Days Overdue */}
-                        <div>
-                          {analyst.lastBriefing ? (
-                            <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', (analyst.overdueDays ?? 0) > 30 ? 'bg-red-100 text-red-800' : (analyst.overdueDays ?? 0) > 7 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800')}>+{Math.max(analyst.overdueDays ?? 0, 0)} days</span>
-                          ) : null}
-                          <div className="text-xs text-gray-600 mt-1">Due every {analyst.tier.briefingFrequency} days</div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center space-x-2 justify-start">
-                          <button onClick={() => handleStartScheduling(analyst.id, analyst.firstName, analyst.lastName)} className="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="Start Scheduling">
-                            <CalendarIcon className="w-4 h-4" />
-                          </button>
-                          <button className="p-1 text-gray-400 hover:text-green-600 transition-colors">
-                            <MessageSquare className="w-4 h-4" />
-                          </button>
-                          <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <span className="text-left">Analyst</span>
+                        <span className="text-left">Influence Tier</span>
+                        <span className="text-left">Health</span>
+                        <span className="text-left">Last Briefing</span>
+                        <span className="text-left">Days Overdue</span>
+                        <span className="text-left">Actions</span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="divide-y divide-gray-200">
+                      {rows.map(analyst => (
+                        <div key={analyst.id} className="px-4 py-3 hover:bg-gray-50">
+                          <div className="grid [grid-template-columns:40px_25%_1fr_1fr_2fr_1fr_1fr] gap-4 items-center">
+                            {/* Select */}
+                            <div className="flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedAnalysts.includes(analyst.id)}
+                                onChange={() => handleSelectAnalyst(analyst.id)}
+                                className="h-4 w-4"
+                              />
+                            </div>
+
+                            {/* Analyst Info */}
+                            <div className="flex items-center whitespace-normal break-words">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-blue-100 mr-3 flex items-center justify-center relative">
+                                {analyst.profileImageUrl ? (
+                                  <img
+                                    src={analyst.profileImageUrl}
+                                    alt={`${analyst.firstName} ${analyst.lastName}`}
+                                    width={40}
+                                    height={40}
+                                    className="object-cover w-10 h-10"
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).style.display = 'none'
+                                    }}
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : null}
+                                {!analyst.profileImageUrl && (
+                                  <span className="text-sm font-medium text-blue-600">
+                                    {(analyst.firstName?.[0] || '').toUpperCase()}
+                                    {(analyst.lastName?.[0] || '').toUpperCase()}
+                                  </span>
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-medium text-gray-900">{analyst.firstName} {analyst.lastName}</div>
+                                <div className="text-sm text-gray-600">{analyst.title} {analyst.company}</div>
+                              </div>
+                            </div>
+
+                            {/* Tier */}
+                            <div>
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-800 border-gray-200">{analyst.tier.name}</span>
+                            </div>
+
+                            {/* Health */}
+                            <div>
+                              <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', healthColors[analyst.relationshipHealth] || 'bg-gray-100 text-gray-800')}>{analyst.relationshipHealth}</span>
+                            </div>
+
+                            {/* Last Briefing */}
+                            <div className="text-sm">
+                              {analyst.lastBriefing ? (
+                                <div>
+                                  <div className="text-gray-900">{formatDate(analyst.lastBriefing.scheduledAt)}</div>
+                                  <div className="text-gray-600">{analyst.daysSinceLastBriefing ?? '—'} days ago</div>
+                                </div>
+                              ) : (
+                                <span className="text-gray-500">Never</span>
+                              )}
+                            </div>
+
+                            {/* Days Overdue */}
+                            <div>
+                              {analyst.lastBriefing ? (
+                                <span className={cn('px-2.5 py-0.5 rounded-full text-xs font-medium', (analyst.overdueDays ?? 0) > 30 ? 'bg-red-100 text-red-800' : (analyst.overdueDays ?? 0) > 7 ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800')}>+{Math.max(analyst.overdueDays ?? 0, 0)} days</span>
+                              ) : null}
+                              <div className="text-xs text-gray-600 mt-1">Due every {analyst.tier.briefingFrequency} days</div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center space-x-2 justify-start">
+                              <button onClick={() => handleStartScheduling(analyst.id, analyst.firstName, analyst.lastName)} className="p-1 text-gray-400 hover:text-blue-600 transition-colors" title="Start Scheduling">
+                                <CalendarIcon className="w-4 h-4" />
+                              </button>
+                              <button className="p-1 text-gray-400 hover:text-green-600 transition-colors">
+                                <MessageSquare className="w-4 h-4" />
+                              </button>
+                              <button className="p-1 text-gray-400 hover:text-gray-600 transition-colors">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )
           })}
+        </div>
+      )}
+
 
           {/* Empty State */}
           {analysts.length === 0 && (

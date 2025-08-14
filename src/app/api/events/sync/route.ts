@@ -107,39 +107,84 @@ export async function POST() {
     const authClient = await getAuthenticatedClient()
     const sheets = google.sheets({ version: 'v4', auth: authClient })
 
-    const spreadsheetId = process.env.EVENTS_GSHEET?.split('/d/')[1].split('/')[0]
-    if (!spreadsheetId) {
-      throw new Error('EVENTS_GSHEET URL is missing or invalid in .env file')
+    // Fetch event source URLs from settings (Supabase). Fallback to ENV if none configured.
+    const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const sources: string[] = []
+    try {
+      const { data: srcRows, error: srcErr } = await service
+        .from('event_sync_sources')
+        .select('url,is_active')
+        .order('created_at', { ascending: true })
+      if (srcErr) {
+        console.warn('Warning: failed to load event_sync_sources, will fallback to ENV.', srcErr)
+      } else if (srcRows && srcRows.length > 0) {
+        for (const r of srcRows as any[]) {
+          if (r?.is_active !== false && typeof r?.url === 'string' && r.url.trim()) {
+            sources.push(r.url.trim())
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Warning: exception loading event sources, will fallback to ENV.', e)
     }
 
-    const meta = await sheets.spreadsheets.get({ spreadsheetId })
-    const sheetsList = meta.data.sheets || []
-    const wanted = new Set(PREFERRED_TABS)
-    const selectedTitles = sheetsList
-      .map(s => s.properties?.title?.trim())
-      .filter((t): t is string => !!t && wanted.has(t))
-    if (selectedTitles.length === 0 && sheetsList[0]?.properties?.title) {
-      selectedTitles.push(sheetsList[0].properties!.title!)
-    }
-    if (selectedTitles.length === 0) {
-      throw new Error('Unable to determine first sheet title in spreadsheet')
+    if (sources.length === 0) {
+      const envUrls = (process.env.EVENTS_GSHEET || '').split(',').map(s => s.trim()).filter(Boolean)
+      sources.push(...envUrls)
     }
 
-    // Aggregate rows from all selected tabs
-    const rowsArrays: string[][][] = []
-    for (const title of selectedTitles) {
-      const range = `${title}!A10:J`
-      const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range })
-      const vals = (resp.data.values || []).slice(1) // skip header row per tab
-      if (vals.length > 0) rowsArrays.push(vals as any)
+    if (sources.length === 0) {
+      throw new Error('No event sources configured. Add sources in Settings > Events or set EVENTS_GSHEET in the environment.')
     }
-    const rows = rowsArrays.flat()
-    if (rows.length === 0) {
-      return NextResponse.json({ success: true, message: 'No data found in selected tabs.' })
+
+    // Helper to extract spreadsheetId from a Google Sheets URL
+    const extractSpreadsheetId = (url: string): string | null => {
+      try {
+        const idPart = url.split('/d/')[1]?.split('/')[0]
+        return idPart || null
+      } catch {
+        return null
+      }
+    }
+
+    const allRows: string[][] = []
+
+    for (const src of sources) {
+      const spreadsheetId = extractSpreadsheetId(src)
+      if (!spreadsheetId) {
+        console.warn(`Skipping non-Google Sheets or invalid URL: ${src}`)
+        continue
+      }
+
+      const meta = await sheets.spreadsheets.get({ spreadsheetId })
+      const sheetsList = meta.data.sheets || []
+      const wanted = new Set(PREFERRED_TABS)
+      const selectedTitles = sheetsList
+        .map(s => s.properties?.title?.trim())
+        .filter((t): t is string => !!t && wanted.has(t))
+      if (selectedTitles.length === 0 && sheetsList[0]?.properties?.title) {
+        selectedTitles.push(sheetsList[0].properties!.title!)
+      }
+      if (selectedTitles.length === 0) {
+        console.warn(`Unable to determine first sheet title for spreadsheet ${spreadsheetId}. Skipping.`)
+        continue
+      }
+
+      // Aggregate rows from all selected tabs for this spreadsheet
+      for (const title of selectedTitles) {
+        const range = `${title}!A10:J`
+        const resp = await sheets.spreadsheets.values.get({ spreadsheetId, range })
+        const vals = (resp.data.values || []).slice(1) // skip header row per tab
+        if (vals.length > 0) allRows.push(...(vals as any))
+      }
+    }
+
+    if (allRows.length === 0) {
+      return NextResponse.json({ success: true, message: 'No data found in selected tabs across all sources.' })
     }
 
     const headers = ['Date', 'Days', 'Event', '#Hashtag', 'Who should attend?', 'url', 'Organised by', 'City', 'Country', 'Contact']
-    const rawEvents = rows.map(row => {
+    const rawEvents = allRows.map(row => {
       const item: Record<string, any> = {}
       headers.forEach((h, idx) => {
         item[h] = row[idx]
@@ -155,7 +200,7 @@ export async function POST() {
       return NextResponse.json({ success: true, message: 'No USA/Canada events to sync.' })
     }
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+    const supabase = service
 
     // Build stable key -> id map from existing events
     const existingMap = new Map<string, string>()

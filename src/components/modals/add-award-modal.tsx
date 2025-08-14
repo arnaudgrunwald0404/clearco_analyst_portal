@@ -36,7 +36,7 @@ interface BulkUploadData {
 }
 
 function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
-  const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form')
+  const [activeTab, setActiveTab] = useState<'form' | 'bulk' | 'agent'>('form')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadStep, setUploadStep] = useState<'upload' | 'mapping' | 'preview' | 'processing' | 'success'>('upload')
   const [bulkData, setBulkData] = useState<BulkUploadData | null>(null)
@@ -45,6 +45,12 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const { addToast } = useToast()
+
+  // Agent tab state
+  const [agentInput, setAgentInput] = useState<string>('')
+  const [agentStep, setAgentStep] = useState<'input' | 'review' | 'saving' | 'success'>('input')
+  const [agentParsedAwards, setAgentParsedAwards] = useState<any[]>([])
+  const [agentError, setAgentError] = useState<string>('')
   
   // Form state
   const [formData, setFormData] = useState<AwardFormData>({
@@ -193,6 +199,11 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
       notes: ''
     })
     setErrors({})
+    // Reset agent tab
+    setAgentInput('')
+    setAgentParsedAwards([])
+    setAgentStep('input')
+    setAgentError('')
   }
 
   const handleClose = () => {
@@ -417,6 +428,17 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
             )}
           >
             Bulk Upload
+          </button>
+          <button
+            onClick={() => setActiveTab('agent')}
+            className={cn(
+              'px-6 py-3 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'agent'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            )}
+          >
+            Data Dump + Agent
           </button>
         </div>
 
@@ -897,6 +919,246 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
                     >
                       Close
                     </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'agent' && (
+            <div className="space-y-6">
+              {agentStep === 'input' && (
+                <>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Paste award information</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Paste any unstructured notes, website copy, or lists of awards. The agent will analyze the text and extract individual awards for your review.
+                    </p>
+                    <textarea
+                      value={agentInput}
+                      onChange={(e) => setAgentInput(e.target.value)}
+                      rows={10}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={`Example:\nName: Best HR Technology Award 2025\nOrganization: HR Tech Awards\nPublication Date: 2025-05-15\nSubmission Date: 2025-03-01\nPriority: High\nNotes: Annual award recognizing innovations in HR tech.\n\nAnother Entry...`}
+                    />
+                    {agentError && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        {agentError}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={async () => {
+                        setAgentError('')
+                        if (!agentInput.trim()) {
+                          setAgentError('Please paste some text to analyze.')
+                          return
+                        }
+                        try {
+                          setLoading(true)
+                          const res = await fetch('/api/awards/parse-dump', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: agentInput })
+                          })
+                          const data = await res.json()
+                          if (!res.ok || !data.success) {
+                            throw new Error(data.error || 'Failed to analyze text')
+                          }
+                          const parsed = Array.isArray(data.data?.awards) ? data.data.awards : []
+                          if (parsed.length === 0) {
+                            setAgentError('No awards could be extracted. Try adding labels like Name:, Organization:, Publication Date:, Submission Date:.')
+                            return
+                          }
+                          setAgentParsedAwards(parsed)
+                          setAgentStep('review')
+                        } catch (e: any) {
+                          console.error('Agent analyze error:', e)
+                          setAgentError(e?.message || 'Failed to analyze text')
+                        } finally {
+                          setLoading(false)
+                        }
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      disabled={loading}
+                    >
+                      {loading ? 'Analyzing...' : 'Analyze'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {agentStep === 'review' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-gray-900">Review extracted awards</h3>
+                    <div className="text-sm text-gray-500">{agentParsedAwards.length} detected</div>
+                  </div>
+                  <p className="text-sm text-gray-600">Please verify and adjust any fields before saving. Required fields are Award Name, Publication Date, Submission Date, Organization.</p>
+
+                  <div className="max-h-64 overflow-y-auto border rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Award Name</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Publication Date</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Submission Date</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {agentParsedAwards.map((row, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 text-sm">
+                              <input
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={row.name || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, name: v } : r))
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <input
+                                type="text"
+                                placeholder="YYYY-MM-DD"
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={row.publicationDate || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, publicationDate: v } : r))
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <input
+                                type="text"
+                                placeholder="YYYY-MM-DD"
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={row.submissionDate || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, submissionDate: v } : r))
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <input
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={row.organization || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, organization: v } : r))
+                                }}
+                              />
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <select
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={(row.priority || 'MEDIUM').toUpperCase()}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, priority: v } : r))
+                                }}
+                              >
+                                <option value="LOW">Low</option>
+                                <option value="MEDIUM">Medium</option>
+                                <option value="HIGH">High</option>
+                                <option value="CRITICAL">Critical</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-2 text-sm">
+                              <select
+                                className="w-full px-2 py-1 border border-gray-300 rounded"
+                                value={(row.status || 'EVALUATING').toUpperCase()}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setAgentParsedAwards(prev => prev.map((r, i) => i === idx ? { ...r, status: v } : r))
+                                }}
+                              >
+                                <option value="EVALUATING">Evaluating</option>
+                                <option value="SUBMITTED">Submitted</option>
+                                <option value="UNDER_REVIEW">Under Review</option>
+                                <option value="WINNER">Winner</option>
+                                <option value="FINALIST">Finalist</option>
+                                <option value="NOT_SELECTED">Not Selected</option>
+                                <option value="WITHDRAWN">Withdrawn</option>
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex justify-between pt-4 border-t">
+                    <button
+                      onClick={() => setAgentStep('input')}
+                      className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={async () => {
+                        // Validate required fields exist for at least one award
+                        const valid = agentParsedAwards.filter(a => a.name && a.publicationDate && a.submissionDate && a.organization)
+                        if (valid.length === 0) {
+                          alert('Please ensure each award has Name, Publication Date, Submission Date, and Organization.')
+                          return
+                        }
+                        try {
+                          setAgentStep('saving')
+                          const res = await fetch('/api/awards/bulk', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ awards: valid })
+                          })
+                          const data = await res.json()
+                          if (!res.ok || !data.success) {
+                            throw new Error(data.error || 'Failed to save awards')
+                          }
+                          onAwardAdded()
+                          setAgentStep('success')
+                          setTimeout(() => {
+                            handleClose()
+                          }, 2500)
+                        } catch (e: any) {
+                          console.error('Agent save error:', e)
+                          alert(e?.message || 'Failed to save awards')
+                          setAgentStep('review')
+                        }
+                      }}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Save to database
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {agentStep === 'saving' && (
+                <div className="space-y-4 text-center">
+                  <div className="flex flex-col items-center">
+                    <Loader className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Saving awards</h3>
+                    <p className="text-gray-600">Please wait while we save your verified awards…</p>
+                  </div>
+                </div>
+              )}
+
+              {agentStep === 'success' && (
+                <div className="space-y-4 text-center">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle className="w-10 h-10 text-green-600" />
+                    </div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Awards saved!</h3>
+                    <p className="text-gray-600">Your extracted awards have been saved. This dialog will close shortly…</p>
                   </div>
                 </div>
               )}

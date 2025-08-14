@@ -4,6 +4,7 @@ import { CalendarDays, Plus, RefreshCw, Search, Filter, Loader, ArrowUpDown, Che
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import EventActionsMenu from '@/components/actions/event-actions-menu'
+import AddEventModal from '@/components/modals/add-event-modal'
 
 interface EventItem {
   id: string
@@ -35,6 +36,7 @@ export default function EventsClientPage() {
   const [showBulkActions, setShowBulkActions] = useState(false)
   const [bulkOpen, setBulkOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
+  const [showAddModal, setShowAddModal] = useState(false)
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -279,7 +281,7 @@ export default function EventsClientPage() {
               <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Syncing...' : 'Sync Events'}
             </button>
-            <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onClick={() => setShowAddModal(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4 mr-2" />
               Create Event
             </button>
@@ -339,6 +341,14 @@ export default function EventsClientPage() {
           )}
         </>
       )}
+      <AddEventModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onEventAdded={async () => {
+          setShowAddModal(false)
+          await fetchEvents()
+        }}
+      />
     </div>
   )
 }
