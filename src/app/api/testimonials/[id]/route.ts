@@ -50,7 +50,13 @@ export async function PATCH(
 
     // Validate updateable fields
     const updateData: any = {}
-    
+
+    // Map UI fields to DB columns
+    if (typeof (body.quote) === 'string') {
+      const text = body.quote.trim()
+      if (text.length > 0) updateData.text = text
+    }
+
     if (typeof body.isPublished === 'boolean') {
       updateData.is_published = body.isPublished
     }
@@ -59,8 +65,10 @@ export async function PATCH(
       updateData.display_order = body.displayOrder
     }
     
-    if (body.context !== undefined) {
-      updateData.context = body.context
+    // 'context' is currently not a DB column; ignore if provided by UI
+
+    if (typeof body.analystId === 'string' && body.analystId.trim().length > 0) {
+      updateData.analyst_id = body.analystId.trim()
     }
 
     if (Object.keys(updateData).length === 0) {

@@ -217,11 +217,11 @@ export default function InfluenceTiersSection() {
           Analyst Tiers
         </CardTitle>
         <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
-          Tiers allow to prioritize communication to the most influential analysts. We recommend 2-5 tiers, each with target briefing frequencies and touchpoint frequencies.
+          Tiers allow to prioritize communication to the most influential analysts. We recommend 2-4 tiers, each with target briefing and newsletter frequencies.
         </CardDescription>
         <div className="mt-2 text-gray-600">
           <ul className="list-disc pl-5 space-y-1 text-sm">
-            <li>Analysts tier assignment is based on their "influence" field</li>
+            <li>Analysts' tier assignment is based on their "influence" field</li>
             <li>System will suggest next contact dates based on tier frequencies</li>
           </ul>
         </div>
@@ -253,7 +253,7 @@ export default function InfluenceTiersSection() {
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Save Changes
+                    Save
                   </>
                 )}
               </Button>
@@ -342,7 +342,7 @@ export default function InfluenceTiersSection() {
 
                   <div>
                     <Label className="text-sm font-medium text-gray-700">
-                      Touchpoint Frequency
+                      Newsletter Frequency
                     </Label>
                     <div className="flex items-center gap-2 mt-1">
                       {tier.touchpointFrequency === -1 ? (

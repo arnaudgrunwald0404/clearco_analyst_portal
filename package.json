@@ -25,6 +25,7 @@
     "migrate-twitter-handles": "tsx scripts/migrate-twitter-handles.ts",
     "add-social-handles": "tsx scripts/add-social-handles.ts",
     "test-twitter": "tsx scripts/test-single-analyst.ts",
+    "social:twitter:gpt": "tsx scripts/gpt-twitter-handle-lookup.ts",
     "test:db": "tsx scripts/test-db-connection.ts",
     "check:supabase": "tsx scripts/check-supabase-status.ts",
     "test:google-oauth": "node scripts/test-google-oauth-config.js",

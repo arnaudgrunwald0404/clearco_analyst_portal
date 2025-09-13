@@ -39,8 +39,8 @@ export default function AnalystsPage() {
   const [filterTopics, setFilterTopics] = useState<string[]>([])
   const [filterRecent, setFilterRecent] = useState(false)
   const [topicsExpanded, setTopicsExpanded] = useState(false)
-  const [sortField, setSortField] = useState<string>('')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [sortField, setSortField] = useState<string>('lastName')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [selectedAnalyst, setSelectedAnalyst] = useState<Analyst | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -398,6 +398,10 @@ export default function AnalystsPage() {
           case 'name':
             aValue = `${a.firstName} ${a.lastName}`.toLowerCase()
             bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
+            break
+          case 'lastName':
+            aValue = (a.lastName || '').toLowerCase()
+            bValue = (b.lastName || '').toLowerCase()
             break
           case 'company':
             aValue = (a.company || '').toLowerCase()

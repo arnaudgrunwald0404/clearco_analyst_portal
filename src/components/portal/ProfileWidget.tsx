@@ -22,9 +22,10 @@ interface ProfileWidgetProps {
     past: Array<{ id: string; title: string; url?: string | null; publishedAt?: string | null }>
     upcoming: Array<{ id: string; title: string; url?: string | null; publishedAt?: string | null }>
   }
+  onEdit?: () => void
 }
 
-export function ProfileWidget({ analyst, publications }: ProfileWidgetProps) {
+export function ProfileWidget({ analyst, publications, onEdit }: ProfileWidgetProps) {
   const getInitials = (name: string) => {
     const names = name.split(' ')
     if (names.length > 1) {
@@ -37,12 +38,19 @@ export function ProfileWidget({ analyst, publications }: ProfileWidgetProps) {
     <Card className="shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-medium">Your Profile</CardTitle>
-        <Link href="/portal/profile/edit" passHref>
-          <Button variant="outline" size="sm">
+        {onEdit ? (
+          <Button variant="outline" size="sm" onClick={onEdit} aria-label="Edit Profile">
             <Edit className="mr-2 h-4 w-4" />
             Edit Profile
           </Button>
-        </Link>
+        ) : (
+          <Link href="/portal/profile/edit" passHref>
+            <Button variant="outline" size="sm">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Button>
+          </Link>
+        )}
       </CardHeader>
       <CardContent className="pt-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

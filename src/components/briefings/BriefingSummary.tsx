@@ -219,12 +219,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
         </div>
       )}
 
-      {!latestBriefing && !nextBriefing && (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <div className="text-gray-500">No briefings found.</div>
-        </div>
-      )}
+      {!latestBriefing && !nextBriefing && null}
     </div>
   )
 }

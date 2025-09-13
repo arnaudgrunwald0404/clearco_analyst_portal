@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const upcoming = searchParams.get('upcoming') === 'true'
     const analystId = searchParams.get('analystId')
+    const search = searchParams.get('search')
     const limit = parseInt(searchParams.get('limit') || '1000', 10)
 
     const supabase = await createClient()
@@ -100,11 +101,53 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    console.log(`📊 Found ${briefingsWithAnalysts.length} briefings`)
+    // Apply search filter if provided
+    let searchFilteredBriefings = briefingsWithAnalysts
+    if (search && search.trim()) {
+      const searchTerm = search.trim().toLowerCase()
+      console.log(`🔍 Applying search filter for: "${searchTerm}"`)
+      
+      searchFilteredBriefings = briefingsWithAnalysts.filter(briefing => {
+        // Search in briefing fields
+        const briefingMatch = 
+          briefing.title?.toLowerCase().includes(searchTerm) ||
+          briefing.description?.toLowerCase().includes(searchTerm) ||
+          briefing.location?.toLowerCase().includes(searchTerm) ||
+          briefing.status?.toLowerCase().includes(searchTerm) ||
+          briefing.type?.toLowerCase().includes(searchTerm)
+
+        // Search in associated analysts
+        const analystMatch = briefing.analysts?.some((analyst: any) => 
+          `${analyst.firstName} ${analyst.lastName}`.toLowerCase().includes(searchTerm) ||
+          analyst.firstName?.toLowerCase().includes(searchTerm) ||
+          analyst.lastName?.toLowerCase().includes(searchTerm) ||
+          analyst.email?.toLowerCase().includes(searchTerm) ||
+          analyst.company?.toLowerCase().includes(searchTerm) ||
+          analyst.title?.toLowerCase().includes(searchTerm)
+        )
+
+        // Additional fuzzy matching for partial names
+        const fullNameMatch = briefing.analysts?.some((analyst: any) => {
+          const fullName = `${analyst.firstName || ''} ${analyst.lastName || ''}`.toLowerCase()
+          return fullName.includes(searchTerm)
+        })
+
+        const match = briefingMatch || analystMatch || fullNameMatch
+        if (match) {
+          console.log(`✅ Match found for briefing: ${briefing.title}`)
+        }
+        
+        return match
+      })
+      
+      console.log(`🔍 Search results: ${searchFilteredBriefings.length} out of ${briefingsWithAnalysts.length} briefings`)
+    }
+
+    console.log(`📊 Found ${searchFilteredBriefings.length} briefings${search ? ` (filtered from ${briefingsWithAnalysts.length} by search: "${search}")` : ''}`)
     return NextResponse.json({
       success: true,
-      data: briefingsWithAnalysts,
-      total: briefingsWithAnalysts.length,
+      data: searchFilteredBriefings,
+      total: searchFilteredBriefings.length,
       hasMore: false,
       nextCursor: null
     })

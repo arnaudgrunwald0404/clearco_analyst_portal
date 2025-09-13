@@ -30,7 +30,7 @@ export async function GET(
     const eventWithParsedFields = {
       ...event,
       audienceGroups: event.audienceGroups ? JSON.parse(event.audienceGroups) : [],
-      participationTypes: event.participationTypes ? JSON.parse(event.participationTypes) : []
+      participationStatus: event.participationStatus ? JSON.parse(event.participationStatus) : []
     }
 
     return NextResponse.json({
@@ -53,12 +53,16 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
+    console.log('PATCH /api/events/[id] - Event ID:', id)
+    
     const body = await request.json()
     const { participationStatus } = body || {}
+    console.log('Request body:', { participationStatus })
 
     // Allow null (Not Attending) or one of the known statuses
     const allowed = new Set(['SPONSORING', 'ATTENDING', 'CONSIDERING', null])
     if (!allowed.has(participationStatus ?? null)) {
+      console.error('Invalid participationStatus:', participationStatus)
       return NextResponse.json(
         { error: 'Invalid participationStatus' },
         { status: 400 }
@@ -66,6 +70,17 @@ export async function PATCH(
     }
 
     const supabase = await createClient()
+    
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      console.error('Authentication failed:', authError)
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+    console.log('User authenticated:', user.email)
 
     const { error } = await supabase
       .from('Event')
@@ -74,12 +89,14 @@ export async function PATCH(
 
     if (error) {
       console.error('Error updating participationStatus:', error)
+      console.error('Supabase error details:', JSON.stringify(error, null, 2))
       return NextResponse.json(
-        { error: 'Failed to update participationStatus' },
+        { error: 'Failed to update participationStatus', details: error.message },
         { status: 500 }
       )
     }
 
+    console.log('Successfully updated participationStatus for event:', id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error in PATCH event:', error)
@@ -103,7 +120,7 @@ export async function PUT(
       type,
       audienceGroups,
       startDate,
-      participationTypes,
+      participationStatus,
       owner,
       location,
       status,
@@ -126,7 +143,7 @@ export async function PUT(
       type: type || 'CONFERENCE',
       audienceGroups: audienceGroups ? JSON.stringify(audienceGroups) : null,
       startDate: new Date(startDate).toISOString(),
-      participationTypes: participationTypes ? JSON.stringify(participationTypes) : null,
+      participationStatus: participationStatus ? JSON.stringify(participationStatus) : null,
       owner: owner?.trim() || null,
       location: location?.trim() || null,
       status: status || 'EVALUATING',

@@ -49,18 +49,26 @@ export default function AwardsPage() {
       
       const response = await fetch('/api/awards')
       if (!response.ok) {
-        throw new Error('Failed to fetch awards')
+        let detail = ''
+        try {
+          const data = await response.json()
+          detail = data?.error || data?.message || ''
+        } catch {}
+        const msg = `Failed to fetch awards (HTTP ${response.status})${detail ? `: ${detail}` : ''}`
+        throw new Error(msg)
       }
       
       const result = await response.json()
       if (result.success) {
         setAwards(result.data)
       } else {
-        throw new Error(result.error || 'Failed to fetch awards')
+        const msg = `Failed to fetch awards: ${result.error || 'Unknown error'}`
+        throw new Error(msg)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-      addToast({ type: 'error', message: 'Failed to load awards' })
+      const msg = err instanceof Error ? err.message : 'An unexpected error occurred while loading awards.'
+      setError(msg)
+      addToast({ type: 'error', message: msg })
     } finally {
       setLoading(false)
     }
@@ -420,14 +428,14 @@ export default function AwardsPage() {
         apiEndpoint="/api/awards/bulk"
         fieldMappings={{
           awardName: ['award name', 'awardname', 'name', 'title', 'award_name', 'award'],
-          publicationDate: ['publication date', 'publicationdate', 'publication_date', 'pub date', 'pub_date'],
-          processStartDate: ['process start date', 'processstartdate', 'process_start_date', 'start date', 'start_date'],
+          publicationDate: ['publication date', 'publicationdate', 'publication_date', 'pub date', 'pub_date', 'award publish date', 'publish date'],
+          processStartDate: ['process start date', 'processstartdate', 'process_start_date', 'start date', 'start_date', 'submission due date', 'due date'],
           lastSubmissionDate: ['last submission date', 'lastsubmissiondate', 'last_submission_date', 'last submission', 'last_submission'],
           nextSubmissionDate: ['next submission date', 'nextsubmissiondate', 'next_submission_date', 'next submission', 'next_submission'],
-          contactInfo: ['contact info', 'contactinfo', 'contact_info', 'contact information', 'contact', 'email'],
+          contactInfo: ['contact info', 'contactinfo', 'contact_info', 'contact information', 'contact', 'email', 'organization', 'org'],
           organizer: ['organizer', 'organization', 'org', 'company', 'sponsor'],
           priority: ['priority', 'importance', 'level', 'urgency'],
-          topics: ['topics', 'categories', 'tags', 'subjects', 'areas'],
+          topics: ['topics', 'categories', 'tags', 'subjects', 'areas', 'product area'],
           notes: ['notes', 'comments', 'additional info', 'description', 'remarks', 'additional_info']
         }}
         requiredFields={['awardName', 'publicationDate', 'processStartDate', 'contactInfo']}

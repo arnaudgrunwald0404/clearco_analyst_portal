@@ -24,7 +24,7 @@ interface FormData {
 
 export default function AnalystPortalSettingsForm() {
   const [settings, setSettings] = useState<AnalystPortalSettings | null>(null)
-  const [formData, setFormData] = useState<FormData>({
+const [formData, setFormData] = useState< FormData >({
     welcomeQuote: '',
     quoteAuthor: '',
     authorImageUrl: ''
@@ -46,7 +46,7 @@ export default function AnalystPortalSettingsForm() {
       if (response.ok) {
         const data = await response.json()
         setSettings(data)
-        setFormData({
+setFormData({
           welcomeQuote: data.welcomeQuote || '',
           quoteAuthor: data.quoteAuthor || '',
           authorImageUrl: data.authorImageUrl || ''
@@ -138,23 +138,26 @@ export default function AnalystPortalSettingsForm() {
         </div>
       )}
 
-      {/* Welcome Quote */}
+{/* Welcome Quote */}
       <div className="space-y-2">
         <Label htmlFor="welcomeQuote" className="text-sm font-medium flex items-center gap-2">
           <Quote className="w-4 h-4" />
-          Welcome Quote *
+Welcome Quote *
         </Label>
         <Textarea
           id="welcomeQuote"
           value={formData.welcomeQuote}
           onChange={(e) => handleInputChange('welcomeQuote', e.target.value)}
-          placeholder="Enter an inspiring quote to welcome analysts to the portal"
+          placeholder="Welcome {first_name}, I am so glad you are here to learn more about {company_name}!"
           required
           className="w-full min-h-[80px]"
           rows={3}
         />
         <p className="text-xs text-gray-500">
-          This quote will be displayed prominently on the analyst portal welcome page
+          Use variables: {`{first_name}`}, {`{last_name}`}, {`{company_name}`}, {`{industry_name}`}, {`{full_name}`}
+        </p>
+        <p className="text-xs text-gray-400">
+          Variables will be automatically replaced with the analyst's actual information when displayed
         </p>
       </div>
 

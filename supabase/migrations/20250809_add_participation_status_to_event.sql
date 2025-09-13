@@ -13,3 +13,6 @@ alter table "Event"
   );
 
 -- No backfill needed; existing rows remain NULL (interpreted as Not Attending in UI)
+
+
+

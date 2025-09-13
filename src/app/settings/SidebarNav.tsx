@@ -3,7 +3,8 @@ import React from 'react';
 interface MenuSection {
   id: string;
   label: string;
-  icon: React.ElementType;
+  icon: React.ElementType | null;
+  isSeparator?: boolean;
 }
 
 interface SidebarNavProps {
@@ -17,6 +18,15 @@ export default function SidebarNav({ activeSection, setActiveSection, menuSectio
     <div className="w-64 flex-shrink-0">
       <nav className="space-y-2">
         {menuSections.map((section) => {
+          // Handle separators
+          if (section.isSeparator) {
+            return (
+              <div key={section.id} className="py-2">
+                <div className="border-t border-gray-200"></div>
+              </div>
+            );
+          }
+
           const Icon = section.icon;
           return (
             <button
@@ -28,7 +38,7 @@ export default function SidebarNav({ activeSection, setActiveSection, menuSectio
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Icon className="w-5 h-5" />
+              {Icon && <Icon className="w-5 h-5" />}
               {section.label}
             </button>
           );

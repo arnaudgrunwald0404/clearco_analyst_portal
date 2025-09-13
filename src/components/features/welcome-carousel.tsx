@@ -13,6 +13,12 @@ interface WelcomeMessage {
   authorImage: string
 }
 
+type AnalystPortalSettings = {
+  welcomeQuote?: string
+  quoteAuthor?: string
+  authorImageUrl?: string
+}
+
 interface WelcomeCarouselProps {
   analystUser: {
     firstName: string
@@ -28,6 +34,7 @@ interface WelcomeCarouselProps {
 export default function WelcomeCarousel({ analystUser, companySettings }: WelcomeCarouselProps) {
   const [isDismissed, setIsDismissed] = useState(false)
   const [currentMessage, setCurrentMessage] = useState(0)
+  const [portalSettings, setPortalSettings] = useState<AnalystPortalSettings | null>(null)
 
   // Load dismissed state from localStorage
   useEffect(() => {
@@ -37,18 +44,56 @@ export default function WelcomeCarousel({ analystUser, companySettings }: Welcom
     }
   }, [])
 
+// Fetch analyst portal settings (quote, author, image, etc.)
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings/analyst-portal')
+        if (res.ok) {
+          const data = await res.json()
+          // Some handlers may return { success, data }; handle both shapes
+          const s = (data && data.data) ? data.data : data
+setPortalSettings({
+            welcomeQuote: s.welcomeQuote,
+            quoteAuthor: s.quoteAuthor,
+            authorImageUrl: s.authorImageUrl,
+          })
+        }
+      } catch (e) {
+        console.warn('WelcomeCarousel: failed to fetch analyst portal settings', e)
+      }
+    }
+    fetchSettings()
+  }, [])
+
   // Get the company name from settings or fallback
   const companyName = companySettings?.companyName || analystUser.company || 'ClearCompany'
+
+  // Helper: replace placeholders like {first_name}
+  const replacePlaceholders = (template: string) => {
+    return template
+      .replaceAll('{first_name}', analystUser.firstName)
+      .replaceAll('{last_name}', analystUser.lastName)
+      .replaceAll('{company_name}', companyName)
+      .replaceAll('{industry_name}', companySettings?.industryName || 'HR Technology')
+  }
   
+const titleTemplateFromQuote = portalSettings?.welcomeQuote || `Welcome {first_name} to your exclusive {company_name} Analyst Portal`
+  const resolvedTitle = replacePlaceholders(titleTemplateFromQuote)
+  const resolvedQuote = ''
+  const resolvedAuthor = portalSettings?.quoteAuthor || 'Arnaud Grunwald'
+  const resolvedAuthorTitle = `Chief Product Officer, ${companyName}`
+  const resolvedAuthorImage = portalSettings?.authorImageUrl || 'https://media.licdn.com/dms/image/v2/C4E03AQExN7FOgOVffA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516217373346?e=1756339200&v=beta&t=duPb2jgDUrrZr1s_ArOPtpfHNDETSM7H31dasVnwNP0'
+
   // Welcome messages array (can be expanded in the future)
   const messages: WelcomeMessage[] = [
     {
       id: '1',
-      title: `Welcome ${analystUser.firstName} to your exclusive ${companyName} Analyst Portal`,
-      quote: "We're excited to share our journey and insights with the industry's most influential voices. Your perspective helps shape the future of HR technology.",
-      author: 'Arnaud Grunwald',
-      authorTitle: `Chief Product Officer, ${companyName}`,
-      authorImage: 'https://media.licdn.com/dms/image/v2/C4E03AQExN7FOgOVffA/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1516217373346?e=1756339200&v=beta&t=duPb2jgDUrrZr1s_ArOPtpfHNDETSM7H31dasVnwNP0'
+      title: resolvedTitle,
+      quote: resolvedQuote,
+      author: resolvedAuthor,
+      authorTitle: resolvedAuthorTitle,
+      authorImage: resolvedAuthorImage
     },
     // Future messages can be added here
   ]

@@ -37,9 +37,6 @@ export default function AnalystPortalPage() {
     <div className="space-y-8">
       {/* Welcome Section with Quote */}
       <section className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome to Your Analyst Portal
-        </h1>
         <AnalystQuoteDisplay quote={settings?.analystQuote} />
       </section>
 

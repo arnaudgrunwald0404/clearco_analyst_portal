@@ -41,7 +41,6 @@ interface TestimonialFormData {
   quote: string
   context: string
   isPublished: boolean
-  displayOrder: number
 }
 
 export default function TestimonialsPage() {
@@ -56,8 +55,7 @@ export default function TestimonialsPage() {
     analystId: '',
     quote: '',
     context: '',
-    isPublished: false,
-    displayOrder: 1
+    isPublished: false
   })
 
   // Fetch testimonials and analysts from database
@@ -128,31 +126,58 @@ export default function TestimonialsPage() {
       let response
       
       if (editingTestimonial) {
-        // Update existing testimonial
+        // Update existing testimonial (use PATCH)
         response = await fetch(`/api/testimonials/${editingTestimonial}`, {
-          method: 'PUT',
+          method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            quote: formData.quote,
+            context: formData.context,
+            isPublished: formData.isPublished,
+            analystId: formData.analystId,
+          }),
         })
       } else {
-        // Create new testimonial
+        // Create new testimonial (map to API fields)
+        const analyst = analysts.find(a => a.id === formData.analystId)
         response = await fetch('/api/testimonials', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            text: formData.quote,
+            author: analyst ? `${analyst.firstName} ${analyst.lastName}` : 'Unknown',
+            company: analyst?.company || null,
+            rating: 5,
+            analystId: formData.analystId,
+            isPublished: formData.isPublished,
+          }),
         })
       }
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to save testimonial')
+        let message = 'Failed to save testimonial'
+        try {
+          const errorData = await response.json()
+          message = errorData?.error || message
+        } catch {
+          try {
+            const text = await response.text()
+            if (text) message = text
+          } catch {}
+        }
+        throw new Error(message)
       }
 
-      const result = await response.json()
+      let result: any
+      try {
+        result = await response.json()
+      } catch {
+        throw new Error('Invalid server response while saving testimonial')
+      }
       
       if (result.success) {
         if (editingTestimonial) {
@@ -174,8 +199,7 @@ export default function TestimonialsPage() {
           analystId: '',
           quote: '',
           context: '',
-          isPublished: false,
-          displayOrder: 1
+          isPublished: false
         })
       }
     } catch (error) {
@@ -190,8 +214,7 @@ export default function TestimonialsPage() {
       analystId: testimonial.analyst.id,
       quote: testimonial.quote,
       context: testimonial.context,
-      isPublished: testimonial.isPublished,
-      displayOrder: testimonial.displayOrder
+      isPublished: testimonial.isPublished
     })
     setShowForm(true)
   }
@@ -370,16 +393,6 @@ export default function TestimonialsPage() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="displayOrder">Display Order</Label>
-                <Input
-                  id="displayOrder"
-                  type="number"
-                  min="1"
-                  value={formData.displayOrder}
-                  onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
-                />
-              </div>
 
               <div className="flex items-center space-x-2">
                 <Switch
@@ -401,8 +414,7 @@ export default function TestimonialsPage() {
                       analystId: '',
                       quote: '',
                       context: '',
-                      isPublished: false,
-                      displayOrder: 1
+                      isPublished: false
                     })
                   }}
                 >

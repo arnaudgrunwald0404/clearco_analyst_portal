@@ -28,7 +28,7 @@ const createFallbackSettings = (preservedSettings?: Partial<CompanySettings>): C
   id: preservedSettings?.id || 'fallback',
   companyName: preservedSettings?.companyName || 'ClearCompany',
   protectedDomain: preservedSettings?.protectedDomain || 'clearcompany.com',
-  logoUrl: preservedSettings?.logoUrl || '/clearco-logo.png', // Default to ClearCompany logo
+  logoUrl: preservedSettings?.logoUrl || '', // No default logo
   industryName: preservedSettings?.industryName || 'HR Technology',
   createdAt: preservedSettings?.createdAt || new Date().toISOString(),
   updatedAt: preservedSettings?.updatedAt || new Date().toISOString()

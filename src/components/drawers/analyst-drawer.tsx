@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Building, Mail, Phone, Linkedin, Twitter, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
+import { X, User, Building, Mail, Phone, Linkedin, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 
 interface AnalystDrawerProps {
@@ -81,11 +81,11 @@ const mockSocialPosts = [
   },
   {
     id: '2',
-    platform: 'TWITTER',
+    platform: 'X',
     content: 'New research shows that companies with strong employee experience programs see 40% higher retention rates. The ROI on EX investment is undeniable. #EmployeeExperience #HRTech',
     postedAt: '2024-06-22',
     engagements: 89,
-    url: 'https://twitter.com/post1'
+    url: 'https://x.com/post1'
   },
   {
     id: '3',
@@ -97,11 +97,11 @@ const mockSocialPosts = [
   },
   {
     id: '4',
-    platform: 'TWITTER',
+    platform: 'X',
     content: 'Speaking at #HRTechConf next month about the evolution of performance management. Looking forward to sharing some surprising insights from our latest research!',
     postedAt: '2024-06-15',
     engagements: 56,
-    url: 'https://twitter.com/post2'
+    url: 'https://x.com/post2'
   }
 ]
 
@@ -421,8 +421,8 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     switch (platform) {
       case 'LINKEDIN':
         return <Linkedin className="w-4 h-4 text-blue-600" />
-      case 'TWITTER':
-        return <Twitter className="w-4 h-4 text-blue-400" />
+      case 'X':
+        return <X className="w-4 h-4 text-black" />
       default:
         return <MessageSquare className="w-4 h-4" />
     }
@@ -504,7 +504,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       })
 
       // TODO: Implement actual social media posting
-      // This would integrate with LinkedIn API, Twitter API, etc.
+      // This would integrate with LinkedIn API, X API, etc.
       
       // Close modal and reset
       setEngagementModal({ isOpen: false, type: null, post: null })
@@ -649,7 +649,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   const getPlatformFieldName = (platform: string) => {
     switch (platform) {
       case 'linkedin': return 'LinkedIn URL'
-      case 'twitter': return 'Twitter Handle'
+      case 'twitter': return 'X Handle'
       case 'phone': return 'Phone Number'
       case 'website': return 'Website URL'
       default: return 'Value'
@@ -1118,11 +1118,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       </div>
                     </div>
 
-                    {/* Twitter/X */}
+                    {/* X (formerly Twitter) */}
                     <div className="flex items-center space-x-3">
-                      <Twitter className="w-4 h-4 text-gray-400" />
+                      <X className="w-4 h-4 text-gray-400" />
                       <div className="flex-1">
-                        <div className="text-xs font-medium text-gray-500">Twitter/X</div>
+                        <div className="text-xs font-medium text-gray-500">X (formerly Twitter)</div>
                         {isEditMode ? (
                           <div className="flex items-center gap-2">
                             <input
@@ -1130,7 +1130,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               value={editedData.twitter}
                               onChange={(e) => setEditedData(prev => ({ ...prev, twitter: e.target.value }))}
                               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="Enter Twitter handle"
+                              placeholder="Enter X handle"
                             />
                             <button
                               onClick={() => searchSocialProfile('twitter')}
@@ -1624,7 +1624,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   {/* Character Count */}
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <div>
-                      {engagementModal.post.platform === 'TWITTER' && (
+                      {engagementModal.post.platform === 'X' && (
                         <span className={cn(
                           'font-medium',
                           engagementText.length > 280 ? 'text-red-600' : 'text-gray-500'
@@ -1642,7 +1642,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span>Posting as ClearCompany</span>
+                      <span>Posting as your organization</span>
                     </div>
                   </div>
 

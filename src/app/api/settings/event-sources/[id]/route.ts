@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth-utils'
 
 // PATCH/DELETE for individual event source
 export async function PATCH(
@@ -7,8 +8,14 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) return authResult
     const { id } = await params
-    const body = await request.json().catch(() => ({})) as { url?: string; is_active?: boolean }
+    const body = await request.json().catch(() => ({})) as { 
+      url?: string; 
+      is_active?: boolean; 
+      selected_tabs?: string[]; 
+    }
 
     const updates: any = { updated_at: new Date().toISOString() }
 
@@ -21,6 +28,9 @@ export async function PATCH(
       updates.url = url
     }
     if (body.is_active !== undefined) updates.is_active = !!body.is_active
+    if (body.selected_tabs !== undefined) {
+      updates.selected_tabs = Array.isArray(body.selected_tabs) ? JSON.stringify(body.selected_tabs.filter(Boolean)) : null
+    }
 
     const supabase = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,7 +41,7 @@ export async function PATCH(
       .from('event_sync_sources')
       .update(updates)
       .eq('id', id)
-      .select('id,url,is_active,created_at,updated_at')
+      .select('id,url,is_active,selected_tabs,created_at,updated_at')
       .single()
 
     if (error) throw error
@@ -50,6 +60,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) return authResult
     const { id } = await params
     const supabase = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

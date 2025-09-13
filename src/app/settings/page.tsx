@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Settings, TrendingUp, Tags, Calendar, Users, RefreshCw } from 'lucide-react'
+import { Settings, TrendingUp, Tags, Calendar, Users, RefreshCw, Link as LinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +12,7 @@ import TopicsSection from './TopicsSection'
 import CalendarSection from './CalendarSection'
 import InfluenceTiersSection from './InfluenceTiersSection'
 import ContentSection from './ContentSection'
+import EventsSection from './EventsSection'
 import { FloatingHelpText } from '@/components/ui/floating-help-text'
 import { useHelpText } from '@/hooks/useHelpText'
 
@@ -38,6 +39,7 @@ interface SyncProgress {
 import { useAuth } from '@/contexts/AuthContext'
 import { FileText } from 'lucide-react'
 import AnalystPortalSection from './AnalystPortalSection'
+import AdminUsersSection from './AdminUsersSection'
 
 function SettingsPageContent() {
   const { user, refreshUser } = useAuth()
@@ -592,14 +594,23 @@ function SettingsPageContent() {
   }
 
 // ... (inside SettingsPageContent component)
-  // Define menu sections
+  // Define menu sections with proper ordering and grouping
   const menuSections = [
+    // System Settings Group
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'admin-users', label: 'Admin Users', icon: Users },
+    { id: 'calendar', label: 'Calendar Sync', icon: Calendar },
+    { id: 'events', label: 'Event Sources', icon: LinkIcon },
+    // Separator
+    { id: 'separator-1', label: '---', icon: null, isSeparator: true },
+    // Analyst Configuration Group
     { id: 'influence-tiers', label: 'Analyst Tiers', icon: TrendingUp },
-    { id: 'topics', label: 'Topics', icon: Tags },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
-    { id: 'content', label: 'Content', icon: FileText },
+    { id: 'topics', label: 'Analyst Topics', icon: Tags },
+    // Separator
+    { id: 'separator-2', label: '---', icon: null, isSeparator: true },
+    // Portal Configuration Group
+    { id: 'analyst-portal', label: 'Analyst Portal Config', icon: Users },
+    { id: 'content', label: 'Analyst Portal Content', icon: FileText },
   ]
 
   return (
@@ -642,9 +653,11 @@ function SettingsPageContent() {
             />
           )}
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
+          {activeSection === 'events' && <EventsSection />}
           {activeSection === 'analyst-portal' && (
             <AnalystPortalSection initialTab={'settings'} showAccessTab={false} />
           )}
+          {activeSection === 'admin-users' && <AdminUsersSection />}
           {activeSection === 'content' && <ContentSection />}
         </div>
       </div>

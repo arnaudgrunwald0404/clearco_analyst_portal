@@ -12,7 +12,7 @@ interface Event {
   type: 'CONFERENCE' | 'EXHIBITION' | 'WEBINAR'
   audienceGroups: string[]
   startDate: string
-  participationTypes: string[]
+  participationStatus: string[]
   owner?: string
   location?: string
   status: 'EVALUATING' | 'COMMITTED' | 'CONTRACTED' | 'NOT_GOING'
@@ -181,13 +181,13 @@ export default function EventDrawer({ isOpen, onClose, event }: EventDrawerProps
                         )}
 
                         {/* Participation Types */}
-                        {event.participationTypes.length > 0 && (
+                        {event.participationStatus.length > 0 && (
                           <div className="flex items-start space-x-2">
                             <Building className="w-5 h-5 text-gray-400 mt-0.5" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">Participation Types</p>
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {event.participationTypes.map((type, index) => (
+                                {event.participationStatus.map((type, index) => (
                                   <span
                                     key={index}
                                     className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Briefing } from "../../types"
 import { cn } from "@/lib/utils"
 import { Calendar as CalendarIcon, X, Eye, FileText, Video, Bot, CheckCircle } from "lucide-react"
@@ -50,6 +50,14 @@ export default function Drawer({
   const [notes, setNotes] = useState(briefing.notes || "")
   const [highlightSections, setHighlightSections] = useState(false)
   const { date, time } = formatDateTime(briefing.scheduledAt)
+
+  // Reset local editable state when the selected briefing changes to avoid state leakage
+  // This ensures each Drawer instance reflects the correct meeting's data when switching
+  // between different briefings without a full unmount.
+  useEffect(() => {
+    setTranscript(briefing.transcript || "")
+    setNotes(briefing.notes || "")
+  }, [briefing.id, briefing.transcript, briefing.notes])
 
   // State for Add as Testimonial modal
   const [showTestimonialModal, setShowTestimonialModal] = useState(false)

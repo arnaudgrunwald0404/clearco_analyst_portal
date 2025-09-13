@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireAuth } from '@/lib/auth-utils'
 
 // GET: list event source URLs
 export async function GET() {
   try {
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) return authResult
     const supabase = createServiceClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -11,7 +14,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('event_sync_sources')
-      .select('id,url,is_active,created_at,updated_at')
+      .select('id,url,is_active,selected_tabs,created_at,updated_at')
       .order('created_at', { ascending: true })
 
     if (error) throw error
@@ -28,9 +31,16 @@ export async function GET() {
 // POST: add a new event source URL
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({})) as { url?: string; is_active?: boolean }
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) return authResult
+    const body = await request.json().catch(() => ({})) as { 
+      url?: string; 
+      is_active?: boolean; 
+      selected_tabs?: string[]; 
+    }
     const url = (body.url || '').trim()
     const is_active = body.is_active ?? true
+    const selected_tabs = Array.isArray(body.selected_tabs) ? body.selected_tabs.filter(Boolean) : null
 
     if (!url) {
       return NextResponse.json({ success: false, error: 'URL is required' }, { status: 400 })
@@ -51,8 +61,15 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from('event_sync_sources')
-      .insert({ id, url, is_active, created_at: now, updated_at: now })
-      .select('id,url,is_active,created_at,updated_at')
+      .insert({ 
+        id, 
+        url, 
+        is_active, 
+        selected_tabs: selected_tabs ? JSON.stringify(selected_tabs) : null, 
+        created_at: now, 
+        updated_at: now 
+      })
+      .select('id,url,is_active,selected_tabs,created_at,updated_at')
       .single()
 
     if (error) throw error

@@ -106,10 +106,10 @@ export async function PUT(request: NextRequest) {
     const user = authResult
 
     const body = await request.json()
-    const { companyName, protectedDomain, logoUrl, industryName } = body
+    const { company_name, protected_domain, logo_url, industry_name } = body
     
     // Validate required fields
-    if (!companyName || !protectedDomain || !industryName) {
+    if (!company_name || !protected_domain || !industry_name) {
       return NextResponse.json(
         { error: 'Company name, protected domain, and industry name are required' },
         { status: 400 }
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Validate domain format - very basic check
-    if (!protectedDomain.includes('.') || protectedDomain.length < 3) {
+    if (!protected_domain.includes('.') || protected_domain.length < 3) {
       return NextResponse.json(
         { error: 'Please enter a valid domain (e.g., company.com)' },
         { status: 400 }
@@ -125,9 +125,9 @@ export async function PUT(request: NextRequest) {
     }
     
     // Validate URL format if provided
-    if (logoUrl && logoUrl.trim()) {
+    if (logo_url && logo_url.trim()) {
       // Allow relative paths (for uploaded files) and absolute URLs
-      const trimmedUrl = logoUrl.trim()
+      const trimmedUrl = logo_url.trim()
       
       // If it's a relative path (starts with /), it's valid
       if (trimmedUrl.startsWith('/')) {
@@ -135,7 +135,7 @@ export async function PUT(request: NextRequest) {
       } else {
         // For absolute URLs, validate the format
         try {
-          new URL(trimmedUrl)
+          new URL(logo_url)
         } catch {
           return NextResponse.json(
             { error: 'Please enter a valid logo URL or upload a file' },
@@ -159,10 +159,10 @@ export async function PUT(request: NextRequest) {
       .single()
     
     const updateData = {
-      company_name: companyName.trim(),
-      protected_domain: protectedDomain.trim().toLowerCase(),
-      logo_url: logoUrl?.trim() || '',
-      industry_name: industryName.trim()
+      company_name: company_name.trim(),
+      protected_domain: protected_domain.trim().toLowerCase(),
+      logo_url: logo_url?.trim() || '',
+      industry_name: industry_name.trim()
     }
     
     let settings

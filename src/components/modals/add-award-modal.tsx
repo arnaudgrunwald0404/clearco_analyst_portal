@@ -1111,16 +1111,27 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
                           alert('Please ensure each award has Name, Publication Date, Submission Date, and Organization.')
                           return
                         }
+                        // Map parsed fields to bulk API schema
+                        const mapped = valid.map(a => ({
+                          awardName: a.name,
+                          publicationDate: a.publicationDate,
+                          processStartDate: a.submissionDate,
+                          contactInfo: a.organization,
+                          priority: (a.priority || 'MEDIUM').toUpperCase(),
+                          status: a.status || undefined,
+                          topics: Array.isArray(a.productTopics) ? a.productTopics.join(', ') : (a.topics || a.productTopics || undefined),
+                          notes: a.notes || undefined
+                        }))
                         try {
                           setAgentStep('saving')
                           const res = await fetch('/api/awards/bulk', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ awards: valid })
+                            body: JSON.stringify({ awards: mapped })
                           })
                           const data = await res.json()
                           if (!res.ok || !data.success) {
-                            throw new Error(data.error || 'Failed to save awards')
+                            throw new Error(data.error || (data?.details?.[0] ?? 'Failed to save awards'))
                           }
                           onAwardAdded()
                           setAgentStep('success')

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -11,15 +11,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
+    const supabase = createServiceClient()
 
-    // Fetch latest 5 social media posts from LinkedIn and Twitter
+    // Fetch latest 5 social media posts from LinkedIn and X
     const { data: socialPosts, error } = await supabase
-      .from('social_media_posts')
+      .from('social_posts')
       .select('*')
-      .eq('analyst_id', id)
-      .in('platform', ['LINKEDIN', 'TWITTER'])
-      .order('published_at', { ascending: false })
+      .eq('analystId', id)
+      .in('platform', ['LINKEDIN', 'X'])
+      .order('postedAt', { ascending: false })
       .limit(5)
 
     if (error) {

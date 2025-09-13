@@ -6,8 +6,8 @@ import ClientProviders from "@/components/ClientProviders";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Analyst ManagementPortal",
-  description: "Industry analyst relationship management portal for HR tech companies",
+  title: "Industry Relationship Management",
+  description: "Industry relationship management portal",
 };
 
 export const dynamic = 'force-dynamic'

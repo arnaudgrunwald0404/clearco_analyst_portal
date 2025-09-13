@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-// In-memory cache for heavy computation results
+// Enhanced tier-specific caching for better performance
+interface TierCacheEntry {
+  data: any[]
+  updatedAt: number
+  searchTerm: string
+}
+
+const tierCache = new Map<string, TierCacheEntry>()
+const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes (increased for better hit rate)
+
+// Legacy cache for compatibility
 let cachedDueResults: { data: any[]; updatedAt: number; counts: Record<string, number> } | null = null
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -43,11 +52,33 @@ export async function GET(request: NextRequest) {
       query = query.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`)
     }
 
-    // If cache is valid, skip recompute and filter from cache
-    const cacheValid = !force && cachedDueResults && (Date.now() - cachedDueResults.updatedAt) < CACHE_TTL_MS
+    // Check tier-specific cache first (more granular and efficient)
+    const cacheKey = `${tierFilter}_${search}`
+    const tierCacheEntry = tierCache.get(cacheKey)
+    const tierCacheValid = !force && tierCacheEntry && 
+      (Date.now() - tierCacheEntry.updatedAt) < CACHE_TTL_MS &&
+      tierCacheEntry.searchTerm === search
+
+    if (tierCacheValid) {
+      console.log(`💾 [CACHE HIT] Using cached data for tier: ${tierFilter}, search: "${search}"`)
+      return NextResponse.json({
+        success: true,
+        data: tierCacheEntry.data,
+        cached: true,
+        updatedAt: tierCacheEntry.updatedAt,
+        total: tierCacheEntry.data.length,
+        countsByTier: cachedDueResults?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+        filters: { search, tier: tierFilter }
+      })
+    }
+
+    // Fallback to legacy cache for full dataset queries
+    const legacyCacheValid = !force && !tierFilter && !search && cachedDueResults && 
+      (Date.now() - cachedDueResults.updatedAt) < CACHE_TTL_MS
 
     let analystsDueForBriefings: any[]
-    if (cacheValid) {
+    if (legacyCacheValid) {
+      console.log('💾 [LEGACY CACHE HIT] Using full cached dataset')
       analystsDueForBriefings = cachedDueResults!.data
     } else {
       // Get ALL analysts - no pagination limits
@@ -64,11 +95,103 @@ export async function GET(request: NextRequest) {
       // Build normalized tier name lookup
       const tierLookup = (influenceTiers || []).map(t => ({ key: t.name.trim().toUpperCase(), row: t }))
 
-      // Filter and process analysts who need briefings
+      // OPTIMIZED: Bulk fetch all data to eliminate N+1 queries
+      console.log(`🚀 [OPTIMIZED] Processing ${(analysts || []).length} analysts with bulk queries...`)
+      
+      const analystIds = (analysts || []).map(a => a.id)
+      const analystEmails = (analysts || []).map(a => a.email).filter(Boolean)
+      
+      // Bulk fetch all briefing-analyst relationships
+      const { data: allBriefingAnalysts } = await supabase
+        .from('briefing_analysts')
+        .select('analystId, briefingId')
+        .in('analystId', analystIds)
+      
+      // Get all briefing IDs and create lookup map
+      const briefingIds = [...new Set((allBriefingAnalysts || []).map(ba => ba.briefingId))]
+      const analystBriefingMap = new Map<string, string[]>()
+      ;(allBriefingAnalysts || []).forEach(ba => {
+        if (!analystBriefingMap.has(ba.analystId)) {
+          analystBriefingMap.set(ba.analystId, [])
+        }
+        analystBriefingMap.get(ba.analystId)!.push(ba.briefingId)
+      })
+
+      // Bulk fetch all relevant briefings
+      let allBriefings: any[] = []
+      
+      // Fetch briefings by ID (from briefing_analysts table)
+      if (briefingIds.length > 0) {
+        const { data: briefingsById } = await supabase
+          .from('briefings')
+          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .in('id', briefingIds)
+        allBriefings = briefingsById || []
+      }
+      
+      // Fetch briefings by email (for analysts not in briefing_analysts table)
+      if (analystEmails.length > 0) {
+        const { data: briefingsByEmail } = await supabase
+          .from('briefings')
+          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .in('status', ['COMPLETED', 'SCHEDULED', 'RESCHEDULED'])
+          .order('scheduledAt', { ascending: false })
+          .limit(1000) // Reasonable limit to prevent huge queries
+        
+        // Filter client-side for email matches and merge with existing
+        const emailMatchedBriefings = (briefingsByEmail || []).filter(b => {
+          if (allBriefings.some(existing => existing.id === b.id)) return false // Avoid duplicates
+          const attendeeList = Array.isArray(b.attendeeEmails) ? b.attendeeEmails : []
+          return analystEmails.some(email => 
+            attendeeList.some((e: string) => e.toLowerCase() === email.toLowerCase())
+          )
+        })
+        
+        allBriefings = [...allBriefings, ...emailMatchedBriefings]
+      }
+      
+      // Bulk fetch calendar meetings
+      let allCalendarMeetings: any[] = []
+      
+      // Fetch meetings by analyst_id
+      if (analystIds.length > 0) {
+        const { data: meetingsById } = await supabase
+          .from('calendar_meetings')
+          .select('analyst_id, start_time, end_time, attendees, is_analyst_meeting')
+          .in('analyst_id', analystIds)
+          .lte('start_time', now.toISOString())
+          .order('start_time', { ascending: false })
+          .limit(500) // Reasonable limit
+        allCalendarMeetings = meetingsById || []
+      }
+      
+      // Fetch additional meetings by email (for meetings not linked by analyst_id)
+      if (analystEmails.length > 0) {
+        const { data: meetingsByEmail } = await supabase
+          .from('calendar_meetings')
+          .select('analyst_id, start_time, end_time, attendees, is_analyst_meeting')
+          .lte('start_time', now.toISOString())
+          .order('start_time', { ascending: false })
+          .limit(500) // Reasonable limit
+        
+        // Filter client-side for email matches and merge
+        const emailMatchedMeetings = (meetingsByEmail || []).filter(m => {
+          if (allCalendarMeetings.some(existing => 
+            existing.start_time === m.start_time && existing.analyst_id === m.analyst_id
+          )) return false // Avoid duplicates
+          const attendeeList = Array.isArray(m.attendees) ? m.attendees : []
+          return analystEmails.some(email =>
+            attendeeList.some((e: string) => e.toLowerCase() === email.toLowerCase())
+          )
+        })
+        
+        allCalendarMeetings = [...allCalendarMeetings, ...emailMatchedMeetings]
+      }
+
+      // Process analysts efficiently with bulk data
       const temp: any[] = []
       
       for (const analyst of analysts || []) {
-      // Map influence to tier information from the database (name-insensitive)
         const influenceKey = (analyst.influence || '').toString().toUpperCase()
         const tier = (tierLookup.find(n =>
           (influenceKey === 'VERY_HIGH' && (n.key.includes('VERY') && n.key.includes('HIGH'))) ||
@@ -76,219 +199,106 @@ export async function GET(request: NextRequest) {
           (influenceKey === 'MEDIUM' && n.key === 'MEDIUM') ||
           (influenceKey === 'LOW' && n.key === 'LOW')
         ) || {}).row || null
-      
-      if (!tier) continue
-      
-      // Skip analysts from inactive tiers
-      if (!tier.isActive) continue
+        
+        if (!tier || !tier.isActive) continue
 
-      const daysBetweenBriefings = tier?.briefingFrequency ?? 0
+        const daysBetweenBriefings = tier?.briefingFrequency ?? 0
+        const analystBriefingIds = analystBriefingMap.get(analyst.id) || []
+        
+        // Filter briefings for this analyst
+        const analystBriefings = (allBriefings || []).filter(b => 
+          analystBriefingIds.includes(b.id) ||
+          (analyst.email && Array.isArray(b.attendeeEmails) && 
+           b.attendeeEmails.some((e: string) => e.toLowerCase() === analyst.email.toLowerCase()))
+        )
 
-      // Get all briefing IDs linked to this analyst
-      const { data: baRows } = await supabase
-        .from('briefing_analysts')
-        .select('briefingId')
-        .eq('analystId', analyst.id)
+        // Find last completed briefing
+        const completedBriefings = analystBriefings
+          .filter(b => b.status === 'COMPLETED')
+          .sort((a, b) => new Date(b.completedAt || b.scheduledAt).getTime() - new Date(a.completedAt || a.scheduledAt).getTime())
+        const lastCompleted = completedBriefings[0] || null
 
-      const briefingIds: string[] = (baRows || []).map(r => r.briefingId)
+        // Find next scheduled briefing
+        const upcomingBriefings = analystBriefings
+          .filter(b => ['SCHEDULED', 'RESCHEDULED'].includes(b.status) && new Date(b.scheduledAt) > now)
+          .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+        const nextScheduled = upcomingBriefings[0] || null
 
-      // Fetch last completed briefing for this analyst (via join table)
-      let lastCompleted: any = null
-      if (briefingIds.length > 0) {
-        const { data: completedRows } = await supabase
-          .from('briefings')
-          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
-          .in('id', briefingIds)
-          .eq('status', 'COMPLETED')
-          .order('completedAt', { ascending: false })
-          .limit(1)
-        lastCompleted = (completedRows && completedRows[0]) || null
-      }
-      // If no completed briefing via join, try matching by attendee email
-      if (!lastCompleted && analyst.email) {
-        // Prefer exact array contains if attendeeEmails is an array/jsonb; fallback to client-side match
-        let emailMatchedCompleted: any = null
-        const { data: completedByEmail, error: completedByEmailErr } = await supabase
-          .from('briefings')
-          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
-          .eq('status', 'COMPLETED')
-          .order('completedAt', { ascending: false })
-          .limit(200)
-        if (!completedByEmailErr) {
-          // Filter client-side for safety/case-insensitive match
-          emailMatchedCompleted = (completedByEmail || []).find(b => {
-            const list = Array.isArray(b.attendeeEmails) ? b.attendeeEmails : []
-            return list.some((e: string) => (e || '').toLowerCase() === (analyst.email || '').toLowerCase())
-          }) || null
-        }
-        if (emailMatchedCompleted) {
-          lastCompleted = emailMatchedCompleted
-        }
-      }
-
-      // Fetch next scheduled briefing for this analyst
-      let nextScheduled: any = null
-      if (briefingIds.length > 0) {
-        const { data: scheduledRows } = await supabase
-          .from('briefings')
-          .select('id, title, scheduledAt, status, attendeeEmails')
-          .in('id', briefingIds)
-          .gt('scheduledAt', now.toISOString())
-          .in('status', ['SCHEDULED', 'RESCHEDULED'])
-          .order('scheduledAt', { ascending: true })
-          .limit(1)
-        nextScheduled = (scheduledRows && scheduledRows[0]) || null
-      }
-      // If no upcoming via join, try matching by attendee email
-      if (!nextScheduled && analyst.email) {
-        const { data: nextByEmail } = await supabase
-          .from('briefings')
-          .select('id, title, scheduledAt, status, attendeeEmails')
-          .gt('scheduledAt', now.toISOString())
-          .in('status', ['SCHEDULED', 'RESCHEDULED'])
-          .order('scheduledAt', { ascending: true })
-          .limit(100)
-        const matchedUpcoming = (nextByEmail || []).find(b => {
-          const list = Array.isArray(b.attendeeEmails) ? b.attendeeEmails : []
-          return list.some((e: string) => (e || '').toLowerCase() === (analyst.email || '').toLowerCase())
-        }) || null
-        if (matchedUpcoming) nextScheduled = matchedUpcoming
-      }
-
-      // Determine last meeting date:
-      // 1) completed briefing date
-      // 2) otherwise, latest past briefing linked via join (even if not marked COMPLETED)
-      // 3) otherwise, latest past briefing where analyst email is in attendeeEmails
-      // 4) otherwise, fallback to calendar meeting record
-      let lastMeetingDate: string | null = null
-      let lastBriefingId: string = ''
-      if (lastCompleted?.completedAt) {
-        lastMeetingDate = lastCompleted.completedAt
-        lastBriefingId = lastCompleted.id
-      } else {
-        // Try latest past briefing via join regardless of status
-        if (briefingIds.length > 0) {
-          const { data: pastViaJoin } = await supabase
-            .from('briefings')
-            .select('id, scheduledAt, status, title')
-            .in('id', briefingIds)
-            .lte('scheduledAt', now.toISOString())
-            .order('scheduledAt', { ascending: false })
-            .limit(1)
-          const viaJoin = (pastViaJoin && pastViaJoin[0]) || null
-          if (viaJoin) {
-            lastMeetingDate = viaJoin.scheduledAt
-            lastBriefingId = viaJoin.id
-          }
-        }
-        // If none via join, find latest past scheduled briefing by email (even if status wasn't updated to COMPLETED)
-        if (!lastMeetingDate && analyst.email) {
-          const { data: pastByEmail } = await supabase
-            .from('briefings')
-            .select('id, title, scheduledAt, status, attendeeEmails')
-            .lte('scheduledAt', now.toISOString())
-            .order('scheduledAt', { ascending: false })
-            .limit(200)
-          let matchedPast = (pastByEmail || []).find(b => {
-            const list = Array.isArray(b.attendeeEmails) ? b.attendeeEmails : []
-            return list.some((e: string) => (e || '').toLowerCase() === (analyst.email || '').toLowerCase())
-          }) || null
-          // Fallback: match by name in title if email didn't match
-          if (!matchedPast) {
-            const first = (analyst.firstName || '').toLowerCase()
-            const last = (analyst.lastName || '').toLowerCase()
-            matchedPast = (pastByEmail || []).find(b => {
-              const t = (b.title || '').toLowerCase()
-              return first && last && t.includes(first) && t.includes(last)
-            }) || null
-          }
-          if (matchedPast) {
-            lastMeetingDate = matchedPast.scheduledAt
-            lastBriefingId = matchedPast.id
-          }
-        }
-        // If still no signal, fall back to calendar meetings
-        if (!lastMeetingDate) {
-          // Try matching calendar meetings by attendee email first (more reliable than analyst_id)
-          if (analyst.email) {
-            // 1) Look for the latest past meeting where attendees include analyst.email
-            const { data: calByEmail } = await supabase
-              .from('calendar_meetings')
-              .select('start_time, end_time, attendees')
-              .lte('start_time', now.toISOString())
-              .order('start_time', { ascending: false })
-              .limit(100)
-            const matched = (calByEmail || []).find(m => {
-              const list = Array.isArray((m as any).attendees) ? (m as any).attendees : []
-              return list.some((e: string) => (e || '').toLowerCase() === (analyst.email || '').toLowerCase())
-            }) || null
-            if (matched) {
-              lastMeetingDate = (matched as any).end_time || (matched as any).start_time
-            }
-          }
-          // 2) If still not found, try the analyst_id linkage as a final fallback
-          if (!lastMeetingDate) {
-            const { data: lastMeeting } = await supabase
-              .from('calendar_meetings')
-              .select('start_time, end_time')
-              .eq('is_analyst_meeting', true)
-              .eq('analyst_id', analyst.id)
-              .lte('start_time', now.toISOString())
-              .order('start_time', { ascending: false })
-              .limit(1)
-              .single()
-            if (lastMeeting) {
-              lastMeetingDate = (lastMeeting as any).end_time || (lastMeeting as any).start_time
+        // Find last meeting date
+        let lastMeetingDate: string | null = null
+        let lastBriefingId: string = ''
+        
+        if (lastCompleted?.completedAt) {
+          lastMeetingDate = lastCompleted.completedAt
+          lastBriefingId = lastCompleted.id
+        } else {
+          // Try latest past briefing (any status)
+          const pastBriefings = analystBriefings
+            .filter(b => new Date(b.scheduledAt) <= now)
+            .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime())
+          const latestPast = pastBriefings[0]
+          
+          if (latestPast) {
+            lastMeetingDate = latestPast.scheduledAt
+            lastBriefingId = latestPast.id
+          } else {
+            // Fallback to calendar meetings
+            const analystMeetings = (allCalendarMeetings || []).filter(m =>
+              m.analyst_id === analyst.id ||
+              (analyst.email && Array.isArray(m.attendees) && 
+               m.attendees.some((e: string) => e.toLowerCase() === analyst.email.toLowerCase()))
+            ).sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+            
+            const latestMeeting = analystMeetings[0]
+            if (latestMeeting) {
+              lastMeetingDate = latestMeeting.end_time || latestMeeting.start_time
             }
           }
         }
-      }
-      
-      // Calculate days since last meeting/briefing
-      const daysSinceLastBriefing = lastMeetingDate
-        ? Math.floor((now.getTime() - new Date(lastMeetingDate).getTime()) / (1000 * 60 * 60 * 24))
-        : null
-      
-      // Check if analyst needs a briefing based on tier frequency
-      // Skip if they have a future briefing scheduled
-      const needsBriefing = !nextScheduled && (!lastMeetingDate || (daysSinceLastBriefing !== null && daysSinceLastBriefing >= daysBetweenBriefings))
-      
-      if (needsBriefing) {
-        // Calculate overdue days: max(days since last - frequency, 0), null if no last
-        const rawOverdue = daysSinceLastBriefing !== null && daysBetweenBriefings > 0
-          ? (daysSinceLastBriefing - daysBetweenBriefings)
+
+        // Calculate days since last meeting
+        const daysSinceLastBriefing = lastMeetingDate
+          ? Math.floor((now.getTime() - new Date(lastMeetingDate).getTime()) / (1000 * 60 * 60 * 24))
           : null
-        const overdueDays = rawOverdue !== null ? Math.max(rawOverdue, 0) : null
 
-        temp.push({
-          id: analyst.id,
-          firstName: analyst.firstName,
-          lastName: analyst.lastName,
-          email: analyst.email,
-          company: analyst.company,
-          title: analyst.title,
-          influence: analyst.influence,
-          relationshipHealth: analyst.relationshipHealth || 'GOOD',
-          profileImageUrl: analyst.profileImageUrl,
-          tier: {
-            name: tier?.name || influenceKey,
-            briefingFrequency: daysBetweenBriefings,
-            normalized: influenceKey,
-          },
-          lastBriefing: lastMeetingDate ? {
-            id: lastBriefingId || lastCompleted?.id || '',
-            scheduledAt: lastMeetingDate
-          } : null,
-          nextBriefing: nextScheduled ? {
-            id: nextScheduled.id,
-            scheduledAt: nextScheduled.scheduledAt,
-            status: nextScheduled.status
-          } : null,
-          daysSinceLastBriefing,
-          overdueDays,
-          needsBriefing: true
-        })
-      }
+        // Check if needs briefing
+        const needsBriefing = !nextScheduled && (!lastMeetingDate || (daysSinceLastBriefing !== null && daysSinceLastBriefing >= daysBetweenBriefings))
+
+        if (needsBriefing) {
+          const rawOverdue = daysSinceLastBriefing !== null && daysBetweenBriefings > 0
+            ? (daysSinceLastBriefing - daysBetweenBriefings)
+            : null
+          const overdueDays = rawOverdue !== null ? Math.max(rawOverdue, 0) : null
+
+          temp.push({
+            id: analyst.id,
+            firstName: analyst.firstName,
+            lastName: analyst.lastName,
+            email: analyst.email,
+            company: analyst.company,
+            title: analyst.title,
+            influence: analyst.influence,
+            relationshipHealth: analyst.relationshipHealth || 'GOOD',
+            profileImageUrl: analyst.profileImageUrl,
+            tier: {
+              name: tier?.name || influenceKey,
+              briefingFrequency: daysBetweenBriefings,
+              normalized: influenceKey,
+            },
+            lastBriefing: lastMeetingDate ? {
+              id: lastBriefingId || lastCompleted?.id || '',
+              scheduledAt: lastMeetingDate
+            } : null,
+            nextBriefing: nextScheduled ? {
+              id: nextScheduled.id,
+              scheduledAt: nextScheduled.scheduledAt,
+              status: nextScheduled.status
+            } : null,
+            daysSinceLastBriefing,
+            overdueDays,
+            needsBriefing: true
+          })
+        }
       }
 
       analystsDueForBriefings = temp;
@@ -329,10 +339,20 @@ export async function GET(request: NextRequest) {
 
     console.log(`📊 [Briefings Due API] Found ${analystsDueForBriefings.length} analysts due for briefings`)
 
+    // Cache the tier-specific results for faster subsequent requests
+    if (tierFilter && !tierCacheValid) {
+      tierCache.set(cacheKey, {
+        data: filtered,
+        updatedAt: Date.now(),
+        searchTerm: search
+      })
+      console.log(`💾 [CACHE SET] Cached data for tier: ${tierFilter}, search: "${search}"`)
+    }
+
     return NextResponse.json({
       success: true,
       data: filtered,
-      cached: cacheValid,
+      cached: legacyCacheValid,
       updatedAt: cachedDueResults?.updatedAt || Date.now(),
       total: filtered.length,
       countsByTier: cachedDueResults?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },

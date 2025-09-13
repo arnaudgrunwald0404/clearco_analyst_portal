@@ -19,7 +19,7 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
     type: 'CONFERENCE' as string,
     audienceGroups: [] as string[],
     startDate: '',
-    participationTypes: [] as string[],
+    participationStatus: [] as string[],
     owner: '',
     location: '',
     status: 'EVALUATING' as string,
@@ -36,7 +36,7 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
     }))
   }
 
-  const handleMultiSelectChange = (field: 'audienceGroups' | 'participationTypes', value: string) => {
+  const handleMultiSelectChange = (field: 'audienceGroups' | 'participationStatus', value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: prev[field].includes(value) 
@@ -114,7 +114,7 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
       type: 'CONFERENCE',
       audienceGroups: [],
       startDate: '',
-      participationTypes: [],
+      participationStatus: [],
       owner: '',
       location: '',
       status: 'EVALUATING',
@@ -313,12 +313,12 @@ export default function AddEventModal({ isOpen, onClose, onEventAdded }: AddEven
                           Participation Types
                         </label>
                         <div className="space-y-2">
-                          {enums?.participationTypes.map((option) => (
+                          {enums?.participationStatus.map((option) => (
                             <label key={option.value} className="flex items-center">
                               <input
                                 type="checkbox"
-                                checked={formData.participationTypes.includes(option.value)}
-                                onChange={() => handleMultiSelectChange('participationTypes', option.value)}
+                                checked={formData.participationStatus.includes(option.value)}
+                                onChange={() => handleMultiSelectChange('participationStatus', option.value)}
                                 className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                 disabled={enumsLoading}
                               />

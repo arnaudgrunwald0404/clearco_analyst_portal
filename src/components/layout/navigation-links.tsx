@@ -6,10 +6,12 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { mainNavigation, analystPortalItem, type NavigationItem } from './navigation-config'
 import { AnalystImpersonationModal } from '../modals/analyst-impersonation-modal'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function NavigationLinks() {
   const pathname = usePathname()
   const router = useRouter()
+  const { signInAnalyst } = useAuth()
   const [isImpersonationModalOpen, setIsImpersonationModalOpen] = useState(false)
 
   const handleAnalystPortalClick = (e: React.MouseEvent) => {
@@ -17,35 +19,42 @@ export function NavigationLinks() {
     setIsImpersonationModalOpen(true)
   }
 
-  const handleImpersonate = (analyst: { id: string; firstName: string; lastName: string; email: string }) => {
-    // Store the selected analyst in sessionStorage for the portal to access
+  const handleImpersonate = async (analyst: { id: string; firstName: string; lastName: string; email: string }) => {
+    // Persist selection for any auxiliary logic
     sessionStorage.setItem('impersonatedAnalyst', JSON.stringify(analyst))
-    // Navigate to the portal
-    router.push('/portal')
+
+    // Programmatic analyst login using shared password (public env for client)
+    const password = process.env.NEXT_PUBLIC_DEFAULT_ANALYST_PASSWORD || 'changeme123!'
+    const res = await signInAnalyst(analyst.email, password)
+    if (res.success) {
+      router.push('/portal')
+    } else {
+      alert(res.error || 'Failed to open portal as analyst')
+    }
   }
 
   const renderNavigationItem = (item: NavigationItem) => {
     const isActive = pathname === item.href
-    const isBriefingsDue = item.name === 'Briefings due'
+    const isSubItem = item.name === 'Briefings Due' || item.name === 'Follow Ups'
     
     return (
-      <li key={item.name} className={isBriefingsDue ? '-mt-2' : ''}>
+      <li key={item.name} className={isSubItem ? '-mt-2' : ''}>
         <Link
           href={item.href}
           className={cn(
             'flex items-center text-sm font-medium rounded-lg transition-colors',
-            isBriefingsDue 
+            isSubItem 
               ? 'px-4 py-2 ml-8' // Indented sub-item styling
               : 'px-4 py-3', // Regular item styling
             isActive
               ? 'bg-blue-100 text-blue-700'
-              : isBriefingsDue 
+              : isSubItem 
               ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Lighter text for sub-item
               : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
           )}
         >
-          {/* Only show icon for main items, not for sub-items */}
-          {!isBriefingsDue && <item.icon className="w-5 h-5 mr-3" />}
+          {/* Only show icon for main items, not for sub-items, and only if icon exists */}
+          {!isSubItem && item.icon && <item.icon className="w-5 h-5 mr-3" />}
           {item.name}
         </Link>
       </li>

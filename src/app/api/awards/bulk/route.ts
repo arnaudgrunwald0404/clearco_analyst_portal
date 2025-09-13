@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { parseDate } from '@/lib/date-utils'
+
+function generateId(): string {
+  const timestamp = Date.now().toString(36)
+  const randomPart = Math.random().toString(36).substring(2, 8)
+  return `cl${timestamp}${randomPart}`
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,84 +22,81 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const supabaseService = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    ) // Use service client to bypass RLS
 
     // Validate each award
-    const validAwards = []
-    const errors = []
-    const existingNames = new Set()
+    const validAwards: any[] = []
+    const errors: string[] = []
+    const existingNames = new Set<string>()
 
-    // Check for existing award names in the database
-    const { data: existingAwards, error: existingError } = await supabase
-      .from('awards')
-      .select('name')
-      .in('name', awards.map(a => a.name).filter(Boolean))
+    // Check for existing award names in the database using the actual column 'name'
+    const namesToCheck = awards.map((a: any) => a.awardName || a.name).filter((n: string) => !!n)
+    if (namesToCheck.length > 0) {
+      const { data: existingAwards, error: existingError } = await supabaseService
+        .from('awards')
+        .select('awardName') // Database column is 'awardName' based on debug results
+        .in('awardName', namesToCheck) // Database column is 'awardName' based on debug results
 
-    if (existingError) {
-      console.error('Error checking existing awards:', existingError)
-      return NextResponse.json(
-        { error: 'Failed to check existing awards' },
-        { status: 500 }
-      )
+      if (existingError) {
+        console.error('Error checking existing awards:', existingError)
+        return NextResponse.json(
+          { error: 'Failed to check existing awards' },
+          { status: 500 }
+        )
+      }
+      existingAwards?.forEach((a: any) => existingNames.add(a.awardName)) // Database column is 'awardName'
     }
-
-    existingAwards?.forEach(a => existingNames.add(a.name))
 
     for (let i = 0; i < awards.length; i++) {
       const award = awards[i]
       
-      // Validate required fields
-      if (!award.name || !award.publicationDate || !award.submissionDate || !award.organization) {
-        errors.push(`Row ${i + 1}: Award name, publication date, submission date, and organization are required`)
+      // Validate required fields (align with AddAwardModal and awards table schema)
+      if (!award.awardName || !award.publicationDate || !award.processStartDate || !award.contactInfo) {
+        errors.push(`Row ${i + 1}: Award name, publication date, process start date, and contact info are required`)
         continue
       }
 
-      // Validate date formats using robust date parsing
+      // Validate date formats
       const pubDate = parseDate(award.publicationDate)
-      const subDate = parseDate(award.submissionDate)
+      const startDate = parseDate(award.processStartDate)
       
       if (!pubDate) {
         errors.push(`Row ${i + 1}: Invalid publication date format. Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, MM-DD-YYYY, DD.MM.YYYY`)
         continue
       }
       
-      if (!subDate) {
-        errors.push(`Row ${i + 1}: Invalid submission date format. Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, MM-DD-YYYY, DD.MM.YYYY`)
+      if (!startDate) {
+        errors.push(`Row ${i + 1}: Invalid process start date format. Supported formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY, MM-DD-YYYY, DD.MM.YYYY`)
         continue
       }
 
-      // Validate status enum if provided
-      if (award.status) {
-        const validStatuses = ['EVALUATING', 'SUBMITTED', 'UNDER_REVIEW', 'WINNER', 'FINALIST', 'NOT_SELECTED', 'WITHDRAWN']
-        if (!validStatuses.includes(award.status.toUpperCase())) {
-          errors.push(`Row ${i + 1}: Invalid status '${award.status}'. Valid options: ${validStatuses.join(', ')}`)
-          continue
-        }
+      // Ensure processStartDate is before publicationDate
+      if (startDate >= pubDate) {
+        errors.push(`Row ${i + 1}: Process start date must be before publication date`)
+        continue
       }
 
       // Validate priority enum if provided
       if (award.priority) {
         const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
-        if (!validPriorities.includes(award.priority.toUpperCase())) {
+        if (!validPriorities.includes(String(award.priority).toUpperCase())) {
           errors.push(`Row ${i + 1}: Invalid priority '${award.priority}'. Valid options: ${validPriorities.join(', ')}`)
           continue
         }
       }
 
-      // Validate that submission date is before publication date
-      if (subDate >= pubDate) {
-        errors.push(`Row ${i + 1}: Submission date must be before publication date`)
+      // Check for duplicate awardName in current batch
+      if (validAwards.some(va => va.awardName === award.awardName)) {
+        errors.push(`Row ${i + 1}: Duplicate award name in upload: ${award.awardName}`)
         continue
       }
 
-      // Check for duplicate award name in current batch
-      if (validAwards.some(va => va.name === award.name)) {
-        errors.push(`Row ${i + 1}: Duplicate award name in upload: ${award.name}`)
-        continue
-      }
-
-      // Check for existing award name in database
-      if (existingNames.has(award.name)) {
-        errors.push(`Row ${i + 1}: Award name already exists: ${award.name}`)
+      // Check for existing awardName in database
+      if (existingNames.has(award.awardName)) {
+        errors.push(`Row ${i + 1}: Award name already exists: ${award.awardName}`)
         continue
       }
 
@@ -106,58 +110,44 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Prepare data for batch creation
+    // Prepare data for batch creation (align with actual database schema from debug results)
     const awardsToCreate = validAwards.map(awardData => {
-      // Process product topics
-      let processedTopics = null
-      if (awardData.productTopics) {
-        if (Array.isArray(awardData.productTopics)) {
-          processedTopics = awardData.productTopics
-        } else if (typeof awardData.productTopics === 'string') {
-          processedTopics = awardData.productTopics.split(',').map(t => t.trim()).filter(t => t)
-        } else {
-          processedTopics = [awardData.productTopics]
-        }
-      }
-      
+      const now = new Date().toISOString()
       return {
-        name: awardData.name,
-        link: awardData.link || null,
-        organization: awardData.organization,
-        productTopics: processedTopics ? JSON.stringify(processedTopics) : null,
+        id: generateId(),
+        awardName: awardData.awardName, // Database uses 'awardName'
+        contactInfo: awardData.contactInfo, // Database uses 'contactInfo'
+        processStartDate: parseDate(awardData.processStartDate)!.toISOString(), // Database uses 'processStartDate'
+        publicationDate: parseDate(awardData.publicationDate)!.toISOString(), // Database uses 'publicationDate'
+        topics: awardData.topics ? (Array.isArray(awardData.topics) ? awardData.topics.join(', ') : String(awardData.topics)) : 'General', // Required field
         priority: (awardData.priority || 'MEDIUM').toUpperCase(),
-        submissionDate: parseDate(awardData.submissionDate)!.toISOString(),
-        publicationDate: parseDate(awardData.publicationDate)!.toISOString(),
-        owner: awardData.owner || null,
-        status: (awardData.status || 'EVALUATING').toUpperCase(),
-        cost: awardData.cost || null,
-        notes: awardData.notes || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now, // Required field
+        updatedAt: now // Required field
+        // Note: Removed optional fields (link, owner, cost, notes) as they don't exist in the table schema
       }
     })
 
-    // Create awards
-    let createdAwards = []
-    const createErrors = []
+    // Create awards one by one to capture per-row errors
+    const createdAwards: any[] = []
+    const createErrors: string[] = []
     
     for (const awardData of awardsToCreate) {
       try {
-        const { data: award, error: createError } = await supabase
+        const { data: award, error: createError } = await supabaseService
           .from('awards')
           .insert(awardData)
           .select()
           .single()
         
         if (createError) {
-          console.error(`Failed to create award "${awardData.name}":`, createError)
-          createErrors.push(`Failed to create award "${awardData.name}": ${createError.message}`)
-        } else {
+          console.error(`Failed to create award "${awardData.awardName}":`, createError)
+          createErrors.push(`Failed to create award "${awardData.awardName}": ${createError.message}`)
+        } else if (award) {
           createdAwards.push(award)
         }
-      } catch (individualError) {
-        console.error(`Failed to create award "${awardData.name}":`, individualError)
-        createErrors.push(`Failed to create award "${awardData.name}": ${individualError.message}`)
+      } catch (individualError: any) {
+        console.error(`Failed to create award "${awardData.awardName}":`, individualError)
+        createErrors.push(`Failed to create award "${awardData.awardName}": ${individualError.message || individualError}`)
       }
     }
 

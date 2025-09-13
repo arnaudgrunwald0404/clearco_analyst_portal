@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Building, Globe, Image, Save, AlertCircle, CheckCircle, Upload, X } from 'lucide-react'
+import { useSettings } from '@/contexts/SettingsContext'
 
 interface GeneralSettings {
   id: string
@@ -34,6 +35,7 @@ interface GeneralSettingsFormProps {
 }
 
 export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSettingsFormProps) {
+  const { refetch: refetchSettings } = useSettings()
   const [settings, setSettings] = useState<GeneralSettings | null>(null)
   const [formData, setFormData] = useState<FormData>({
     company_name: '',
@@ -100,6 +102,9 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
           type: 'success',
           text: 'Settings saved successfully!'
         })
+        
+        // Refresh the settings context to update the header
+        await refetchSettings()
       } else {
         const errorData = await response.json()
         setMessage({
@@ -141,6 +146,9 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
           type: 'success',
           text: 'Logo uploaded successfully!'
         })
+        
+        // Refresh the settings context to update the header
+        await refetchSettings()
       } else {
         const errorData = await response.json()
         setMessage({
@@ -254,99 +262,105 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
       <div 
         className="space-y-2"
         onMouseEnter={(e) => showHelp?.({
-          content: uploadMethod === 'url' 
-            ? 'Enter a public URL pointing to your company logo image'
-            : 'Upload an image file (JPG, PNG, GIF, WebP, or SVG) up to 5MB'
+          content: formData.logo_url 
+            ? 'Click on the logo to edit or change the upload method'
+            : uploadMethod === 'url' 
+              ? 'Enter a public URL pointing to your company logo image'
+              : 'Upload an image file (JPG, PNG, GIF, WebP, or SVG) up to 5MB'
         }, e.currentTarget)}
         onMouseLeave={() => hideHelp?.()}
       >
         <Label className="text-base font-medium flex items-center gap-3">
           <Image className="w-5 h-5" />
           Company Logo
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit ml-4">
-            <button
-              type="button"
-              onClick={() => setUploadMethod('url')}
-              className={`px-2 py-0.5 rounded text-sm font-medium transition-colors ${
-                uploadMethod === 'url'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Enter URL
-            </button>
-            <button
-              type="button"
-              onClick={() => setUploadMethod('file')}
-              className={`px-2 py-0.5 rounded text-sm font-medium transition-colors ${
-                uploadMethod === 'file'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Upload File
-            </button>
-          </div>
         </Label>
         
-        {uploadMethod === 'url' ? (
+        {!formData.logo_url ? (
+          // Show upload method choice only when no logo is loaded
           <div className="space-y-2">
-            <Input
-              id="logo_url"
-              type="url"
-              value={formData.logo_url}
-              onChange={(e) => handleInputChange('logo_url', e.target.value)}
-              placeholder="https://example.com/logo.png"
-              className="w-full py-2 ml-6 pl-2"
-            />
+            <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit ml-6 mb-3">
+              <button
+                type="button"
+                onClick={() => setUploadMethod('url')}
+                className={`px-2 py-0.5 rounded text-sm font-medium transition-colors ${
+                  uploadMethod === 'url'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Enter URL
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMethod('file')}
+                className={`px-2 py-0.5 rounded text-sm font-medium transition-colors ${
+                  uploadMethod === 'file'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Upload File
+              </button>
+            </div>
+            {uploadMethod === 'url' ? (
+              <div className="space-y-2">
+                <Input
+                  id="logo_url"
+                  type="url"
+                  value={formData.logo_url}
+                  onChange={(e) => handleInputChange('logo_url', e.target.value)}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full py-2 ml-6 pl-2"
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <div className="flex gap-3 ml-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {uploading ? 'Uploading...' : 'Choose File'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="space-y-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileInputChange}
-              className="hidden"
-            />
-            <div className="flex gap-3 ml-8">
+          // Show logo preview with edit functionality
+          <div className="ml-6">
+            <div className="flex items-center gap-3">
+              <img
+                src={formData.logo_url}
+                alt="Logo preview"
+                className="max-w-32 max-h-16 object-contain border border-gray-200 rounded cursor-pointer hover:border-blue-300 transition-colors"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, logo_url: '' }))
+                  setUploadMethod('url')
+                }}
+                title="Click to change logo"
+              />
               <Button
                 type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-                className="flex items-center gap-2"
+                variant="ghost"
+                size="sm"
+                onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
-                <Upload className="w-4 h-4" />
-                {uploading ? 'Uploading...' : 'Choose File'}
+                Remove
               </Button>
-              {formData.logo_url && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setFormData(prev => ({ ...prev, logo_url: '' }))}
-                  className="flex items-center gap-2 text-red-600 hover:text-red-700"
-                >
-                  <X className="w-4 h-4" />
-                  Remove
-                </Button>
-              )}
             </div>
-          </div>
-        )}
-
-        {/* Logo Preview */}
-        {formData.logo_url && (
-          <div className="ml-8 mt-4">
-            <p className="text-sm text-gray-600 mb-3">Preview:</p>
-            <img
-              src={formData.logo_url}
-              alt="Logo preview"
-              className="max-w-32 max-h-16 object-contain border border-gray-200 rounded"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
           </div>
         )}
       </div>
@@ -375,7 +389,7 @@ export default function GeneralSettingsForm({ showHelp, hideHelp }: GeneralSetti
       </div>
 
       {/* Save Button with inline success message */}
-      <div className="ml-6 flex items-center">
+      <div className="ml-6 flex items-center gap-6">
         <Button
           type="submit"
           disabled={saving}

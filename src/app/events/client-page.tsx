@@ -1,10 +1,13 @@
 'use client'
 
-import { CalendarDays, Plus, RefreshCw, Search, Filter, Loader, ArrowUpDown, Check, Handshake, Eye } from 'lucide-react'
+import { CalendarDays, Plus, RefreshCw, Search, Filter, Loader, ArrowUpDown, Check, Handshake, Eye, DollarSign, Plane } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import EventActionsMenu from '@/components/actions/event-actions-menu'
 import AddEventModal from '@/components/modals/add-event-modal'
+import SyncDetailsModal from '@/components/modals/sync-details-modal'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface EventItem {
   id: string
@@ -13,7 +16,7 @@ interface EventItem {
   type?: string | null
   audienceGroups?: string | null
   startDate: string
-  participationTypes?: string | null
+  participationStatus?: string | null
   owner?: string | null
   location?: string | null
   status?: string | null
@@ -37,6 +40,8 @@ export default function EventsClientPage() {
   const [bulkOpen, setBulkOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showSyncDetailsModal, setShowSyncDetailsModal] = useState(false)
+  const [syncDetails, setSyncDetails] = useState<any>(null)
 
   const handleSync = async () => {
     setIsSyncing(true)
@@ -46,6 +51,8 @@ export default function EventsClientPage() {
       const data = await response.json()
       if (data.success) {
         setSyncMessage(data.message)
+        setSyncDetails(data.details)
+        setShowSyncDetailsModal(true)
         await fetchEvents()
       } else {
         setSyncMessage(data.error || 'Failed to sync events.')
@@ -108,18 +115,43 @@ export default function EventsClientPage() {
     return { sponsoring, attending, considering, stay }
   }, [filteredEvents])
 
+  const sponsoringAttendingSorted = useMemo(() => {
+    const rows = [
+      ...groupByParticipation.sponsoring,
+      ...groupByParticipation.attending,
+    ]
+    rows.sort((a, b) => {
+      const da = a.startDate ? new Date(a.startDate).getTime() : 0
+      const db = b.startDate ? new Date(b.startDate).getTime() : 0
+      return db - da // descending: most recent first
+    })
+    return rows
+  }, [groupByParticipation])
+
   const setParticipation = async (id: string, status: 'SPONSORING' | 'ATTENDING' | 'CONSIDERING' | null) => {
     try {
+      console.log('Updating participation:', { id, status })
       const res = await fetch(`/api/events/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participationStatus: status })
+        body: JSON.stringify({ participationStatus: status }),
+        credentials: 'include'
       })
-      if (!res.ok) throw new Error('Failed to update participation')
+      
+      console.log('Response status:', res.status)
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('API Error:', errorData)
+        throw new Error(errorData.error || `HTTP ${res.status}: Failed to update participation`)
+      }
+      
+      const result = await res.json()
+      console.log('Update successful:', result)
       await fetchEvents()
     } catch (e) {
-      console.error(e)
-      alert('Failed to update participation')
+      console.error('Participation update error:', e)
+      alert(`Failed to update participation: ${e instanceof Error ? e.message : 'Unknown error'}`)
     }
   }
 
@@ -173,7 +205,6 @@ export default function EventsClientPage() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Event</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Audience</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -186,13 +217,24 @@ export default function EventsClientPage() {
                   <input type="checkbox" checked={selectedEvents.has(ev.id)} onChange={()=>toggleEventSelection(ev.id)} />
                 </td>
                 <td className="px-6 py-4 w-1/2 whitespace-normal break-words">
-                  <div className="text-sm font-medium text-gray-900">{ev.eventName || 'Untitled Event'}</div>
+                  <div className="text-sm font-medium text-gray-900 flex items-center">
+                    {ev.eventName || 'Untitled Event'}
+                    {ev.participationStatus === 'SPONSORING' && (
+<span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-1" title="Sponsoring">
+                        <DollarSign className="w-4 h-4" />
+                      </span>
+                    )}
+                    {ev.participationStatus === 'ATTENDING' && (
+<span className="ml-2 inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-1" title="Attending">
+                        <Plane className="w-4 h-4" />
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="text-sm text-gray-900">{ev.startDate ? new Date(ev.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ev.location || '—'}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{ev.status || '—'}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 truncate max-w-xs">
                   {(() => {
                     try {
@@ -204,12 +246,40 @@ export default function EventsClientPage() {
                   })()}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <div className="flex gap-2">
-                    <button className={cn('px-2 py-1 rounded border text-xs', ev.participationStatus === 'SPONSORING' ? 'bg-purple-600 text-white' : 'border-gray-300')} onClick={() => setParticipation(ev.id, 'SPONSORING')}>Sponsoring</button>
-                    <button className={cn('px-2 py-1 rounded border text-xs', ev.participationStatus === 'ATTENDING' ? 'bg-blue-600 text-white' : 'border-gray-300')} onClick={() => setParticipation(ev.id, 'ATTENDING')}>Attending</button>
-                    <button className={cn('px-2 py-1 rounded border text-xs', ev.participationStatus === 'CONSIDERING' ? 'bg-amber-500 text-white' : 'border-gray-300')} onClick={() => setParticipation(ev.id, 'CONSIDERING')}>Considering</button>
-                    <button className={cn('px-2 py-1 rounded border text-xs', ev.participationStatus == null ? 'bg-gray-700 text-white' : 'border-gray-300')} onClick={() => setParticipation(ev.id, null)}>Not Attending</button>
-                  </div>
+                  <Select 
+                    value={ev.participationStatus || 'NOT_ATTENDING'} 
+                    onValueChange={(value) => setParticipation(ev.id, value === 'NOT_ATTENDING' ? null : value as 'SPONSORING' | 'ATTENDING' | 'CONSIDERING')}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SPONSORING">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                          Sponsoring
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="ATTENDING">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                          Attending
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="CONSIDERING">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                          Considering
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="NOT_ATTENDING">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-gray-700"></span>
+                          Not Attending
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm" onClick={(e) => e.stopPropagation()}>
                   <div data-testid="event-actions-menu">
@@ -226,7 +296,7 @@ export default function EventsClientPage() {
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-12">
+                <td colSpan={7} className="text-center py-12">
                   <div className="text-gray-500">No events in this section.</div>
                 </td>
               </tr>
@@ -326,14 +396,25 @@ export default function EventsClientPage() {
 
       {!loading && !error && (
         <>
-          {groupByParticipation.sponsoring.length > 0 && renderTable(groupByParticipation.sponsoring, 'Sponsoring')}
-          {groupByParticipation.attending.length > 0 && renderTable(groupByParticipation.attending, 'Attending')}
-          {groupByParticipation.considering.length > 0 && renderTable(groupByParticipation.considering, 'Considering')}
-          {groupByParticipation.stay.length > 0 && renderTable(groupByParticipation.stay, 'Not Attending')}
+          <Tabs defaultValue="active">
+            <TabsList className="mb-4">
+              <TabsTrigger value="active">
+                Sponsoring ({groupByParticipation.sponsoring.length}) / Attending ({groupByParticipation.attending.length})
+              </TabsTrigger>
+              <TabsTrigger value="not_attending">
+                Not Attending ({groupByParticipation.stay.length})
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="active">
+              {renderTable(sponsoringAttendingSorted, 'Sponsoring / Attending')}
+            </TabsContent>
+            <TabsContent value="not_attending">
+              {renderTable(groupByParticipation.stay, 'Not Attending')}
+            </TabsContent>
+          </Tabs>
 
           {(groupByParticipation.sponsoring.length === 0 &&
             groupByParticipation.attending.length === 0 &&
-            groupByParticipation.considering.length === 0 &&
             groupByParticipation.stay.length === 0) && (
             <div className="bg-white shadow rounded-lg p-12 text-center text-gray-500">
               No events found matching your criteria.
@@ -348,6 +429,13 @@ export default function EventsClientPage() {
           setShowAddModal(false)
           await fetchEvents()
         }}
+      />
+      
+      <SyncDetailsModal
+        isOpen={showSyncDetailsModal}
+        onClose={() => setShowSyncDetailsModal(false)}
+        details={syncDetails}
+        message={syncMessage}
       />
     </div>
   )

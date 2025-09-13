@@ -20,9 +20,10 @@ export async function middleware(request: NextRequest) {
     return resp
   }
 
-  // Bypass middleware for SSE calendar sync endpoint to avoid interfering with streaming
-  // Example: /api/settings/calendar-connections/{id}/sync
-  if (/^\/api\/settings\/calendar-connections\/[^/]+\/sync$/.test(pathname)) {
+  // Bypass middleware for auth callbacks and SSE endpoints
+  if (/^\/api\/settings\/calendar-connections\/[^/]+\/sync$/.test(pathname) ||
+      /^\/api\/auth\/.*\/callback$/.test(pathname) ||
+      pathname === '/auth/callback') {
     const resp = NextResponse.next()
     resp.headers.set('X-Request-Id', reqId)
     return resp

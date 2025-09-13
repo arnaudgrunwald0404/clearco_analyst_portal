@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Bulk Upload</title>
+</head>
+<body>
+    <h1>Debug File Input</h1>
+    
+    <div>
+        <h2>Test 1: Simple File Input</h2>
+        <input type="file" id="simpleFileInput" accept=".csv,.xlsx,.xls" />
+        <p id="simpleResult">No file selected</p>
+    </div>
+    
+    <div>
+        <h2>Test 2: Hidden File Input with Label</h2>
+        <label for="hiddenFileInput" style="cursor: pointer; padding: 10px; background: blue; color: white;">
+            Choose File (Hidden Input)
+        </label>
+        <input type="file" id="hiddenFileInput" accept=".csv,.xlsx,.xls" style="display: none;" />
+        <p id="hiddenResult">No file selected</p>
+    </div>
+    
+    <div>
+        <h2>Test 3: Button Trigger</h2>
+        <button id="triggerButton" style="padding: 10px; background: green; color: white;">
+            Choose File (Button)
+        </button>
+        <input type="file" id="buttonFileInput" accept=".csv,.xlsx,.xls" style="display: none;" />
+        <p id="buttonResult">No file selected</p>
+    </div>
+    
+    <script>
+        // Test 1: Simple file input
+        document.getElementById('simpleFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            document.getElementById('simpleResult').textContent = file ? `Selected: ${file.name}` : 'No file selected';
+            console.log('Simple input:', file);
+        });
+        
+        // Test 2: Hidden file input with label
+        document.getElementById('hiddenFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            document.getElementById('hiddenResult').textContent = file ? `Selected: ${file.name}` : 'No file selected';
+            console.log('Hidden input:', file);
+        });
+        
+        // Test 3: Button trigger
+        document.getElementById('triggerButton').addEventListener('click', function() {
+            console.log('Button clicked, triggering file input...');
+            document.getElementById('buttonFileInput').click();
+        });
+        
+        document.getElementById('buttonFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            document.getElementById('buttonResult').textContent = file ? `Selected: ${file.name}` : 'No file selected';
+            console.log('Button triggered input:', file);
+        });
+        
+        console.log('Debug page loaded');
+    </script>
+</body>
+</html>
+
+

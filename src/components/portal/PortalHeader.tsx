@@ -72,29 +72,34 @@ export function PortalHeader({ companyName = 'ClearCompany' }: PortalHeaderProps
       {/* Dark overlay for text legibility */}
       <div className="absolute inset-0 bg-opacity-40"></div>
       
-      {/* Header content */}
-      <div className="relative z-10 h-full flex flex-col justify-between p-6">
-        {/* Top row with logout button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 px-4 py-2 bg-white text-black rounded-lg transition-all duration-200 backdrop-blur-sm border border-black"
-            aria-label="Sign out"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Sign Out</span>
-          </button>
-        </div>
-
-        {/* Bottom row with welcome message */}
-        <div className="text-gray">
-          <h1 className="text-2xl font-bold mb-1">
-            Welcome back, {user?.name || 'Analyst'}!
+            {/* Header content */}
+      <div className="relative z-10 h-full flex items-center justify-between pr-6">
+        {/* Cupcake logo on the left - touching screen edge */}
+        <img 
+          src="/cupcake_logo.png" 
+          alt="Cupcake Logo" 
+          className="h-36 w-auto object-contain"
+        />
+        
+        {/* Center content */}
+        <div className="text-gray text-center flex-1">
+          <h1 className="text-2xl font-bold text-center">
+          Welcome to your Analyst portal by {settings?.companyName || companyName}
           </h1>
           <p className="text-lg opacity-90">
-            Analyst Portal • {settings?.companyName || companyName}
+            Cupcake is HR Tech's Industry Relationship Management Portal
           </p>
         </div>
+        
+        {/* Logout button on the right */}
+        <button
+          onClick={handleLogout}
+          className="flex items-center space-x-2 px-4 py-2 bg-white text-black rounded-lg transition-all duration-200 backdrop-blur-sm border border-black"
+          aria-label="Sign out"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="text-sm font-medium">Sign Out</span>
+        </button>
       </div>
     </header>
   )

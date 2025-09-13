@@ -5,7 +5,7 @@ import { Calendar, Clock, AlertTriangle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface CalendarSyncOptions {
-  timeWindow: 'future' | 'custom' | 'all'
+  timeWindow: 'future' | 'next30' | 'custom' | 'all'
   startDate?: string
   endDate?: string
   includePast: boolean
@@ -35,13 +35,21 @@ export default function CalendarSyncOptionsModal({
     onConfirm(options)
   }
 
-  const handleTimeWindowChange = (window: 'future' | 'custom' | 'all') => {
+  const handleTimeWindowChange = (window: 'future' | 'next30' | 'custom' | 'all') => {
     if (window === 'future') {
       setOptions({
         ...options,
         timeWindow: 'future',
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        includePast: false
+      })
+    } else if (window === 'next30') {
+      setOptions({
+        ...options,
+        timeWindow: 'next30',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         includePast: false
       })
     } else if (window === 'all') {
@@ -147,6 +155,56 @@ export default function CalendarSyncOptionsModal({
                       </p>
                       <div className="mt-2 text-xs text-gray-500">
                         <span className="font-medium">Range:</span> Today → 6 months ahead
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Next 30 Days */}
+              <div className="relative">
+                <input
+                  type="radio"
+                  id="next30"
+                  name="timeWindow"
+                  value="next30"
+                  checked={options.timeWindow === 'next30'}
+                  onChange={() => handleTimeWindowChange('next30')}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor="next30"
+                  className={cn(
+                    "block p-4 border-2 rounded-lg cursor-pointer transition-all duration-200",
+                    options.timeWindow === 'next30'
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5",
+                      options.timeWindow === 'next30'
+                        ? "border-blue-500 bg-blue-500"
+                        : "border-gray-300"
+                    )}>
+                      {options.timeWindow === 'next30' && (
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calendar className="w-4 h-4 text-green-600" />
+                        <span className="font-medium text-gray-900">Next 30 Days</span>
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full font-medium">
+                          Quick
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Sync meetings for the next 30 days only. Perfect for short-term planning.
+                      </p>
+                      <div className="mt-2 text-xs text-gray-500">
+                        <span className="font-medium">Range:</span> Today → 30 days ahead
                       </div>
                     </div>
                   </div>
@@ -296,6 +354,7 @@ export default function CalendarSyncOptionsModal({
             <div className="text-sm text-gray-600 text-center">
               <span className="font-medium">Estimated sync time:</span>{' '}
               {options.timeWindow === 'future' ? '2-5 minutes' : 
+               options.timeWindow === 'next30' ? '1-3 minutes' :
                options.timeWindow === 'all' ? '5-15 minutes' : '3-10 minutes'}
             </div>
           </div>

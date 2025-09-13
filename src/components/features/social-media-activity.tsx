@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Twitter,
+  X,
   Linkedin,
   MessageSquare,
   TrendingUp,
@@ -19,7 +19,7 @@ import { handleAbortError } from '@/lib/utils/abort-error-handler'
 interface SocialPost {
   id: string
   analystId?: string
-  platform: 'TWITTER' | 'LINKEDIN'
+  platform: 'X' | 'LINKEDIN'
   content: string
   url: string
   postedAt: string
@@ -42,8 +42,8 @@ interface SocialPost {
 
 function getPlatformIcon(platform: string) {
   switch (platform) {
-    case 'TWITTER':
-      return <Twitter className="w-4 h-4 text-blue-400" />
+    case 'X':
+      return <X className="w-4 h-4 text-black" />
     case 'LINKEDIN':
       return <Linkedin className="w-4 h-4 text-blue-600" />
     default:

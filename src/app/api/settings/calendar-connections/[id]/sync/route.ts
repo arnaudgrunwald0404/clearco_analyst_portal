@@ -150,7 +150,7 @@ async function startCalendarSync(
   forceSync: boolean = false, 
   supabase: SupabaseClient<Database>,
   timeWindowOptions?: {
-    timeWindow: 'future' | 'custom' | 'all'
+    timeWindow: 'future' | 'next30' | 'custom' | 'all'
     startDate?: string
     endDate?: string
     includePast: boolean
@@ -196,6 +196,11 @@ async function startCalendarSync(
       timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
       timeMaxDate = new Date(now)
       timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
+    } else if (timeWindowOptions?.timeWindow === 'next30') {
+      // Next 30 days: from today to 30 days ahead
+      timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
+      timeMaxDate = new Date(now)
+      timeMaxDate.setDate(timeMaxDate.getDate() + 30) // 30 days ahead
     } else if (timeWindowOptions?.timeWindow === 'custom' && timeWindowOptions.startDate && timeWindowOptions.endDate) {
       // Custom date range
       timeMin = new Date(timeWindowOptions.startDate)
@@ -445,7 +450,7 @@ export async function POST(
       user_id?: string; 
       forceSync?: boolean;
       timeWindowOptions?: {
-        timeWindow: 'future' | 'custom' | 'all'
+        timeWindow: 'future' | 'next30' | 'custom' | 'all'
         startDate?: string
         endDate?: string
         includePast: boolean

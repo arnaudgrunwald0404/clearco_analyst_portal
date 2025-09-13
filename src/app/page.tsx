@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
@@ -22,6 +22,7 @@ interface DashboardMetrics {
   briefingsScheduled: number
   briefingsDue: number
   briefingFollowUps: number
+  followUpsCount?: number
   newslettersYTD: number
   relationshipHealth: number
   upcomingPublications: number
@@ -32,6 +33,12 @@ interface DashboardMetrics {
     HIGH: number
     MEDIUM: number
     LOW: number
+  }
+  briefingsDueDetailed?: {
+    highestTier: number
+    nextTier: number
+    total: number
+    isLoading?: boolean
   }
 }
 
@@ -113,6 +120,24 @@ function DashboardContent() {
     message: string
   } | null>(null)
 
+  // Fetch follow-ups count
+  const fetchFollowUpsCount = async (signal?: AbortSignal) => {
+    try {
+      const response = await fetch('/api/briefings/follow-ups', { signal })
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          return result.data.length
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Error fetching follow-ups count:', error)
+      }
+    }
+    return 0
+  }
+
   // Redirect unauthenticated users to /auth after auth resolves
   useEffect(() => {
     if (!authLoading && !user) {
@@ -120,116 +145,184 @@ function DashboardContent() {
     }
   }, [authLoading, user, router])
 
+  // Track ongoing request controller/timeout across renders so we can cancel safely
+  const controllerRef = useRef<AbortController | null>(null)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const fetchDashboardData = async () => {
-    let controller: AbortController | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-    
+    // Abort any in-flight request before starting a new one
+    if (controllerRef.current) {
+      controllerRef.current.abort()
+      controllerRef.current = null
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+      timeoutRef.current = null
+    }
+
+    const controller = new AbortController()
+    controllerRef.current = controller
+
     try {
       // Add timeout to prevent hanging requests
-      controller = new AbortController();
-      timeoutId = setTimeout(() => {
-        if (controller) {
-          console.log('⏰ Request timeout - aborting dashboard data fetch');
-          controller.abort();
+      timeoutRef.current = setTimeout(() => {
+        if (controllerRef.current) {
+          console.log('⏰ Request timeout - aborting dashboard data fetch')
+          controllerRef.current.abort()
         }
-      }, 15000); // Increased to 15 seconds
+      }, 15000) // Increased to 15 seconds
       
       // Use Promise.allSettled to handle failures gracefully
       const results = await Promise.allSettled([
         fetch('/api/dashboard/metrics', { signal: controller.signal }),
         fetch('/api/dashboard/recent-activity', { signal: controller.signal }),
-        fetch('/api/action-items?status=pending', { signal: controller.signal })
-      ]);
+        fetch('/api/action-items?status=pending', { signal: controller.signal }),
+        fetch('/api/dashboard/briefings-due-cache', { signal: controller.signal }),
+        fetchFollowUpsCount(controller.signal)
+      ])
+
+      // If aborted, stop processing
+      if (controller.signal.aborted) {
+        return
+      }
 
       // Clear timeout if all requests completed
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
 
       // Process results with better error handling
-      const [metricsResult, activityResult, actionItemsResult] = results;
+      const [metricsResult, activityResult, actionItemsResult, briefingsDueResult, followUpsResult] = results
       
       // Process metrics
       if (metricsResult.status === 'fulfilled' && metricsResult.value.ok) {
         try {
-          const data = await metricsResult.value.json();
-          const metricsData = data.data || data;
-          setMetrics(metricsData);
-          console.log('📊 Dashboard metrics loaded:', data.cached ? '(cached)' : '(fresh)');
+          const data = await metricsResult.value.json()
+          if (controller.signal.aborted) return
+          const metricsData = data.data || data
+          setMetrics(metricsData)
+          console.log('📊 Dashboard metrics loaded:', data.cached ? '(cached)' : '(fresh)')
         } catch (error) {
-          console.error('Failed to parse metrics data:', error);
+          if (!(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse metrics data:', error)
+          }
+        }
+      } else if (metricsResult.status === 'rejected') {
+        if (!(metricsResult.reason instanceof DOMException && metricsResult.reason.name === 'AbortError')) {
+          console.error('Failed to fetch metrics:', metricsResult.reason)
         }
       } else {
-        console.error('Failed to fetch metrics:', metricsResult.status === 'rejected' ? metricsResult.reason : metricsResult.value?.status);
+        console.error('Failed to fetch metrics:', metricsResult.value?.status)
       }
 
       // Process activity
       if (activityResult.status === 'fulfilled' && activityResult.value.ok) {
         try {
-          const data = await activityResult.value.json();
-          const activityData = Array.isArray(data) ? data : (data.data || data);
-          setRecentActivity(activityData);
-          console.log('📈 Recent activity loaded:', data.cached ? '(cached)' : '(fresh)');
+          const data = await activityResult.value.json()
+          if (controller.signal.aborted) return
+          const activityData = Array.isArray(data) ? data : (data.data || data)
+          setRecentActivity(activityData)
+          console.log('📈 Recent activity loaded:', data.cached ? '(cached)' : '(fresh)')
         } catch (error) {
-          console.error('Failed to parse activity data:', error);
+          if (!(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse activity data:', error)
+          }
+        }
+      } else if (activityResult.status === 'rejected') {
+        if (!(activityResult.reason instanceof DOMException && activityResult.reason.name === 'AbortError')) {
+          console.error('Failed to fetch activity:', activityResult.reason)
         }
       } else {
-        console.error('Failed to fetch activity:', activityResult.status === 'rejected' ? activityResult.reason : activityResult.value?.status);
+        console.error('Failed to fetch activity:', activityResult.value?.status)
       }
 
       // Process action items
       if (actionItemsResult.status === 'fulfilled' && actionItemsResult.value.ok) {
         try {
-          const data = await actionItemsResult.value.json();
+          const data = await actionItemsResult.value.json()
+          if (controller.signal.aborted) return
           if (data.success) {
-            setActionItems(data.data);
-            console.log('✅ Action items loaded');
+            setActionItems(data.data)
+            console.log('✅ Action items loaded')
           }
         } catch (error) {
-          console.error('Failed to parse action items data:', error);
+          if (!(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse action items data:', error)
+          }
+        }
+      } else if (actionItemsResult.status === 'rejected') {
+        if (!(actionItemsResult.reason instanceof DOMException && actionItemsResult.reason.name === 'AbortError')) {
+          console.error('Failed to fetch action items:', actionItemsResult.reason)
+        }
+        // Set empty array for action items if they fail
+        setActionItems([])
+      } else {
+        console.error('Failed to fetch action items:', actionItemsResult.value?.status)
+        setActionItems([])
+      }
+
+      // Process briefings due cache
+      if (briefingsDueResult.status === 'fulfilled' && briefingsDueResult.value.ok) {
+        try {
+          const data = await briefingsDueResult.value.json()
+          if (controller.signal.aborted) return
+          if (data.success) {
+            setMetrics(prev => prev ? {
+              ...prev,
+              briefingsDueDetailed: {
+                highestTier: data.data.highestTier,
+                nextTier: data.data.nextTier,
+                total: data.data.total,
+                isLoading: data.isLoading
+              }
+            } : prev)
+            console.log('📊 Briefings due cache loaded:', data.cached ? '(cached)' : '(fresh)')
+          }
+        } catch (error) {
+          if (!(error instanceof Error && error.name === 'AbortError')) {
+            console.error('Failed to parse briefings due cache data:', error)
+          }
+        }
+      } else if (briefingsDueResult.status === 'rejected') {
+        if (!(briefingsDueResult.reason instanceof DOMException && briefingsDueResult.reason.name === 'AbortError')) {
+          console.error('Failed to fetch briefings due cache:', briefingsDueResult.reason)
         }
       } else {
-        console.error('Failed to fetch action items:', actionItemsResult.status === 'rejected' ? actionItemsResult.reason : actionItemsResult.value?.status);
-        // Set empty array for action items if they fail
-        setActionItems([]);
+        console.error('Failed to fetch briefings due cache:', briefingsDueResult.value?.status)
+      }
+
+      // Process follow-ups count
+      if (followUpsResult.status === 'fulfilled') {
+        const followUpsCount = followUpsResult.value
+        if (controller.signal.aborted) return
+        setMetrics(prev => prev ? {
+          ...prev,
+          followUpsCount
+        } : prev)
+        console.log('✅ Follow-ups count updated:', followUpsCount)
+      } else if (followUpsResult.status === 'rejected') {
+        if (!(followUpsResult.reason instanceof DOMException && followUpsResult.reason.name === 'AbortError')) {
+          console.error('Failed to fetch follow-ups count:', followUpsResult.reason)
+        }
       }
       
     } catch (error) {
       // Clear timeout if it exists
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
       }
       
       if (error instanceof Error && error.name === 'AbortError') {
-        console.error('⏰ Request timeout - dashboard data fetch took too long');
-        // Set default values for timeout
-        setMetrics({
-          totalAnalysts: 0,
-          activeAnalysts: 0,
-          analystsAddedPast90Days: 0,
-          contentItemsPast90Days: 0,
-          engagementRate: 0,
-          briefingsPast90Days: 0,
-          briefingsYTD: 0,
-          briefingsScheduled: 0,
-          briefingsDue: 0,
-          briefingFollowUps: 0,
-          newslettersYTD: 0,
-          relationshipHealth: 0,
-          upcomingPublications: 0,
-          recentContentItems: [],
-          newAnalysts: []
-        });
-        setRecentActivity([]);
-        setActionItems([]);
+        // Silent: expected during navigation/unmount or timeout
+        return
       } else {
-        console.error('❌ Error fetching dashboard data:', error);
+        console.error('❌ Error fetching dashboard data:', error)
       }
     } finally {
-      setLoading(false);
-      setActionItemsLoading(false);
+      setLoading(false)
+      setActionItemsLoading(false)
     }
   }
 
@@ -268,21 +361,20 @@ function DashboardContent() {
       window.history.replaceState({}, '', '/')
     }
 
-    // Create a flag to track if component is still mounted
-    let isMounted = true;
-    
-    const loadDashboardData = async () => {
-      if (isMounted) {
-        await fetchDashboardData();
-      }
-    };
-    
-    loadDashboardData();
+    // Kick off load; any in-flight requests will be aborted by fetchDashboardData
+    fetchDashboardData()
 
-    // Cleanup function to prevent memory leaks
+    // Cleanup function to prevent memory leaks and silence AbortErrors on unmount
     return () => {
-      isMounted = false;
-    };
+      if (controllerRef.current) {
+        controllerRef.current.abort()
+        controllerRef.current = null
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
   }, [searchParams])
 
   // Test if banner image loads successfully
@@ -509,130 +601,176 @@ function DashboardContent() {
             <Calendar className="h-5 w-5 text-blue-600 mr-2" />
             Briefings
           </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Briefings YTD */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-purple-400" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Column 1 */}
+            <div className="space-y-6">
+              {/* 1. Briefings (YTD) - First card */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <Calendar className="h-6 w-6 text-purple-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Briefings (YTD)
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.briefingsYTD || 0}
+                        </dd>
+                      </dl>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Briefings (YTD)
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsYTD || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Newsletters YTD */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Mail className="h-6 w-6 text-indigo-400" />
+              {/* 2. Follow Ups - Second card */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <MessageSquare className="h-6 w-6 text-green-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Follow Ups
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.followUpsCount ?? 0}
+                        </dd>
+                      </dl>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Newsletters (YTD)
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.newslettersYTD || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Briefing Follow Ups - spans 2 rows */}
-            <Card className="lg:row-span-2">
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <MessageSquare className="h-6 w-6 text-green-400" />
+              {/* 3. Newsletters (YTD) - Third card */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <Mail className="h-6 w-6 text-indigo-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Newsletters (YTD)
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.newslettersYTD || 0}
+                        </dd>
+                      </dl>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Follow Ups
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingFollowUps || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
-            {/* Briefings Due */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Clock className="h-6 w-6 text-orange-400" />
+            {/* Column 2 */}
+            <div className="space-y-6">
+              {/* 4. Briefings Scheduled - Fourth card */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <Calendar className="h-6 w-6 text-blue-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Briefings Scheduled
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.briefingsScheduled || 0}
+                        </dd>
+                      </dl>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
-                        Briefings Due
-                        <a
-                          href="#"
-                          onClick={async (e) => {
-                            e.preventDefault()
-                            try {
-                              const resp = await fetch('/api/briefings/due?force=true', { cache: 'no-store' })
-                              const json = await resp.json()
-                              const counts = json?.countsByTier || {}
-                              const vh = counts.VERY_HIGH || 0
-                              const h = counts.HIGH || 0
-                              setMetrics((prev) => ({ ...(prev || {} as any), briefingsDue: vh + h } as any))
-                              // Navigate to Briefings Due page and let it render
-                              router.push('/briefings/due')
-                            } catch {}
-                          }}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          Refresh
-                        </a>
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsDue || 0}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            {/* Briefings Planned */}
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-blue-400" />
+              {/* 5. Briefings Due - Fifth card */}
+              <Card
+                className="cursor-pointer hover:shadow-lg transition-shadow"
+                onClick={() => router.push('/briefings/due')}
+              >
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <Clock className="h-6 w-6 text-orange-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <div className="flex items-start justify-between">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
+                            Briefings Due
+                            {metrics?.briefingsDueDetailed?.isLoading && (
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-orange-400"></div>
+                            )}
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                e.preventDefault()
+                                try {
+                                  const resp = await fetch('/api/dashboard/briefings-due-cache?force=true', { cache: 'no-store' })
+                                  const json = await resp.json()
+                                  if (json.success) {
+                                    setMetrics(prev => prev ? {
+                                      ...prev,
+                                      briefingsDueDetailed: {
+                                        highestTier: json.data.highestTier,
+                                        nextTier: json.data.nextTier,
+                                        total: json.data.total,
+                                        isLoading: json.isLoading
+                                      }
+                                    } : prev)
+                                  }
+                                } catch {}
+                              }}
+                              className="text-xs text-blue-600 hover:underline"
+                            >
+                              Refresh
+                            </button>
+                          </dt>
+                          <dd className="text-2xl font-semibold text-gray-900">
+                            {(metrics?.briefingsDueDetailed?.highestTier ?? 0) + (metrics?.briefingsDueDetailed?.nextTier ?? 0)}
+                          </dd>
+                        </dl>
+                        <div className="text-right">
+                          <div className="text-xs text-gray-400">Very High / High</div>
+                          <div className="text-lg font-semibold text-gray-900 mt-1">
+                            {metrics?.briefingsDueDetailed?.highestTier ?? 0} / {metrics?.briefingsDueDetailed?.nextTier ?? 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Briefings Scheduled
-                      </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsScheduled || 0}
-                      </dd>
-                    </dl>
+                </CardContent>
+              </Card>
+
+              {/* 6. Publications Tracked - Sixth card */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <BookOpen className="h-6 w-6 text-purple-400" />
+                    </div>
+                    <div className="ml-5 w-0 flex-1">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate">
+                          Publications Tracked
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.upcomingPublications || 0}
+                        </dd>
+                      </dl>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
 

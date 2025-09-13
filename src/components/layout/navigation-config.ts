@@ -9,9 +9,9 @@ import {
   Calendar,
   Award,
   CalendarDays,
-  Clock,
   FileText,
-  Shield
+  Shield,
+  X
 } from 'lucide-react'
 
 export interface NavigationItem {
@@ -26,9 +26,11 @@ export const mainNavigation: NavigationItem[] = [
   { name: 'Overview', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
   { name: 'Briefings', href: '/briefings', icon: Calendar },
-  { name: 'Briefings due', href: '/briefings/due', icon: Clock },
+  { name: 'Follow Ups', href: '/briefings/follow-ups', icon: null },
+  { name: 'Briefings Due', href: '/briefings/due', icon: null },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
+  { name: 'X Activity', href: '/twitter-activity', icon: X },
   { name: 'Publications', href: '/publications', icon: FileText },
   { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Events', href: '/events', icon: CalendarDays },

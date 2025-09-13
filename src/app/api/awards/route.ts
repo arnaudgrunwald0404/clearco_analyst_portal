@@ -13,7 +13,7 @@ export async function GET() {
     
     const supabase = await createClient()
 
-    const { data: awards, error } = await supabase
+    const { data: rows, error } = await supabase
       .from('awards')
       .select('*')
       .order('processStartDate', { ascending: false })
@@ -26,11 +26,28 @@ export async function GET() {
       )
     }
 
-    console.log(`🏆 [Awards API] Found ${awards?.length || 0} awards`)
+    const awards = (rows || []).map((r: any) => ({
+      id: r.id,
+      name: r.awardName ?? r.name ?? null,
+      link: r.link ?? null,
+      organization: r.contactInfo ?? r.organization ?? null,
+      productTopics: Array.isArray(r.topics) ? r.topics : (typeof r.topics === 'string' ? r.topics.split(',').map((t: string) => t.trim()).filter(Boolean) : r.productTopics ?? []),
+      priority: r.priority ?? 'MEDIUM',
+      submissionDate: r.processStartDate ?? r.submissionDate ?? null,
+      publicationDate: r.publicationDate ?? null,
+      owner: r.owner ?? null,
+      status: r.status ?? 'EVALUATING',
+      cost: r.cost ?? null,
+      notes: r.notes ?? null,
+      createdAt: r.createdAt ?? null,
+      updatedAt: r.updatedAt ?? null,
+    }))
+
+    console.log(`🏆 [Awards API] Found ${awards.length} awards`)
 
     return NextResponse.json({
       success: true,
-      data: awards || []
+      data: awards
     })
 
   } catch (error) {
@@ -99,7 +116,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`🏆 [Awards API] Award created: ${award.name}`)
+    console.log(`🏆 [Awards API] Award created: ${award.awardName || award.name || award.id}`)
 
     return NextResponse.json({
       success: true,

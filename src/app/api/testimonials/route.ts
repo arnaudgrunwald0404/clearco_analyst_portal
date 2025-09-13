@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
           profileImageUrl
         )
       `)
-      .order('display_order', { ascending: true })
       .order('created_at', { ascending: false })
     
     // Only filter by published if not showing all
@@ -149,7 +148,7 @@ export async function POST(request: NextRequest) {
         company,
         rating,
         created_at,
-        is_published: false,
+        is_published: typeof body.isPublished === 'boolean' ? body.isPublished : false,
         analyst_id: analystId,
       })
       .select('id, text, author, company, rating, created_at, is_published, analyst_id')

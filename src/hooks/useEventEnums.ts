@@ -9,7 +9,7 @@ interface EventEnums {
   eventTypes: EnumOption[]
   eventStatuses: EnumOption[]
   audienceGroups: EnumOption[]
-  participationTypes: EnumOption[]
+  participationStatus: EnumOption[]
 }
 
 export function useEventEnums() {

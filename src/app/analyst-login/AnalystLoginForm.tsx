@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Mail, Loader2, ArrowRight } from 'lucide-react'
+import { Mail, ArrowRight } from 'lucide-react'                     
 import { createClient } from '@/lib/supabase/client'
 
 export default function AnalystLoginForm() {

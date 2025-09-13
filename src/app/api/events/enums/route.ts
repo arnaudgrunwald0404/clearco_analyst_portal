@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         { value: 'Analysts', label: 'Analysts' },
         { value: 'Clients', label: 'Clients' }
       ],
-      participationTypes: [
+      participationStatus: [
         { value: 'Attending Only', label: 'Attending Only' },
         { value: 'Exhibiting', label: 'Exhibiting' },
         { value: 'Sponsoring', label: 'Sponsoring' }

@@ -141,17 +141,20 @@ export default function AuthPageContent() {
       <div className="w-full max-w-md">
         {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-20 h-20 mb-6 relative">
+          <div className="mx-auto w-60 h-60 mb-6 relative">
             <Image
-              src="/clearco-logo.png"
-              alt="ClearCompany"
+              src="/cupcake_logo.png"
+              alt="Cupcake"
               fill
               className="object-contain"
             />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            Welcome to Analyst Portal
+            Welcome to Cupcake!
           </h1>
+          <p className="text-gray-600 text-lg mb-6">
+            Cupcake is your delicious Industry Relationship Management portal.
+          </p>
           <p className="text-gray-600 text-lg">
             Choose your preferred sign-in method
           </p>
@@ -230,7 +233,7 @@ export default function AuthPageContent() {
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
               ) : (
                 <>
-                  Send Magic Link
+                  Send Sweet Fairy Link
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
@@ -240,7 +243,7 @@ export default function AuthPageContent() {
           {/* Info Text */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-              We'll send you a secure link to sign in without a password
+              We'll send you a secure fairy link to sign in without a password
             </p>
           </div>
         </div>

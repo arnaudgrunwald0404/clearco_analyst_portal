@@ -286,8 +286,7 @@ export default function BriefingsDuePage() {
     setSelectedAnalysts([])
     setTierStatus({ VERY_HIGH: 'idle', HIGH: 'idle', MEDIUM: 'idle', LOW: 'idle' })
 
-    // Determine the sequence, always start from VERY_HIGH then others
-    const sequence = [...TIER_ORDER]
+    console.log('🚀 [OPTIMIZED] Starting parallel tier loading...')
 
     // Helper: fetch a single tier
     const fetchTier = async (tierKey: typeof TIER_ORDER[number]) => {
@@ -297,32 +296,46 @@ export default function BriefingsDuePage() {
       if (searchTerm) params.append('search', searchTerm)
       if (forceRefresh || searchTerm) params.append('force', 'true')
 
-      const res = await fetch(`/api/briefings/due?${params.toString()}`)
-      const json = await res.json()
-      const data: AnalystDue[] = json?.data || []
+      try {
+        const res = await fetch(`/api/briefings/due?${params.toString()}`)
+        const json = await res.json()
+        const data: AnalystDue[] = json?.data || []
 
-      // Only update if still the latest run
-      if (runIdRef.current !== myRun) return
+        // Only update if still the latest run
+        if (runIdRef.current !== myRun) return data
 
-      setAnalysts(prev => {
-        const map = new Map<string, AnalystDue>()
-        for (const a of prev) map.set(a.id, a)
-        for (const a of data) map.set(a.id, a)
-        const merged = Array.from(map.values())
-        sortAnalystsInPlace(merged)
-        return merged
-      })
-      setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
+        setAnalysts(prev => {
+          const map = new Map<string, AnalystDue>()
+          for (const a of prev) map.set(a.id, a)
+          for (const a of data) map.set(a.id, a)
+          const merged = Array.from(map.values())
+          sortAnalystsInPlace(merged)
+          return merged
+        })
+        setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
+        return data
+      } catch (error) {
+        console.error(`Error fetching tier ${tierKey}:`, error)
+        setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
+        return []
+      }
     }
 
-    // Fetch VERY_HIGH first and render immediately
-    await fetchTier('VERY_HIGH')
-    setLoading(false)
-
-    // Then proceed with remaining tiers in the background (in order)
-    for (const tier of sequence.filter(t => t !== 'VERY_HIGH')) {
-      // Skip tiers not selected to reduce work, but still allow later display if user toggles filter
-      await fetchTier(tier)
+    // OPTIMIZED: Load all tiers in parallel instead of sequentially
+    const tierPromises = TIER_ORDER.map(tier => fetchTier(tier))
+    
+    try {
+      // Wait for VERY_HIGH to complete first (for immediate UI feedback)
+      const veryHighPromise = tierPromises[0]
+      await veryHighPromise
+      setLoading(false) // Show results immediately after VERY_HIGH loads
+      
+      // Continue loading other tiers in background
+      await Promise.allSettled(tierPromises.slice(1))
+      console.log('✅ [OPTIMIZED] All tiers loaded in parallel')
+    } catch (error) {
+      console.error('Error in parallel tier loading:', error)
+      setLoading(false)
     }
   }
 
@@ -876,22 +889,6 @@ export default function BriefingsDuePage() {
         </div>
       )}
 
-
-          {/* Empty State */}
-          {analysts.length === 0 && (
-            <div className="text-center py-12">
-              <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
-              <p className="text-gray-600">
-                {searchTerm || selectedTiers.length < 4
-                  ? 'No analysts match your current filters'
-                  : 'No analysts currently need briefings'
-                }
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
