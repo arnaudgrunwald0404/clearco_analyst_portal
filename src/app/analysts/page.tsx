@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Check, ChevronDown, Trash2, AlertTriangle } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 import AnalystDrawer from '@/components/drawers/analyst-drawer'
 import AddAnalystModal from '@/components/modals/add-analyst-modal'
@@ -25,6 +26,7 @@ interface Analyst {
   phone?: string
   bio?: string
   personalWebsite?: string
+  lastContactDate?: string
   profileImageUrl?: string
   createdAt: string
   updatedAt: string
@@ -39,8 +41,8 @@ export default function AnalystsPage() {
   const [filterTopics, setFilterTopics] = useState<string[]>([])
   const [filterRecent, setFilterRecent] = useState(false)
   const [topicsExpanded, setTopicsExpanded] = useState(false)
-  const [sortField, setSortField] = useState<string>('lastName')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [sortField, setSortField] = useState<string>('')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const [selectedAnalyst, setSelectedAnalyst] = useState<Analyst | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
@@ -399,10 +401,6 @@ export default function AnalystsPage() {
             aValue = `${a.firstName} ${a.lastName}`.toLowerCase()
             bValue = `${b.firstName} ${b.lastName}`.toLowerCase()
             break
-          case 'lastName':
-            aValue = (a.lastName || '').toLowerCase()
-            bValue = (b.lastName || '').toLowerCase()
-            break
           case 'company':
             aValue = (a.company || '').toLowerCase()
             bValue = (b.company || '').toLowerCase()
@@ -418,8 +416,8 @@ export default function AnalystsPage() {
             bValue = statusOrder[b.status] || 0
             break
           case 'lastBriefing':
-            aValue = new Date(a.updatedAt).getTime()
-            bValue = new Date(b.updatedAt).getTime()
+            aValue = a.lastContactDate ? new Date(a.lastContactDate).getTime() : 0
+            bValue = b.lastContactDate ? new Date(b.lastContactDate).getTime() : 0
             break
           case 'createdAt':
             aValue = new Date(a.createdAt).getTime()
@@ -711,7 +709,7 @@ export default function AnalystsPage() {
       {loading && (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center space-x-3">
-            <Loader className="w-6 h-6 animate-spin text-blue-600" />
+            <SpinningCupcake size="lg" />
             <span className="text-gray-600">Loading analysts...</span>
           </div>
         </div>
@@ -923,14 +921,16 @@ export default function AnalystsPage() {
                     </span>
                   </div>
                   
-                  {/* Last Briefing - 1/13 */}
+                  {/* Last Touchpoint - 1/13 */}
                   <div className="col-span-1 text-center cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="text-sm text-gray-900 ">
-                      {new Date(analyst.updatedAt).toLocaleDateString('en-US', {
+                      {analyst.lastContactDate ? new Date(analyst.lastContactDate).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
-                      })}
+                      }) : (
+                        <span className="text-gray-500">Never</span>
+                      )}
                     </div>     
                   </div>
                   

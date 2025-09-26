@@ -141,6 +141,7 @@ export interface Database {
           isRecurring: boolean
           recurringPattern: string | null
           reminderSent: boolean
+          attendees: string[][] | null
           createdAt: string
           updatedAt: string
         }
@@ -160,6 +161,7 @@ export interface Database {
           isRecurring?: boolean
           recurringPattern?: string | null
           reminderSent?: boolean
+          attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
         }
@@ -179,6 +181,7 @@ export interface Database {
           isRecurring?: boolean
           recurringPattern?: string | null
           reminderSent?: boolean
+          attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
         }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // Enhanced tier-specific caching for better performance
 interface TierCacheEntry {
@@ -24,7 +25,11 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [Briefings Due API] Fetching analysts due for briefings...')
 
-    const supabase = await createClient()
+    // Use service client for admin operations to bypass RLS
+    const supabase = createServiceClient()
+    
+    // Note: Briefings due calculation should include ALL analysts, not filtered by vendor domain
+    // This is because briefings due represents which analysts need to be contacted regardless of vendor
 
     // Get all influence tiers for reference (active only)
     const { data: influenceTiers, error: tiersError } = await supabase
@@ -32,6 +37,11 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('isActive', true)
       .order('order', { ascending: true })
+
+    console.log('🔧 [DEBUG] Influence tiers found:', influenceTiers?.length || 0)
+    influenceTiers?.forEach(tier => {
+      console.log(`  - ${tier.name}: ${tier.briefingFrequency} days, active: ${tier.isActive}`)
+    })
 
     if (tiersError) {
       console.error('Error fetching influence tiers:', tiersError)
@@ -47,13 +57,15 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('status', 'ACTIVE')
 
+    // Note: No vendor domain filtering for briefings due - we want to see all analysts who need briefings
+
     // Add search filter
     if (search) {
       query = query.or(`firstName.ilike.%${search}%,lastName.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`)
     }
 
     // Check tier-specific cache first (more granular and efficient)
-    const cacheKey = `${tierFilter}_${search}`
+    const cacheKey = `${tierFilter}_${search}_all`
     const tierCacheEntry = tierCache.get(cacheKey)
     const tierCacheValid = !force && tierCacheEntry && 
       (Date.now() - tierCacheEntry.updatedAt) < CACHE_TTL_MS &&
@@ -83,6 +95,11 @@ export async function GET(request: NextRequest) {
     } else {
       // Get ALL analysts - no pagination limits
       const { data: analysts, error: analystsError } = await query.order('firstName', { ascending: true })
+
+      console.log('🔧 [DEBUG] Active analysts found:', analysts?.length || 0)
+      analysts?.slice(0, 3).forEach(analyst => {
+        console.log(`  - ${analyst.firstName} ${analyst.lastName} (${analyst.email}): ${analyst.influence}`)
+      })
 
       if (analystsError) {
         console.error('Error fetching analysts:', analystsError)
@@ -200,9 +217,13 @@ export async function GET(request: NextRequest) {
           (influenceKey === 'LOW' && n.key === 'LOW')
         ) || {}).row || null
         
-        if (!tier || !tier.isActive) continue
+        if (!tier || !tier.isActive) {
+          console.log(`🔧 [DEBUG] Skipping ${analyst.firstName} ${analyst.lastName}: no active tier found for ${influenceKey}`)
+          continue
+        }
 
         const daysBetweenBriefings = tier?.briefingFrequency ?? 0
+        console.log(`🔧 [DEBUG] Processing ${analyst.firstName} ${analyst.lastName}: tier ${tier.name}, frequency ${daysBetweenBriefings} days`)
         const analystBriefingIds = analystBriefingMap.get(analyst.id) || []
         
         // Filter briefings for this analyst
@@ -263,6 +284,12 @@ export async function GET(request: NextRequest) {
 
         // Check if needs briefing
         const needsBriefing = !nextScheduled && (!lastMeetingDate || (daysSinceLastBriefing !== null && daysSinceLastBriefing >= daysBetweenBriefings))
+
+        console.log(`🔧 [DEBUG] ${analyst.firstName} ${analyst.lastName} briefing status:`)
+        console.log(`  - Last meeting: ${lastMeetingDate || 'None'}`)
+        console.log(`  - Days since last: ${daysSinceLastBriefing}`)
+        console.log(`  - Next scheduled: ${nextScheduled ? 'Yes' : 'No'}`)
+        console.log(`  - Needs briefing: ${needsBriefing}`)
 
         if (needsBriefing) {
           const rawOverdue = daysSinceLastBriefing !== null && daysBetweenBriefings > 0

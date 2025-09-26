@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
 type Briefing = Database['public']['Tables']['briefings']['Row']
@@ -18,66 +19,283 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const upcoming = searchParams.get('upcoming') === 'true'
-    const analystId = searchParams.get('analystId')
+    let analystId = searchParams.get('analystId')
+    const vendorDomainId = searchParams.get('vendorDomainId') // new canonical filter: vendor_domains.id
     const search = searchParams.get('search')
     const limit = parseInt(searchParams.get('limit') || '1000', 10)
 
     const supabase = await createClient()
+    const service = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-    // Build briefings query
-    let briefingsQuery = supabase
-      .from('briefings')
-      .select('*')
-      .order('scheduledAt', { ascending: upcoming ? true : false })
-      .limit(limit)
+    // Grab the current user (for role/domain checks and implicit analyst lookup)
+    const { data: { user } } = await supabase.auth.getUser()
+    let userEmail = user?.email?.toLowerCase() || ''
 
-    // Apply filters
-    if (status) {
-      briefingsQuery = briefingsQuery.eq('status', status.toUpperCase())
+    // Check for analyst context from request headers (for impersonation/analyst sessions)
+    const analystEmailHeader = request.headers.get('x-analyst-email')
+    const analystIdHeader = request.headers.get('x-analyst-id')
+    
+    console.log(`🔍 Auth context: user=${userEmail}, analystEmail=${analystEmailHeader}, analystId=${analystIdHeader}`)
+
+    // If there's analyst context in headers, use that instead of Supabase auth
+    if (analystEmailHeader && !analystId) {
+      userEmail = analystEmailHeader.toLowerCase()
+      console.log(`👤 Using analyst email from header: ${userEmail}`)
+      
+      if (analystIdHeader) {
+        analystId = analystIdHeader
+        console.log(`👤 Using analyst ID from header: ${analystId}`)
+      }
     }
 
-    if (upcoming) {
-      const now = new Date().toISOString()
-      briefingsQuery = briefingsQuery.gte('scheduledAt', now)
+    // If no analystId was provided, attempt to derive it from the effective user email
+    let effectiveAnalystId: string | null = null
+    if (userEmail) {
+      try {
+        const { data: analystRow } = await supabase
+          .from('analysts')
+          .select('id, email, firstName, lastName')
+          .eq('email', userEmail)
+          .single()
+        if (analystRow?.id) {
+          effectiveAnalystId = analystRow.id
+          if (!analystId) analystId = analystRow.id
+          console.log(`🔍 Found analyst: ${analystRow.firstName} ${analystRow.lastName} (${analystRow.email}) with ID: ${analystRow.id}`)
+        } else {
+          console.log(`⚠️ No analyst found for email: ${userEmail}`)
+        }
+      } catch (e) {
+        // Non-fatal: continue without implicit analyst filter if anything goes wrong
+        console.warn(`❌ Error finding analyst for email ${userEmail}:`, e)
+      }
     }
 
-    const { data: briefings, error: briefingsError } = await briefingsQuery
+    // Guardrails to allow privileged service read when both params provided
+    let useServiceRead = false
+    if (analystId && vendorDomainId) {
+      // Condition 1a: current server-session user is that analyst
+      let isAnalystSelf = Boolean(effectiveAnalystId && effectiveAnalystId === analystId)
 
-    if (briefingsError) {
-      console.error('Error fetching briefings:', briefingsError)
+      // Condition 1b: header-provided analyst context (for impersonation SSR fetches)
+      try {
+        const headerAnalystEmail = request.headers.get('x-analyst-email')?.toLowerCase() || ''
+        const headerAnalystId = request.headers.get('x-analyst-id') || ''
+        if (!isAnalystSelf && headerAnalystEmail && headerAnalystId && headerAnalystId === analystId) {
+          const { data: verified } = await service
+            .from('analysts')
+            .select('id, email')
+            .eq('id', analystId)
+            .eq('email', headerAnalystEmail)
+            .single()
+          if (verified?.id) {
+            isAnalystSelf = true
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Header analyst verification failed:', e)
+      }
+
+      // Condition 2: current user is vendor admin for the vendorDomainId
+      let isVendorAdmin = false
+      try {
+        const { data: vendor } = await service
+          .from('vendor_domains')
+          .select('id, protected_domain')
+          .eq('id', vendorDomainId)
+          .single()
+        const vendorDomain = vendor?.protected_domain?.toLowerCase()
+        const userDomain = (userEmail || '').split('@')[1]
+
+        // Domain-based vendor admin
+        if (vendorDomain && userDomain && vendorDomain === userDomain) {
+          isVendorAdmin = true
+        }
+        // Role-based override (platform ADMIN)
+        if (!isVendorAdmin && user) {
+          const { data: profile } = await service
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          if ((profile?.role || '').toUpperCase() === 'ADMIN') {
+            isVendorAdmin = true
+          }
+        }
+      } catch (e) {
+        console.warn('⚠️ Vendor admin check failed (fallback to RLS):', e)
+      }
+
+      useServiceRead = Boolean(isAnalystSelf || isVendorAdmin)
+    }
+
+    let baseBriefings: any[] = []
+
+    // Enforce guardrail: if both filters provided but not authorized, deny
+    if (analystId && vendorDomainId && !useServiceRead) {
       return NextResponse.json(
-        { success: false, error: 'Failed to fetch briefings' },
-        { status: 500 }
+        { success: false, error: 'Forbidden: not authorized for this vendor/analyst combination' },
+        { status: 403 }
       )
     }
 
-    let filteredBriefings = briefings || []
-
-    // If filtering by analyst, get briefing-analyst associations
     if (analystId) {
-      const { data: briefingAnalysts, error: baError } = await supabase
+      const db = useServiceRead ? service : supabase
+      // When filtering by analyst, apply the filter at the DB level BEFORE limiting
+      let baQuery = db
         .from('briefing_analysts')
-        .select('briefingId')
+        .select(`
+          briefings!inner(*)
+        `)
         .eq('analystId', analystId)
+        .order('briefings(scheduledAt)', { ascending: upcoming ? true : false })
+        .limit(limit)
 
-      if (baError) {
-        console.error('Error fetching briefing analysts:', baError)
+      if (status) {
+        baQuery = baQuery.eq('briefings.status', status.toUpperCase())
+      }
+
+      // Filter by vendor if provided (now using vendor_domains.id)
+      if (vendorDomainId && vendorDomainId.trim()) {
+        baQuery = baQuery.eq('vendor_domain_id', vendorDomainId.trim())
+      }
+
+      if (upcoming) {
+        const now = new Date().toISOString()
+        baQuery = baQuery.gte('briefings.scheduledAt', now)
+      }
+
+      const { data: baRows, error: baErr } = await baQuery
+      if (baErr) {
+        console.error('Error fetching briefings for analyst:', baErr)
         return NextResponse.json(
-          { success: false, error: 'Failed to fetch briefing analysts' },
+          { success: false, error: 'Failed to fetch briefings' },
           { status: 500 }
         )
       }
 
-      const briefingIds = briefingAnalysts.map(ba => ba.briefingId)
-      filteredBriefings = filteredBriefings.filter(briefing => 
-        briefingIds.includes(briefing.id)
-      )
+      baseBriefings = (baRows || []).map((r: any) => r.briefings).filter(Boolean)
+      
+      // Also fetch briefings where analyst email is in attendeeEmails field
+      if (userEmail && baseBriefings.length < limit) {
+        console.log(`🔍 Searching for briefings with email: ${userEmail} in attendeeEmails`)
+        
+        let emailQuery = supabase
+          .from('briefings')
+          .select('*')
+          .contains('attendeeEmails', [userEmail])
+          .order('scheduledAt', { ascending: upcoming ? true : false })
+          .limit(limit - baseBriefings.length)
+
+        if (status) {
+          emailQuery = emailQuery.eq('status', status.toUpperCase())
+        }
+
+        if (upcoming) {
+          const now = new Date().toISOString()
+          emailQuery = emailQuery.gte('scheduledAt', now)
+        }
+
+        const { data: emailBriefings, error: emailErr } = await emailQuery
+        console.log(`📧 Email query result: ${emailBriefings?.length || 0} briefings found`)
+        if (emailErr) {
+          console.error('❌ Email query error:', emailErr)
+        }
+        
+        if (!emailErr && emailBriefings) {
+          // Merge and deduplicate by ID
+          const existingIds = new Set(baseBriefings.map(b => b.id))
+          const newBriefings = emailBriefings.filter(b => !existingIds.has(b.id))
+          console.log(`📋 Adding ${newBriefings.length} new briefings from email search`)
+          baseBriefings = [...baseBriefings, ...newBriefings]
+        }
+        
+        // Fallback: try text search if contains didn't work
+        if (baseBriefings.length === 0) {
+          console.log(`🔍 Fallback: trying text search for email: ${userEmail}`)
+          let textQuery = supabase
+            .from('briefings')
+            .select('*')
+            .textSearch('attendeeEmails', `"${userEmail}"`)
+            .order('scheduledAt', { ascending: upcoming ? true : false })
+            .limit(limit)
+
+          if (status) {
+            textQuery = textQuery.eq('status', status.toUpperCase())
+          }
+
+          if (upcoming) {
+            const now = new Date().toISOString()
+            textQuery = textQuery.gte('scheduledAt', now)
+          }
+
+          const { data: textBriefings, error: textErr } = await textQuery
+          console.log(`📝 Text query result: ${textBriefings?.length || 0} briefings found`)
+          if (!textErr && textBriefings) {
+            baseBriefings = textBriefings
+          }
+        }
+      }
+    } else {
+      // No analyst context: allow ClearCompany admins to view all briefings
+      const isAdminDomain = userEmail.split('@')[1] === 'clearcompany.com'
+      let isAdminRole = false
+
+      if (user) {
+        try {
+          const { data: profile } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+          isAdminRole = (profile?.role || '').toUpperCase() === 'ADMIN'
+        } catch (e) {
+          // ignore profile fetch errors; we'll fall back to domain check
+        }
+      }
+
+      if (!(isAdminDomain || isAdminRole)) {
+        return NextResponse.json(
+          { success: false, error: 'Analyst account required' },
+          { status: 401 }
+        )
+      }
+
+      // Admin view: fetch briefings directly with optional filters
+      let bq = supabase
+        .from('briefings')
+        .select('*')
+        .order('scheduledAt', { ascending: upcoming ? true : false })
+        .limit(limit)
+
+      if (status) {
+        bq = bq.eq('status', status.toUpperCase())
+      }
+
+      if (upcoming) {
+        const now = new Date().toISOString()
+        bq = bq.gte('scheduledAt', now)
+      }
+
+      const { data, error } = await bq
+      if (error) {
+        console.error('Error fetching briefings (admin):', error)
+        return NextResponse.json(
+          { success: false, error: 'Failed to fetch briefings' },
+          { status: 500 }
+        )
+      }
+
+      baseBriefings = data || []
     }
 
     // For each briefing, get associated analysts
+    const dbForAnalysts = useServiceRead ? service : supabase
     const briefingsWithAnalysts = await Promise.all(
-      filteredBriefings.map(async (briefing) => {
-        const { data: briefingAnalysts } = await supabase
+      baseBriefings.map(async (briefing) => {
+        const { data: briefingAnalysts } = await dbForAnalysts
           .from('briefing_analysts')
           .select(`
             analystId,
@@ -171,7 +389,8 @@ export async function POST(request: NextRequest) {
       status = 'SCHEDULED',
       agenda,
       notes,
-      analystIds = []
+      analystIds = [],
+      vendorDomainId
     } = body
 
     if (!title || !scheduledAt) {
@@ -213,7 +432,9 @@ export async function POST(request: NextRequest) {
       const briefingAnalystsData: BriefingAnalystInsert[] = analystIds.map((analystId: string) => ({
         id: generateId(),
         briefingId: newBriefing.id,
-        analystId
+        analystId,
+        // @ts-ignore - types updated to include vendor_domain_id
+        vendor_domain_id: vendorDomainId || null
       }))
 
       const { error: associationError } = await supabase

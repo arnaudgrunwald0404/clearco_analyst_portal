@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Users, Video, FileText, Bot, MessageSquare, Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 
 
@@ -70,7 +71,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <SpinningCupcake size="lg" />
       </div>
     )
   }

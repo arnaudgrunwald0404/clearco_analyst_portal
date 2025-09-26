@@ -7,3 +7,7 @@ CHECK ("participationStatus" IS NULL OR "participationStatus" IN ('SPONSORING','
 
 
 
+
+
+
+

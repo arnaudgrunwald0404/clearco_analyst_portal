@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSettings } from '@/contexts/SettingsContext'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { useAuth } from '@/contexts/AuthContext'
 
 export function SidebarLogo() {
@@ -16,7 +17,7 @@ export function SidebarLogo() {
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-36 p-4 bg-white border-b border-gray-200">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <SpinningCupcake size="lg" />
       </div>
     )
   }

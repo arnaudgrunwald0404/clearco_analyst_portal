@@ -209,6 +209,43 @@ export default function CreateNewsletterPage() {
     }, 0)
   }
 
+  // Save form data to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-title', title)
+    }
+  }, [title])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-description', description)
+    }
+  }, [description])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-selectedAnalysts', JSON.stringify(selectedAnalysts))
+    }
+  }, [selectedAnalysts])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-subject', subject)
+    }
+  }, [subject])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-content', content)
+    }
+  }, [content])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('newsletter-create-templateId', templateId)
+    }
+  }, [templateId])
+
   useEffect(() => {
     const fetchAnalysts = async () => {
       setLoading(true)
@@ -228,6 +265,7 @@ export default function CreateNewsletterPage() {
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
+        console.log('🔄 Loading filter options...')
         const response = await fetch('/api/analysts/filtered', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -235,13 +273,17 @@ export default function CreateNewsletterPage() {
         })
         const data = await response.json()
         if (data.success) {
-          setFilterOptions({
+          const options = {
             ...DEFAULT_FILTER_OPTIONS,
             ...(data.data.filterOptions || {}),
-          })
+          }
+          console.log('✅ Filter options loaded:', options)
+          setFilterOptions(options)
+        } else {
+          console.error('❌ Failed to load filter options:', data.error)
         }
       } catch (e) {
-        console.error('Failed to load filter options:', e)
+        console.error('❌ Failed to load filter options:', e)
       }
     }
     loadFilterOptions()
@@ -273,30 +315,45 @@ export default function CreateNewsletterPage() {
   const applyTraditionalFilters = async () => {
     setFilterLoading(true)
     setError(null)
+    
+    const filters = {
+      companies: filterCompanies,
+      influences: filterInfluences,
+      statuses: filterStatuses,
+      types: filterTypes,
+      relationshipHealths: filterRelationshipHealths,
+      search: filterSearch
+    }
+    
+    console.log('🔍 Traditional Filters - Applying filters:', filters)
+    
     try {
       const response = await fetch('/api/analysts/filtered', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          companies: filterCompanies,
-          influences: filterInfluences,
-          statuses: filterStatuses,
-          types: filterTypes,
-          relationshipHealths: filterRelationshipHealths,
-          search: filterSearch
-        })
+        body: JSON.stringify(filters)
       })
       const data = await response.json()
+      
+      console.log('📡 Traditional Filters - API Response:', { 
+        success: data.success, 
+        analystCount: data.data?.analysts?.length || 0,
+        error: data.error 
+      })
+      
       if (data.success) {
         setFilteredAnalysts(data.data.analysts || [])
         setFilterOptions({
           ...DEFAULT_FILTER_OPTIONS,
           ...(data.data.filterOptions || {}),
         })
+        console.log('✅ Traditional Filters - Set filtered analysts:', data.data.analysts?.length || 0)
       } else {
         setError(data.error || 'Failed to find analysts')
+        console.error('❌ Traditional Filters - API Error:', data.error)
       }
     } catch (e) {
+      console.error('❌ Traditional Filters - Fetch Error:', e)
       setError('Failed to find analysts')
     } finally {
       setFilterLoading(false)
@@ -334,6 +391,15 @@ export default function CreateNewsletterPage() {
       })
       const data = await res.json()
       if (res.ok && data.success) {
+        // Clear localStorage on successful creation
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('newsletter-create-title')
+          localStorage.removeItem('newsletter-create-description')
+          localStorage.removeItem('newsletter-create-selectedAnalysts')
+          localStorage.removeItem('newsletter-create-subject')
+          localStorage.removeItem('newsletter-create-content')
+          localStorage.removeItem('newsletter-create-templateId')
+        }
         setSuccess(true)
         setTimeout(() => router.push('/newsletters'), 1200)
       } else {
@@ -375,9 +441,8 @@ export default function CreateNewsletterPage() {
 
         {/* Stepper */}
         <div className="mb-10">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center">
             {steps.map((step, index) => {
-              const StepIcon = step.icon
               const isActive = currentStep === step.id
               const isCompleted = currentStep > step.id
               
@@ -385,26 +450,25 @@ export default function CreateNewsletterPage() {
                 <div key={step.id} className="flex items-center">
                   <div className="flex flex-col items-center">
                     <div className={`
-                      w-14 h-14 rounded-full flex items-center justify-center border-2 transition-all
+                      w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all font-semibold text-lg
                       ${isActive ? 'bg-blue-600 border-blue-600 text-white' : ''}
                       ${isCompleted ? 'bg-green-600 border-green-600 text-white' : ''}
                       ${!isActive && !isCompleted ? 'bg-white border-gray-300 text-gray-500' : ''}
                     `}>
                       {isCompleted ? (
-                        <Check className="h-7 w-7" />
+                        <Check className="h-6 w-6" />
                       ) : (
-                        <StepIcon className="h-7 w-7" />
+                        step.id
                       )}
                     </div>
-                    <div className="mt-3 text-center">
-                      <div className={`text-base font-medium ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}> 
+                    <div className="mt-2 text-center">
+                      <div className={`text-sm font-medium ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}> 
                         {step.title}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">{step.description}</div>
                     </div>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`w-20 h-0.5 mx-6 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                    <div className={`w-16 h-0.5 mx-4 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
                   )}
                 </div>
               )
@@ -482,9 +546,9 @@ export default function CreateNewsletterPage() {
                     <Target className="h-6 w-6" />
                     Audience Selection
                   </CardTitle>
-                  <CardDescription className="text-base mt-2">Choose your target audience using AI-powered natural language or traditional filters</CardDescription>
+                  <CardDescription className="text-base mt-2">Choose your target audience using AI-powered natural language or traditional filters.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-8 pt-2">
+                <CardContent className="space-y-8">
                   <Tabs defaultValue="ai" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="ai" className="flex items-center gap-2">
@@ -497,31 +561,31 @@ export default function CreateNewsletterPage() {
                       </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="ai" className="space-y-6">
+                    <TabsContent value="ai" className="mt-4 space-y-6">
                       <div className="space-y-2">
-                        <Label htmlFor="audience" className="text-base">Audience Description</Label>
+                        <Label htmlFor="audience" className="text-base">Prompt</Label>
                         <Textarea
                           id="audience"
-                          placeholder="e.g., 'All Tier 1 HR Technology analysts from Gartner and Forrester who are actively engaged'"
+                          placeholder="Examples: 'Tier 1 analysts', 'Gartner and Forrester', 'HR Technology companies', 'Active analysts'"
                           value={audienceDescription}
                           onChange={e => setAudienceDescription(e.target.value)}
                           className="mt-2 px-4 py-3 text-base rounded-lg min-h-[80px]"
                           rows={3}
                         />
-                        <div className="mt-2 text-sm text-gray-500">
-                          Examples: "Tier 1 analysts", "Gartner and Forrester", "HR Technology companies", "Active analysts"
-                        </div>
                       </div>
                       
-                      <Button 
-                        onClick={applyAudienceFilters}
-                        disabled={!audienceDescription.trim() || loading}
-                        variant="outline"
-                        className="w-full py-3 text-lg rounded-lg"
-                      >
-                        <Users className="mr-2 h-5 w-5" />
-                        Apply Filters & Find Analysts
-                      </Button>
+                      <div className="flex justify-end">
+                        <Button 
+                          onClick={applyAudienceFilters}
+                          disabled={audienceDescription.trim().length < 20 || loading}
+                          variant={audienceDescription.trim().length >= 20 ? "default" : "outline"}
+                          size="sm"
+                          className="rounded-lg"
+                        >
+                          <Users className="mr-2 h-4 w-4" />
+                          Find Analysts
+                        </Button>
+                      </div>
 
                       {loading && (
                         <div className="text-center py-8">
@@ -537,7 +601,21 @@ export default function CreateNewsletterPage() {
 
                       {selectedAnalysts.length > 0 && (
                         <div className="space-y-2">
-                          <Label className="text-base">Selected Recipients ({selectedAnalysts.length})</Label>
+                          <div className="flex items-center justify-between">
+                            <Label className="text-base">Selected Recipients ({selectedAnalysts.length})</Label>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedAnalysts([])}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                Reset
+                              </Button>
+                              <span className="text-gray-300">|</span>
+                              <span className="text-sm text-gray-500">Remove</span>
+                            </div>
+                          </div>
                           <div className="mt-2 max-h-60 overflow-y-auto space-y-2 border rounded-lg p-3">
                             {selectedAnalysts.map(analyst => (
                               <div key={analyst.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -684,15 +762,26 @@ export default function CreateNewsletterPage() {
                           </div>
                         </div>
 
-                        <Button 
-                          onClick={applyTraditionalFilters}
-                          disabled={filterLoading}
-                          variant="outline"
-                          className="w-full py-3 text-lg rounded-lg"
-                        >
-                          <Filter className="mr-2 h-5 w-5" />
-                          {filterLoading ? 'Finding Analysts...' : 'Apply Filters & Find Analysts'}
-                        </Button>
+                        <div className="flex justify-end">
+                          <Button 
+                            onClick={applyTraditionalFilters}
+                            disabled={filterLoading}
+                            variant={
+                              filterCompanies.length > 0 || 
+                              filterInfluences.length > 0 || 
+                              filterStatuses.length > 0 || 
+                              filterTypes.length > 0 || 
+                              filterRelationshipHealths.length > 0 || 
+                              filterSearch.trim().length > 0 
+                                ? "default" : "outline"
+                            }
+                            size="sm"
+                            className="px-4 py-2"
+                          >
+                            <Filter className="mr-2 h-4 w-4" />
+                            {filterLoading ? 'Finding...' : 'Find Analysts'}
+                          </Button>
+                        </div>
 
                         {filterLoading && (
                           <div className="text-center py-8">
@@ -708,7 +797,17 @@ export default function CreateNewsletterPage() {
 
                         {filteredAnalysts.length > 0 && (
                           <div className="space-y-2">
-                            <Label className="text-base">Filtered Analysts ({filteredAnalysts.length})</Label>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-base">Filtered Analysts ({filteredAnalysts.length})</Label>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFilteredAnalysts([])}
+                                className="text-gray-500 hover:text-gray-700"
+                              >
+                                Reset
+                              </Button>
+                            </div>
                             <div className="mt-2 max-h-60 overflow-y-auto space-y-2 border rounded-lg p-3">
                               {filteredAnalysts.map(analyst => (
                                 <div key={analyst.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
@@ -760,15 +859,28 @@ export default function CreateNewsletterPage() {
             )}
 
             {currentStep === 3 && (
-              <Card className="p-2 sm:p-4 md:p-6 lg:p-8">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-2xl">
-                    <Mail className="h-6 w-6" />
-                    Email Creation
-                  </CardTitle>
-                  <CardDescription className="text-base mt-2">Create your email content and select a template</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-8 pt-2">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Form */}
+                <Card className="p-2 sm:p-4 md:p-6">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-2xl">
+                      <Mail className="h-6 w-6" />
+                      Email Creation
+                    </CardTitle>
+                    <CardDescription className="text-base mt-2">Create your email content and select a template</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6 pt-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-base">Newsletter Name *</Label>
+                    <Input
+                      id="title"
+                      placeholder="Newsletter name (used in template header)"
+                      value={title}
+                      onChange={e => setTitle(e.target.value)}
+                      className="mt-2 px-4 py-3 text-base rounded-lg"
+                    />
+                    <div className="mt-1 text-xs text-gray-500">This populates the {'{{title}}'} merge tag in the template preview.</div>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="subject" className="text-base">Subject Line *</Label>
@@ -888,8 +1000,59 @@ export default function CreateNewsletterPage() {
                       {submitting ? 'Creating...' : 'Create Newsletter'}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+                
+                {/* Right Column - Preview */}
+                <Card className="p-2 sm:p-4 md:p-6">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Eye className="h-6 w-6" />
+                        Live Preview
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowPreview(!showPreview)}
+                      >
+                        {showPreview ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </Button>
+                    </CardTitle>
+                    <CardDescription className="text-base">
+                      Preview using {previewAnalyst.firstName} {previewAnalyst.lastName} from {previewAnalyst.company}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {showPreview && selectedTemplate ? (
+                      <div className="space-y-4">
+                        {/* Email Headers */}
+                        <div className="bg-gray-50 p-4 rounded-lg border">
+                          <div className="grid grid-cols-1 gap-2 text-sm">
+                            <div><strong>To:</strong> {previewAnalyst.firstName} {previewAnalyst.lastName} &lt;{previewAnalyst.email}&gt;</div>
+                            <div><strong>Subject:</strong> {subject || 'No subject'}</div>
+                            <div><strong>Template:</strong> {selectedTemplate?.name || 'None selected'}</div>
+                          </div>
+                        </div>
+                        
+                        {/* Email Content Preview */}
+                        <div className="border rounded-lg overflow-hidden">
+                          <iframe
+                            title="Newsletter Preview"
+                            srcDoc={previewHtml}
+                            className="w-full h-[500px] bg-white"
+                            style={{ border: 'none' }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-[500px] bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                        {!selectedTemplate ? 'Select a template to see preview' : 'Preview hidden'}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
 
             {/* Error/Success Messages */}

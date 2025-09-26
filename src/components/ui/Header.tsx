@@ -117,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({
       aria-label="Main header"
     >
       {/* Always-visible user chip (top-right) */}
-      <div className="absolute top-3 right-4 z-20" ref={menuRef}>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20" ref={menuRef}>
         <button
           onClick={() => setMenuOpen((v) => !v)}
           className="flex items-center gap-3 px-3 py-2 bg-white/80 backdrop-blur rounded-full shadow hover:bg-white transition-colors"

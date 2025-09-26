@@ -11,10 +11,10 @@ import GeneralSection from './GeneralSection'
 import TopicsSection from './TopicsSection'
 import CalendarSection from './CalendarSection'
 import InfluenceTiersSection from './InfluenceTiersSection'
-import ContentSection from './ContentSection'
 import EventsSection from './EventsSection'
 import { FloatingHelpText } from '@/components/ui/floating-help-text'
 import { useHelpText } from '@/hooks/useHelpText'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface CalendarConnection {
   id: string
@@ -37,7 +37,6 @@ interface SyncProgress {
 }
 
 import { useAuth } from '@/contexts/AuthContext'
-import { FileText } from 'lucide-react'
 import AnalystPortalSection from './AnalystPortalSection'
 import AdminUsersSection from './AdminUsersSection'
 
@@ -70,17 +69,10 @@ function SettingsPageContent() {
     const success = searchParams.get('success')
     const error = searchParams.get('error')
     const section = searchParams.get('section')
-    const tab = searchParams.get('tab')
     
     // Set active section and tab based on URL parameters
     if (section) {
       setActiveSection(section)
-    }
-    
-    // For analyst portal section, set the tab if specified
-    if (section === 'analyst-portal' && tab) {
-      // This will be handled by the AnalystPortalSection component
-      // We'll pass the tab parameter to it
     }
     
     if (success === 'calendar_connected') {
@@ -609,8 +601,7 @@ function SettingsPageContent() {
     // Separator
     { id: 'separator-2', label: '---', icon: null, isSeparator: true },
     // Portal Configuration Group
-    { id: 'analyst-portal', label: 'Analyst Portal Config', icon: Users },
-    { id: 'content', label: 'Analyst Portal Content', icon: FileText },
+    { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
   ]
 
   return (
@@ -655,10 +646,12 @@ function SettingsPageContent() {
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
           {activeSection === 'events' && <EventsSection />}
           {activeSection === 'analyst-portal' && (
-            <AnalystPortalSection initialTab={'settings'} showAccessTab={false} />
+            <AnalystPortalSection
+              initialTab={(searchParams.get('tab') === 'content' ? 'content' : (searchParams.get('tab') === 'access' ? 'access' : 'settings'))}
+              showAccessTab={false}
+            />
           )}
           {activeSection === 'admin-users' && <AdminUsersSection />}
-          {activeSection === 'content' && <ContentSection />}
         </div>
       </div>
 
@@ -718,7 +711,7 @@ function LoadingSettings() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-center py-12">
           <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+            <SpinningCupcake size="lg" className="mx-auto mb-4" />
             <p className="text-gray-600">Loading settings...</p>
           </div>
         </div>

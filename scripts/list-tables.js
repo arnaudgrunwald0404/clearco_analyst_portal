@@ -15,7 +15,7 @@ async function main() {
     const tables = [
       'analysts',
       'analyst_access',
-      'general_settings',
+      'vendor_domains',
       'calendar_connections',
       'calendar_meetings',
       'briefings',

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2, BookOpen, File } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 // import SocialMediaActivity from '@/components/features/social-media-activity'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
@@ -22,7 +23,10 @@ interface DashboardMetrics {
   briefingsScheduled: number
   briefingsDue: number
   briefingFollowUps: number
-  followUpsCount?: number
+  followUpsCount?: {
+    total: number
+    completed: number
+  }
   newslettersYTD: number
   relationshipHealth: number
   upcomingPublications: number
@@ -120,14 +124,32 @@ function DashboardContent() {
     message: string
   } | null>(null)
 
-  // Fetch follow-ups count
+  // Fetch follow-ups count with completion status
   const fetchFollowUpsCount = async (signal?: AbortSignal) => {
     try {
-      const response = await fetch('/api/briefings/follow-ups', { signal })
+      const response = await fetch('/api/briefings/follow-ups', {
+        signal,
+        cache: 'no-store'
+      })
       if (response.ok) {
         const result = await response.json()
         if (result.success && result.data) {
-          return result.data.length
+          const followUps = result.data
+          // Check localStorage for completion status
+          const completedCount = followUps.filter((followUp: any) => {
+            const storageKey = `followup-${followUp.id}`
+            const stored = localStorage.getItem(storageKey)
+            if (stored) {
+              const { isCompleted } = JSON.parse(stored)
+              return isCompleted
+            }
+            return false
+          }).length
+          
+          return {
+            total: followUps.length,
+            completed: completedCount
+          }
         }
       }
     } catch (error) {
@@ -135,7 +157,7 @@ function DashboardContent() {
         console.error('Error fetching follow-ups count:', error)
       }
     }
-    return 0
+    return { total: 0, completed: 0 }
   }
 
   // Redirect unauthenticated users to /auth after auth resolves
@@ -177,8 +199,18 @@ function DashboardContent() {
         fetch('/api/dashboard/metrics', { signal: controller.signal }),
         fetch('/api/dashboard/recent-activity', { signal: controller.signal }),
         fetch('/api/action-items?status=pending', { signal: controller.signal }),
-        fetch('/api/dashboard/briefings-due-cache', { signal: controller.signal }),
-        fetchFollowUpsCount(controller.signal)
+        // Trigger background refresh of briefings-due cache and get current state
+        fetch('/api/dashboard/briefings-due-cache?force=true', { signal: controller.signal }),
+        (async () => {
+          try {
+            return await fetchFollowUpsCount(controller.signal)
+          } catch (e) {
+            if (!(e instanceof DOMException && e.name === 'AbortError')) {
+              console.error('Follow-ups count failed:', e)
+            }
+            return { total: 0, completed: 0 }
+          }
+        })()
       ])
 
       // If aborted, stop processing
@@ -262,34 +294,39 @@ function DashboardContent() {
         setActionItems([])
       }
 
-      // Process briefings due cache
+      // Process briefings due (via cache endpoint)
       if (briefingsDueResult.status === 'fulfilled' && briefingsDueResult.value.ok) {
         try {
           const data = await briefingsDueResult.value.json()
           if (controller.signal.aborted) return
           if (data.success) {
+            const isLoading = !!data.isLoading
+            const cacheData = data.data || {}
+            const highestTier = Number(cacheData.highestTier || 0)
+            const nextTier = Number(cacheData.nextTier || 0)
+
             setMetrics(prev => prev ? {
               ...prev,
               briefingsDueDetailed: {
-                highestTier: data.data.highestTier,
-                nextTier: data.data.nextTier,
-                total: data.data.total,
-                isLoading: data.isLoading
+                highestTier,
+                nextTier,
+                total: highestTier + nextTier,
+                isLoading
               }
             } : prev)
-            console.log('📊 Briefings due cache loaded:', data.cached ? '(cached)' : '(fresh)')
+            console.log('📊 Briefings due (cache) loaded:', { highestTier, nextTier, isLoading })
           }
         } catch (error) {
           if (!(error instanceof Error && error.name === 'AbortError')) {
-            console.error('Failed to parse briefings due cache data:', error)
+            console.error('Failed to parse briefings due (cache) data:', error)
           }
         }
       } else if (briefingsDueResult.status === 'rejected') {
         if (!(briefingsDueResult.reason instanceof DOMException && briefingsDueResult.reason.name === 'AbortError')) {
-          console.error('Failed to fetch briefings due cache:', briefingsDueResult.reason)
+          console.error('Failed to fetch briefings due (cache):', briefingsDueResult.reason)
         }
       } else {
-        console.error('Failed to fetch briefings due cache:', briefingsDueResult.value?.status)
+        console.error('Failed to fetch briefings due (cache):', briefingsDueResult.value?.status)
       }
 
       // Process follow-ups count
@@ -377,6 +414,47 @@ function DashboardContent() {
     }
   }, [searchParams])
 
+  // If the briefings-due cache reports isLoading, poll the cache endpoint (without force)
+  useEffect(() => {
+    let cancelled = false
+    const poll = async () => {
+      const timeoutMs = 20000
+      const intervalMs = 2000
+      const start = Date.now()
+      try {
+        while (!cancelled && (Date.now() - start) < timeoutMs) {
+          const resp = await fetch(`/api/dashboard/briefings-due-cache?ts=${Date.now()}`, { cache: 'no-store' })
+          const json = await resp.json()
+
+          if (json?.success && !json.isLoading && json.data) {
+            const highestTier = Number(json.data.highestTier || 0)
+            const nextTier = Number(json.data.nextTier || 0)
+
+            setMetrics(prev => prev ? {
+              ...prev,
+              briefingsDueDetailed: {
+                highestTier,
+                nextTier,
+                total: highestTier + nextTier,
+                isLoading: false
+              }
+            } : prev)
+            break // Done polling
+          }
+
+          await new Promise(r => setTimeout(r, intervalMs))
+        }
+      } catch (e) {
+        // Silent failure; next dashboard refresh will pick it up
+      }
+    }
+
+    if (metrics?.briefingsDueDetailed?.isLoading) {
+      poll()
+    }
+    return () => { cancelled = true }
+  }, [metrics?.briefingsDueDetailed?.isLoading])
+
   // Test if banner image loads successfully
   useEffect(() => {
     if (bannerImage) {
@@ -440,7 +518,7 @@ function DashboardContent() {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <SpinningCupcake size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">
             {authLoading ? 'Loading authentication...' : 
              settingsLoading ? 'Loading your data...' : 'Loading dashboard...'}
@@ -469,8 +547,9 @@ function DashboardContent() {
     <div>
       {/* Dashboard Content */}
       <div className="p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
 
           {/* Notification Banner */}
           {notification && (
@@ -499,11 +578,11 @@ function DashboardContent() {
 
         {/* Band 1: Analysts */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 pt-4 flex items-center">
             <Users className="h-5 w-5 text-blue-600 mr-2" />
             Analysts
           </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
             {/* Total Analysts */}
             <Card
               title={recentActivity.length === 0 ? "No recent updates in the last 90 days" : "Recent analyst updates (last 90 days)"}
@@ -568,20 +647,155 @@ function DashboardContent() {
               </CardContent>
             </Card>
 
-            {/* Upcoming Publications */}
-            <Card
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => router.push('/publications?filter=upcoming')}
-            >
+
+          </div>
+        </div>
+
+        {/* Band 2: Briefings */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center ">
+            <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+            Briefings
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* 1. Briefings (YTD) */}
+            <Card>
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <BookOpen className="h-6 w-6 text-indigo-400" />
+                    <Calendar className="h-6 w-6 text-purple-400" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
                       <dt className="text-sm font-medium text-gray-500 truncate">
-                        Upcoming Publications (180 days)
+                        Briefings (YTD)
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsYTD || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 2. Follow Ups Completed */}
+            <Card 
+              className="cursor-pointer hover:shadow-md transition-shadow"
+              onClick={() => router.push('/briefings/follow-ups')}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <MessageSquare className="h-6 w-6 text-green-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Follow Ups Completed
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.followUpsCount 
+                          ? `${metrics.followUpsCount.completed} out of ${metrics.followUpsCount.total}`
+                          : '0 out of 0'
+                        }
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 3. Newsletters (YTD) */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Mail className="h-6 w-6 text-indigo-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Newsletters (YTD)
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.newslettersYTD || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 4. Briefings Scheduled */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Calendar className="h-6 w-6 text-blue-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Briefings Scheduled
+                      </dt>
+                      <dd className="text-2xl font-semibold text-gray-900">
+                        {metrics?.briefingsScheduled || 0}
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 5. Briefings Due */}
+            <Card
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => router.push('/briefings/due')}
+            >
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <Clock className="h-6 w-6 text-orange-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <div className="flex items-start justify-between">
+                      <dl>
+                        <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
+                          Briefings Due
+                          
+                          
+                        </dt>
+                        <dd className="text-2xl font-semibold text-gray-900">
+                          {metrics?.briefingsDue ?? 0}
+                        </dd>
+                      </dl>
+                      <div className="text-right">
+                        <div className="text-xs text-gray-400">Very High / High</div>
+                        <div className="text-lg font-semibold text-gray-900 mt-1">
+                          {metrics?.briefingsDueDetailed ? 
+                            `${metrics.briefingsDueDetailed.highestTier ?? 0} / ${metrics.briefingsDueDetailed.nextTier ?? 0}` :
+                            'Loading...'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 6. Publications Tracked */}
+            <Card>
+              <CardContent className="p-5">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <BookOpen className="h-6 w-6 text-purple-400" />
+                  </div>
+                  <div className="ml-5 w-0 flex-1">
+                    <dl>
+                      <dt className="text-sm font-medium text-gray-500 truncate">
+                        Publications Tracked
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
                         {metrics?.upcomingPublications || 0}
@@ -591,190 +805,11 @@ function DashboardContent() {
                 </div>
               </CardContent>
             </Card>
-
-          </div>
-        </div>
-
-        {/* Band 2: Briefings */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <Calendar className="h-5 w-5 text-blue-600 mr-2" />
-            Briefings
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Column 1 */}
-            <div className="space-y-6">
-              {/* 1. Briefings (YTD) - First card */}
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Calendar className="h-6 w-6 text-purple-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Briefings (YTD)
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.briefingsYTD || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 2. Follow Ups - Second card */}
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <MessageSquare className="h-6 w-6 text-green-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Follow Ups
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.followUpsCount ?? 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 3. Newsletters (YTD) - Third card */}
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Mail className="h-6 w-6 text-indigo-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Newsletters (YTD)
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.newslettersYTD || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Column 2 */}
-            <div className="space-y-6">
-              {/* 4. Briefings Scheduled - Fourth card */}
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Calendar className="h-6 w-6 text-blue-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Briefings Scheduled
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.briefingsScheduled || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 5. Briefings Due - Fifth card */}
-              <Card
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => router.push('/briefings/due')}
-              >
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <Clock className="h-6 w-6 text-orange-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <div className="flex items-start justify-between">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
-                            Briefings Due
-                            {metrics?.briefingsDueDetailed?.isLoading && (
-                              <div className="animate-spin rounded-full h-3 w-3 border-b border-orange-400"></div>
-                            )}
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation()
-                                e.preventDefault()
-                                try {
-                                  const resp = await fetch('/api/dashboard/briefings-due-cache?force=true', { cache: 'no-store' })
-                                  const json = await resp.json()
-                                  if (json.success) {
-                                    setMetrics(prev => prev ? {
-                                      ...prev,
-                                      briefingsDueDetailed: {
-                                        highestTier: json.data.highestTier,
-                                        nextTier: json.data.nextTier,
-                                        total: json.data.total,
-                                        isLoading: json.isLoading
-                                      }
-                                    } : prev)
-                                  }
-                                } catch {}
-                              }}
-                              className="text-xs text-blue-600 hover:underline"
-                            >
-                              Refresh
-                            </button>
-                          </dt>
-                          <dd className="text-2xl font-semibold text-gray-900">
-                            {(metrics?.briefingsDueDetailed?.highestTier ?? 0) + (metrics?.briefingsDueDetailed?.nextTier ?? 0)}
-                          </dd>
-                        </dl>
-                        <div className="text-right">
-                          <div className="text-xs text-gray-400">Very High / High</div>
-                          <div className="text-lg font-semibold text-gray-900 mt-1">
-                            {metrics?.briefingsDueDetailed?.highestTier ?? 0} / {metrics?.briefingsDueDetailed?.nextTier ?? 0}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* 6. Publications Tracked - Sixth card */}
-              <Card>
-                <CardContent className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <BookOpen className="h-6 w-6 text-purple-400" />
-                    </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          Publications Tracked
-                        </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.upcomingPublications || 0}
-                        </dd>
-                      </dl>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
 
         {/* Social Media Activity section temporarily disabled */}
+        </div>
       </div>
     </div>
   )

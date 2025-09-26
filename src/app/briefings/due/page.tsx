@@ -15,6 +15,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 // Avoid next/image for external hosts; use native img with onError fallback
 
 interface AnalystDue {
@@ -219,6 +220,45 @@ const setCachedData = (data: AnalystDue[], counts: Record<string, number>) => {
   }
 }
 
+// Update dashboard cache with fresh briefings due counts
+const updateDashboardCache = async (counts: Record<string, number>) => {
+  try {
+    // Calculate highest tier and next tier counts for dashboard
+    const tiers = [
+      { name: 'VERY_HIGH', count: counts.VERY_HIGH || 0, priority: 1 },
+      { name: 'HIGH', count: counts.HIGH || 0, priority: 2 },
+      { name: 'MEDIUM', count: counts.MEDIUM || 0, priority: 3 },
+      { name: 'LOW', count: counts.LOW || 0, priority: 4 }
+    ]
+
+    // Find highest tier with count > 0
+    const highestTierWithCount = tiers.find(tier => tier.count > 0)
+    const highestTier = highestTierWithCount ? highestTierWithCount.count : 0
+
+    // Find next tier with count > 0 (after highest)
+    const nextTierWithCount = tiers.find(tier => 
+      tier.priority > (highestTierWithCount?.priority || 0) && tier.count > 0
+    )
+    const nextTier = nextTierWithCount ? nextTierWithCount.count : 0
+
+    console.log(`📊 Updating dashboard cache: Highest=${highestTier}, Next=${nextTier}`, counts)
+
+    // Trigger dashboard cache update by making a request with force refresh
+    const response = await fetch(`/api/dashboard/briefings-due-cache?force=true&ts=${Date.now()}`, {
+      method: 'GET',
+      cache: 'no-store'
+    })
+    
+    if (response.ok) {
+      console.log('✅ Dashboard cache updated successfully')
+    } else {
+      console.warn('⚠️ Dashboard cache update failed:', response.status)
+    }
+  } catch (error) {
+    console.error('❌ Error updating dashboard cache:', error)
+  }
+}
+
 export default function BriefingsDuePage() {
   const [analysts, setAnalysts] = useState<AnalystDue[]>([])
   const [loading, setLoading] = useState(true)
@@ -286,7 +326,8 @@ export default function BriefingsDuePage() {
     setSelectedAnalysts([])
     setTierStatus({ VERY_HIGH: 'idle', HIGH: 'idle', MEDIUM: 'idle', LOW: 'idle' })
 
-    console.log('🚀 [OPTIMIZED] Starting parallel tier loading...')
+    // Determine the sequence, always start from VERY_HIGH then others
+    const sequence = [...TIER_ORDER]
 
     // Helper: fetch a single tier
     const fetchTier = async (tierKey: typeof TIER_ORDER[number]) => {
@@ -296,46 +337,32 @@ export default function BriefingsDuePage() {
       if (searchTerm) params.append('search', searchTerm)
       if (forceRefresh || searchTerm) params.append('force', 'true')
 
-      try {
-        const res = await fetch(`/api/briefings/due?${params.toString()}`)
-        const json = await res.json()
-        const data: AnalystDue[] = json?.data || []
+      const res = await fetch(`/api/briefings/due?${params.toString()}`)
+      const json = await res.json()
+      const data: AnalystDue[] = json?.data || []
 
-        // Only update if still the latest run
-        if (runIdRef.current !== myRun) return data
+      // Only update if still the latest run
+      if (runIdRef.current !== myRun) return
 
-        setAnalysts(prev => {
-          const map = new Map<string, AnalystDue>()
-          for (const a of prev) map.set(a.id, a)
-          for (const a of data) map.set(a.id, a)
-          const merged = Array.from(map.values())
-          sortAnalystsInPlace(merged)
-          return merged
-        })
-        setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
-        return data
-      } catch (error) {
-        console.error(`Error fetching tier ${tierKey}:`, error)
-        setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
-        return []
-      }
+      setAnalysts(prev => {
+        const map = new Map<string, AnalystDue>()
+        for (const a of prev) map.set(a.id, a)
+        for (const a of data) map.set(a.id, a)
+        const merged = Array.from(map.values())
+        sortAnalystsInPlace(merged)
+        return merged
+      })
+      setTierStatus(prev => ({ ...prev, [tierKey]: 'loaded' }))
     }
 
-    // OPTIMIZED: Load all tiers in parallel instead of sequentially
-    const tierPromises = TIER_ORDER.map(tier => fetchTier(tier))
-    
-    try {
-      // Wait for VERY_HIGH to complete first (for immediate UI feedback)
-      const veryHighPromise = tierPromises[0]
-      await veryHighPromise
-      setLoading(false) // Show results immediately after VERY_HIGH loads
-      
-      // Continue loading other tiers in background
-      await Promise.allSettled(tierPromises.slice(1))
-      console.log('✅ [OPTIMIZED] All tiers loaded in parallel')
-    } catch (error) {
-      console.error('Error in parallel tier loading:', error)
-      setLoading(false)
+    // Fetch VERY_HIGH first and render immediately
+    await fetchTier('VERY_HIGH')
+    setLoading(false)
+
+    // Then proceed with remaining tiers in the background (in order)
+    for (const tier of sequence.filter(t => t !== 'VERY_HIGH')) {
+      // Skip tiers not selected to reduce work, but still allow later display if user toggles filter
+      await fetchTier(tier)
     }
   }
 
@@ -379,6 +406,9 @@ export default function BriefingsDuePage() {
         if (!searchTerm && currentPage === 1) {
           // Align with API key countsByTier when present
           setCachedData(data.data, data.countsByTier || data.counts || {})
+          
+          // Update dashboard cache with fresh briefings due data
+          updateDashboardCache(data.countsByTier || data.counts || {})
         }
         
         // Apply sorting
@@ -741,7 +771,7 @@ export default function BriefingsDuePage() {
       {/* Loading State for initial chunk */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <SpinningCupcake size="lg" />
           <span className="ml-3 text-gray-600">Loading Very High tier…</span>
         </div>
       )}
@@ -761,7 +791,7 @@ export default function BriefingsDuePage() {
                   <span>{label} Influence ({rows.length})</span>
                   {tierStatus[tier] === 'loading' && (
                     <span className="text-xs text-gray-500 flex items-center">
-                      <svg className="w-3 h-3 mr-1 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                      <SpinningCupcake size="sm" className="mr-1" />
                       Loading…
                     </span>
                   )}

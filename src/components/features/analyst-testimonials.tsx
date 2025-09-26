@@ -106,22 +106,32 @@ export function AnalystTestimonials({
 
                 {/* Analyst Info */}
                 <div className="flex items-center">
-                  {testimonial.analyst.profileImageUrl ? (
-                    <Image
-                      src={testimonial.analyst.profileImageUrl}
-                      alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
-                      width={48}
-                      height={48}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold",
-                      getAvatarUrl(testimonial.analyst)
-                    )}>
-                      {getInitials(testimonial.analyst.firstName, testimonial.analyst.lastName)}
-                    </div>
-                  )}
+                  {(() => {
+                    const [errored, setErrored] = useState(false)
+                    const hasImg = Boolean(testimonial.analyst.profileImageUrl) && !errored
+                    return hasImg ? (
+                      <Image
+                        src={testimonial.analyst.profileImageUrl as string}
+                        alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
+                        width={48}
+                        height={48}
+                        className="rounded-full object-cover"
+                        onError={() => setErrored(true)}
+                      />
+                    ) : (
+                      <div
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold",
+                          getAvatarUrl(testimonial.analyst)
+                        )}
+                      >
+                        {getInitials(
+                          testimonial.analyst.firstName,
+                          testimonial.analyst.lastName
+                        )}
+                      </div>
+                    )
+                  })()}
                   <div className="flex flex-col ml-4">
                     <span className="font-semibold text-base">
                       {testimonial.analyst.firstName} {testimonial.analyst.lastName}

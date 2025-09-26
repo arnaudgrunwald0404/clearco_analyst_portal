@@ -10,9 +10,9 @@ import {
   Award,
   CalendarDays,
   FileText,
-  Shield,
-  X
+  Shield
 } from 'lucide-react'
+import { XLogo } from '@/components/ui/x-logo'
 
 export interface NavigationItem {
   name: string
@@ -30,7 +30,7 @@ export const mainNavigation: NavigationItem[] = [
   { name: 'Briefings Due', href: '/briefings/due', icon: null },
   { name: 'Newsletters', href: '/newsletters', icon: Mail },
   { name: 'Testimonials', href: '/testimonials', icon: MessageSquare },
-  { name: 'X Activity', href: '/twitter-activity', icon: X },
+  { name: 'X Activity', href: '/twitter-activity', icon: XLogo },
   { name: 'Publications', href: '/publications', icon: FileText },
   { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Events', href: '/events', icon: CalendarDays },

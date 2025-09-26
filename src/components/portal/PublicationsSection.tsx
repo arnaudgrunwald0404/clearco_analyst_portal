@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Publication {
   id: string
@@ -18,7 +19,9 @@ interface Publication {
   isValidated: boolean
 }
 
-export function PublicationsSection() {
+export function PublicationsSection({ analystId: analystIdProp }: { analystId?: string }) {
+  const { user } = useAuth()
+  const [analystId, setAnalystId] = useState<string | null>(analystIdProp || null)
   const [publications, setPublications] = useState<Publication[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -26,14 +29,45 @@ export function PublicationsSection() {
   const [isAddingNew, setIsAddingNew] = useState(false)
 
   useEffect(() => {
-    fetchPublications()
-  }, [])
+    // Resolve analyst id if not provided
+    const resolveAnalystId = async () => {
+      if (analystIdProp) return
+      if (!user?.email) return
+      try {
+        const resp = await fetch(`/api/analysts/by-email/${encodeURIComponent(user.email)}`)
+        const json = await resp.json().catch(() => null)
+        if (json?.success && json?.data?.id) {
+          setAnalystId(json.data.id)
+        }
+      } catch (e) {
+        console.error('Failed to resolve analyst id', e)
+      }
+    }
+    resolveAnalystId()
+  }, [user?.email, analystIdProp])
 
-  const fetchPublications = async () => {
+  useEffect(() => {
+    if (!analystId && !analystIdProp) return
+    fetchPublications(analystIdProp || analystId!)
+  }, [analystId, analystIdProp])
+
+  const fetchPublications = async (id: string) => {
     try {
-      const response = await fetch('/api/publications/analyst')
-      const data = await response.json()
-      setPublications(data)
+      setIsLoading(true)
+      const response = await fetch(`/api/analysts/${id}/publications`)
+      const json = await response.json().catch(() => null)
+      const rows = json?.success ? json.data : Array.isArray(json) ? json : []
+      const mapped: Publication[] = (rows || []).map((p: any) => ({
+        id: p.id,
+        title: p.title || 'Untitled',
+        status: (p.status as Publication['status']) || (p.publishedAt ? 'PUBLISHED' : 'PLANNED'),
+        expectedDate: p.expectedDate || null,
+        publishedDate: p.publishedAt || null,
+        url: p.url || null,
+        notes: p.summary || p.notes || '',
+        isValidated: !!p.isValidated,
+      }))
+      setPublications(mapped)
     } catch (error) {
       console.error('Error fetching publications:', error)
     } finally {

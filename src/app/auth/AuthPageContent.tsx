@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Mail, Chrome, ArrowRight, CheckCircle } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 
@@ -124,7 +125,7 @@ export default function AuthPageContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <SpinningCupcake size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>

@@ -15,7 +15,7 @@ export async function GET() {
 
     // Get newsletters from Supabase
     const { data: newsletters, error } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .select('*')
       .order('createdAt', { ascending: false })
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     console.log('📧 [Newsletters API] Creating new newsletter...')
     
     const body = await request.json()
-    const { title, subject, content, htmlContent, status = 'DRAFT', scheduledAt, createdBy } = body
+    const { title, description, subject, content, htmlContent, status = 'DRAFT', scheduledAt, createdBy, recipientAnalystIds } = body
 
     if (!title) {
       return NextResponse.json(
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const newsletterData = {
+    const newsletterData: any = {
       id: generateId(),
       title,
       subject: subject || '',
@@ -83,9 +83,14 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
+    
+    // Add description if provided (only if column exists)
+    if (description) {
+      newsletterData.description = description
+    }
 
     const { data: newsletter, error } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .insert(newsletterData)
       .select()
       .single()
@@ -96,6 +101,28 @@ export async function POST(request: NextRequest) {
         { error: 'Failed to create newsletter' },
         { status: 500 }
       )
+    }
+
+    // Create subscriptions if recipients provided
+    if (recipientAnalystIds && Array.isArray(recipientAnalystIds) && recipientAnalystIds.length > 0) {
+      console.log(`📧 Creating ${recipientAnalystIds.length} subscriptions for newsletter ${newsletter.id}`)
+      
+      const subscriptions = recipientAnalystIds.map((analystId: string) => ({
+        newsletterId: newsletter.id,
+        analystId: analystId
+      }))
+
+      const { error: subscriptionError } = await supabase
+        .from('newsletter_subscriptions')
+        .insert(subscriptions)
+
+      if (subscriptionError) {
+        console.error('Error creating subscriptions:', subscriptionError)
+        // Don't fail the newsletter creation, just log the error
+        console.warn('Newsletter created but subscriptions failed')
+      } else {
+        console.log(`📧 Created ${recipientAnalystIds.length} subscriptions`)
+      }
     }
 
     console.log(`📧 [Newsletters API] Created newsletter: ${newsletter.title}`)

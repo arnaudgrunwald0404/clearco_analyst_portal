@@ -290,7 +290,19 @@ async function startCalendarSync(
         const start_time = new Date(event.start.dateTime)
         const end_time = new Date(event.end.dateTime)
         const durationMinutes = Math.max(1, Math.round((end_time.getTime() - start_time.getTime()) / (60 * 1000)))
-        const attendeeEmails = event.attendees?.map(a => a.email).filter(Boolean) || []
+
+        // Collect candidate emails for analyst matching: attendees + organizer + creator
+        const attendeeEmailsSet = new Set<string>()
+        const rawAttendees = Array.isArray(event.attendees) ? event.attendees : []
+        for (const a of rawAttendees) {
+          const email = (a && a.email ? String(a.email) : '').trim().toLowerCase()
+          if (email) attendeeEmailsSet.add(email)
+        }
+        const organizerEmail = (event.organizer && (event.organizer as any).email ? String((event.organizer as any).email) : '').trim().toLowerCase()
+        if (organizerEmail) attendeeEmailsSet.add(organizerEmail)
+        const creatorEmail = (event.creator && (event.creator as any).email ? String((event.creator as any).email) : '').trim().toLowerCase()
+        if (creatorEmail) attendeeEmailsSet.add(creatorEmail)
+        const attendeeEmails = Array.from(attendeeEmailsSet)
 
         // Month boundary handling
         const monthKey = `${start_time.getUTCFullYear()}-${String(start_time.getUTCMonth() + 1).padStart(2, '0')}`
@@ -353,6 +365,15 @@ async function startCalendarSync(
             // Emit realtime increment for analyst meetings discovered
             sendSSEMessage(connectionId, { type: 'analyst_meeting_found' })
             await recordProgress(supabase, connectionId, { type: 'analyst_meeting_found' })
+            // Build attendees array as [['email','name','status'], ...]
+            const attendeeTriples: string[][] = (Array.isArray(event.attendees) ? event.attendees : [])
+              .filter((a: any) => a && (a.email || a.displayName))
+              .map((a: any) => [
+                (a.email || '').toString(),
+                (a.displayName || a.organizerName || a.email || '').toString(),
+                (a.responseStatus || a.status || 'needsAction').toString()
+              ])
+
             const briefingData: BriefingInsert = {
               id: generateId(),
               title: event.summary,
@@ -361,7 +382,9 @@ async function startCalendarSync(
               status: start_time > now ? 'SCHEDULED' : 'COMPLETED',
               agenda: event.location ? `Location: ${event.location}` : null,
               duration: durationMinutes as any,
-              notes: null
+              notes: null,
+              // @ts-expect-error: column typed as string[][] | null in Database types
+              attendees: attendeeTriples.length ? attendeeTriples : null
             }
 
             const { data: newBriefing, error: briefingError } = await supabase

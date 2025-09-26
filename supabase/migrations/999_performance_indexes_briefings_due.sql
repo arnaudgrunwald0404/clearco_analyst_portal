@@ -62,3 +62,7 @@ COMMENT ON INDEX idx_briefings_attendee_emails_gin IS 'Enables fast email-based 
 COMMENT ON INDEX idx_calendar_meetings_attendees_gin IS 'Enables fast email-based calendar meeting lookups using GIN index on JSONB array';
 
 
+
+
+
+

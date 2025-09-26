@@ -14,6 +14,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface FollowUp {
   id: string
@@ -24,6 +25,12 @@ interface FollowUp {
   analystId: string
   description: string
   assignedTo?: string
+  assignedUser?: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
   comment?: string
   isCompleted: boolean
   completedAt?: string
@@ -160,7 +167,7 @@ export default function FollowUpsPage() {
         </div>
         
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+          <SpinningCupcake size="lg" />
           <span className="ml-2 text-gray-600">Loading follow-ups...</span>
         </div>
       </div>
@@ -369,12 +376,39 @@ export default function FollowUpsPage() {
 
                     {/* Assigned To */}
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={cn(
-                        "text-sm",
-                        followUp.assignedTo ? "text-gray-900" : "text-gray-400 italic"
-                      )}>
-                        {followUp.assignedTo || 'Unassigned'}
-                      </span>
+                      {followUp.assignedUser ? (
+                        <div className="flex items-center">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {followUp.assignedUser.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {followUp.assignedUser.email}
+                            </div>
+                          </div>
+                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Matched
+                          </span>
+                        </div>
+                      ) : followUp.assignedTo ? (
+                        <div className="flex items-center">
+                          <div>
+                            <div className="text-sm text-gray-900">
+                              {followUp.assignedTo}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              No email found
+                            </div>
+                          </div>
+                          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Unmatched
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">
+                          Unassigned
+                        </span>
+                      )}
                     </td>
 
                     {/* Comments */}

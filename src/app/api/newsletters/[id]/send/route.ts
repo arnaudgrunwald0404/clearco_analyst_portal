@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Load newsletter
     const { data: newsletter, error: nErr } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .select('*')
       .eq('id', id)
       .single()
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Update newsletter sentAt if all sent
     if (sentCount === recipientEmails.length) {
       await supabase
-        .from('Newsletter')
+        .from('newsletters')
         .update({ sentAt: new Date().toISOString(), status: 'SENT' })
         .eq('id', id)
     }

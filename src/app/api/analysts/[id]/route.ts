@@ -17,11 +17,32 @@ export async function DELETE(
     const { searchParams } = new URL(request.url)
     const hardDelete = searchParams.get('hardDelete') === 'true'
     
+    // Authentication check
+    const authResult = await requireAuth()
+    if (authResult instanceof NextResponse) {
+      return authResult // User not authenticated
+    }
+    const authUser = authResult
+    
     // Prefer service-role client for write ops to avoid RLS blocking profile edits
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
     const supabase = adminSupabase || await createClient()
+
+    // Check user permissions
+    const { data: userProfile } = await supabase
+      .from('user_profiles')
+      .select('role, email')
+      .eq('id', authUser.id)
+      .single()
+
+    if (!userProfile || userProfile.role !== 'ADMIN') {
+      return NextResponse.json({
+        success: false,
+        error: 'Admin access required to delete analysts'
+      }, { status: 403 })
+    }
 
     // Check if analyst exists
     const { data: existingAnalyst, error: fetchError } = await supabase
@@ -128,6 +149,7 @@ export async function DELETE(
         .single()
 
       if (updateError || !updatedAnalyst) {
+        console.error('Error archiving analyst:', updateError)
         return NextResponse.json({
           success: false,
           error: 'Failed to archive analyst'

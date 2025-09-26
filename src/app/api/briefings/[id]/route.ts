@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireAuth } from '@/lib/auth-utils'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
@@ -181,6 +182,27 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
+    
+    // Check for analyst context headers (for analyst portal)
+    const analystEmail = request.headers.get('x-analyst-email')
+    const analystId = request.headers.get('x-analyst-id')
+    
+    // Try Supabase session authentication first
+    const authResult = await requireAuth()
+    let isAuthenticated = !(authResult instanceof NextResponse)
+    
+    // If Supabase auth fails, check for analyst context headers
+    if (!isAuthenticated && analystEmail) {
+      console.log('Using analyst context authentication for:', analystEmail)
+      isAuthenticated = true
+    }
+    
+    if (!isAuthenticated) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: 'Authentication required' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
 
     const supabase = await createClient()
 

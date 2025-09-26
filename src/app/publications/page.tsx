@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { useRouter } from 'next/navigation'
 
 interface Publication {
@@ -430,7 +431,7 @@ export default function PublicationsPage() {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <SpinningCupcake size="lg" />
           <span className="ml-3 text-gray-600">Loading publications...</span>
         </div>
       </div>
@@ -526,7 +527,7 @@ export default function PublicationsPage() {
           {/* Current Analyst */}
           {discoveryProgress.currentAnalystName && (
             <div className="flex items-center gap-2 mb-4 text-blue-800">
-              <RefreshCw className="h-4 w-4 animate-spin" />
+              <SpinningCupcake size="sm" />
               <span>Searching publications for {discoveryProgress.currentAnalystName}...</span>
             </div>
           )}

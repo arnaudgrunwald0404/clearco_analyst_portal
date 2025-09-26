@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Users, RefreshCw, Mail, User, Shield, CheckCircle, XCircle, Clock, Globe, Plus, Save, X } from 'lucide-react'
+import { Users, RefreshCw, Mail, User, Shield, XCircle, Clock, Plus, Save, X, AlertTriangle, Globe, CheckCircle, Trash2 } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface AdminUser {
   id: string
@@ -14,6 +15,8 @@ interface AdminUser {
   emailConfirmed: boolean
   lastSignIn: string | null
   provider: string
+  hasProfile: boolean
+  company?: string | null
 }
 
 interface NewUser {
@@ -27,10 +30,11 @@ export default function AdminUsersSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [domain, setDomain] = useState<string>('')
-  const [totalAuthUsers, setTotalAuthUsers] = useState<number>(0)
   const [isAddingUser, setIsAddingUser] = useState(false)
   const [newUser, setNewUser] = useState<NewUser>({ firstName: '', lastName: '', email: '' })
   const [saving, setSaving] = useState(false)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null)
 
   const fetchUsers = async () => {
     try {
@@ -62,7 +66,6 @@ export default function AdminUsersSection() {
       console.log('✅ [AdminUsersSection] Successfully fetched users:', result.data?.length || 0)
       setUsers(result.data || [])
       setDomain(result.domain || '')
-      setTotalAuthUsers(result.totalAuthUsers || 0)
     } catch (err) {
       console.error('❌ [AdminUsersSection] Error fetching users:', err)
       setError(err instanceof Error ? err.message : 'Failed to load users')
@@ -144,6 +147,44 @@ export default function AdminUsersSection() {
 
   const isFormValid = newUser.firstName.trim() && newUser.lastName.trim() && newUser.email.trim()
 
+  const handleDeleteUser = async (userId: string) => {
+    setDeletingUserId(userId)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to delete user')
+      }
+
+      // Refresh the users list
+      await fetchUsers()
+      setShowDeleteConfirm(null)
+    } catch (err) {
+      console.error('Error deleting user:', err)
+      setError(err instanceof Error ? err.message : 'Failed to delete user')
+    } finally {
+      setDeletingUserId(null)
+    }
+  }
+
+  const handleDeleteConfirm = (userId: string) => {
+    setShowDeleteConfirm(userId)
+  }
+
+  const handleDeleteCancel = () => {
+    setShowDeleteConfirm(null)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -166,7 +207,7 @@ export default function AdminUsersSection() {
         </div>
         
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+          <SpinningCupcake size="lg" />
           <span className="ml-2 text-gray-600">Loading users...</span>
         </div>
       </div>
@@ -211,28 +252,21 @@ export default function AdminUsersSection() {
             <Users className="w-6 h-6 text-blue-600" />
             Admin Users
           </h2>
-          <p className="text-gray-600">
-            Users from authenticated domain {domain && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-md ml-2">
-                <Globe className="w-3 h-3" />
-                {domain}
-              </span>
-            )}
-          </p>
+          
         </div>
         
         <div className="flex items-center gap-3">
           <button
             onClick={handleAddUser}
             disabled={isAddingUser}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-4 py-2 bg-transparent text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add User
           </button>
           <button
             onClick={fetchUsers}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-transparent text-blue-600 border border-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -241,64 +275,30 @@ export default function AdminUsersSection() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
         {/* Domain Users */}
-        <div className="bg-white rounded-lg shadow p-6">
+       
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-blue-600" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
+           
+            <div className="ml-2 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Domain Users
-                </dt>
+                
+                <p className="text-sm text-gray-600">
+            Users from domain:{domain && (
+              <span className="inline-flex gap-1 py-1 text-sm font-semibold rounded-md ml-2">
+                {domain}
+              </span>
+            )}
+          </p>
+                
                 <dd className="text-2xl font-semibold text-gray-900">
                   {users.length}
                 </dd>
               </dl>
             </div>
           </div>
-        </div>
-
-        {/* Email Confirmed */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Email Confirmed
-                </dt>
-                <dd className="text-2xl font-semibold text-gray-900">
-                  {users.filter(user => user.emailConfirmed).length}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        {/* Total Auth Users */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <Globe className="h-8 w-8 text-gray-600" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Auth Users
-                </dt>
-                <dd className="text-2xl font-semibold text-gray-900">
-                  {totalAuthUsers}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-      </div>
+        
+      
 
       {/* Users List */}
       {users.length === 0 ? (
@@ -312,26 +312,17 @@ export default function AdminUsersSection() {
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">
                     User
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                    Dates
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Last Sign In
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Created
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -339,15 +330,10 @@ export default function AdminUsersSection() {
                 {/* Add User Row */}
                 {isAddingUser && (
                   <tr className="bg-blue-50 border-l-4 border-blue-400">
-                    {/* User Name - Input Fields */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                            <Plus className="h-5 w-5 text-green-600" />
-                          </div>
-                        </div>
-                        <div className="ml-4 flex gap-2">
+                    {/* User Name & Email - Combined Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
                           <input
                             type="text"
                             placeholder="First name"
@@ -363,49 +349,42 @@ export default function AdminUsersSection() {
                             className="text-sm font-medium text-gray-900 border border-gray-300 rounded px-2 py-1 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
+                        <div className="flex items-center">
+                          <Mail className="w-4 h-4 text-gray-400 mr-2" />
+                          <input
+                            type="email"
+                            placeholder={`user@${domain}`}
+                            value={newUser.email}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
+                            className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            <Shield className="w-3 h-3" />
+                            User
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-orange-500 text-white" title="User will have no profile data initially">
+                            <AlertTriangle className="w-3 h-3" />
+                            No Profile
+                          </span>
+                        </div>
                       </div>
                     </td>
 
-                    {/* Email - Input Field */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                        <input
-                          type="email"
-                          placeholder={`user@${domain}`}
-                          value={newUser.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          className="text-sm text-gray-900 border border-gray-300 rounded px-2 py-1 w-40 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                    </td>
 
-                    {/* Status */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                        <Clock className="w-3 h-3" />
-                        Pending
-                      </span>
-                    </td>
-
-                    {/* Role */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        <Shield className="w-3 h-3" />
-                        User
-                      </span>
-                    </td>
-
-                    {/* Last Sign In */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        Never
+                    {/* Dates */}
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div>
+                        <div className="text-xs font-medium text-gray-700">Created</div>
+                        <div className="text-xs text-gray-500">Now</div>
+                        <div className="text-xs font-medium text-gray-700 mt-1">Last Login</div>
+                        <div className="text-xs text-gray-500">Never</div>
                       </div>
                     </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleSaveUser}
@@ -434,69 +413,90 @@ export default function AdminUsersSection() {
 
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    {/* User Name */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <User className="h-5 w-5 text-blue-600" />
-                          </div>
+                    {/* User Name & Email - Combined Column */}
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {user.firstName} {user.lastName}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.firstName} {user.lastName}
-                          </div>
+                        <div className="flex items-center mt-1">
+                          <Mail className="w-3 h-3 text-gray-400 mr-1" />
+                          <span className="text-xs text-gray-500">{user.email}</span>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* Email */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <Mail className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">{user.email}</span>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {user.emailConfirmed ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                            <CheckCircle className="w-3 h-3" />
-                            Verified
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            <Shield className="w-3 h-3" />
+                            {user.role || 'User'}
                           </span>
+                          {user.hasProfile ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-green-500 text-white" title="User has profile data">
+                              <User className="w-3 h-3" />
+                              Profile Complete
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-orange-500 text-white" title="User has no profile data">
+                              <AlertTriangle className="w-3 h-3" />
+                              No Profile
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+
+                    {/* Dates */}
+                    <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div>
+                        <div className="text-xs font-medium text-gray-700">Created</div>
+                        <div className="text-xs text-gray-500">{formatDate(user.createdAt)}</div>
+                        <div className="text-xs font-medium text-gray-700 mt-1">Last Login</div>
+                        <div className="text-xs text-gray-500">{user.lastSignIn ? formatDate(user.lastSignIn) : 'Never'}</div>
+                      </div>
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-3 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        {!user.hasProfile ? (
+                          <>
+                            {showDeleteConfirm === user.id ? (
+                              <>
+                                <button
+                                  onClick={() => handleDeleteUser(user.id)}
+                                  disabled={deletingUserId === user.id}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                                >
+                                  <AlertTriangle className="w-3 h-3 mr-1" />
+                                  {deletingUserId === user.id ? 'Deleting...' : 'Confirm'}
+                                </button>
+                                <button
+                                  onClick={handleDeleteCancel}
+                                  disabled={deletingUserId === user.id}
+                                  className="inline-flex items-center px-3 py-1 text-xs font-medium rounded bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors disabled:opacity-50"
+                                >
+                                  <X className="w-3 h-3 mr-1" />
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => handleDeleteConfirm(user.id)}
+                                disabled={deletingUserId !== null}
+                                className="inline-flex items-center px-3 py-1 text-xs font-medium rounded bg-red-100 text-red-700 hover:bg-red-200 transition-colors disabled:opacity-50"
+                                title="Delete user (no profile data)"
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Delete
+                              </button>
+                            )}
+                          </>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                            <XCircle className="w-3 h-3" />
-                            Pending
+                          <span className="inline-flex items-center px-3 py-1 text-xs font-medium rounded bg-gray-100 text-gray-500" title="Cannot delete user with profile data">
+                            <Shield className="w-3 h-3 mr-1" />
+                            Protected
                           </span>
                         )}
-                        <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700">
-                          {user.provider}
-                        </span>
                       </div>
-                    </td>
-
-                    {/* Role */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        <Shield className="w-3 h-3" />
-                        {user.role || 'User'}
-                      </span>
-                    </td>
-
-                    {/* Last Sign In */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4 text-gray-400" />
-                        {user.lastSignIn ? formatDate(user.lastSignIn) : 'Never'}
-                      </div>
-                    </td>
-
-                    {/* Created Date */}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(user.createdAt)}
                     </td>
                   </tr>
                 ))}

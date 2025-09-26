@@ -7,8 +7,6 @@ import {
   Download,
   Play,
   Calendar,
-  Eye,
-  Clock,
   Filter,
   Search,
   Tag,
@@ -17,6 +15,9 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 const contentTypes = [
   { value: 'ALL', label: 'All Types' },
@@ -140,11 +141,11 @@ export default function PortalContentPage() {
         {/* Search and Type Filter */}
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
               type="text"
               placeholder="Search content..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="pl-10"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -153,7 +154,7 @@ export default function PortalContentPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-input bg-background rounded-md"
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
             >
@@ -168,19 +169,16 @@ export default function PortalContentPage() {
         <div className="flex flex-wrap gap-2">
           <span className="text-sm font-medium text-gray-700 py-2">Filter by tags:</span>
           {allTags.map(tag => (
-            <button
+            <Button
               key={tag}
+              variant={selectedTags.includes(tag) ? 'secondary' : 'outline'}
+              size="sm"
+              className={cn('h-7 rounded-full px-3 text-xs')}
               onClick={() => toggleTag(tag)}
-              className={cn(
-                'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors',
-                selectedTags.includes(tag)
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-              )}
             >
               <Tag className="w-3 h-3 mr-1" />
               {tag}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -202,9 +200,9 @@ export default function PortalContentPage() {
               const IconComponent = getContentIcon(item.type)
 
               return (
-                <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                <Card key={item.id} className="overflow-hidden hover:shadow-md transition-shadow">
                   {/* Content Header */}
-                  <div className="p-6">
+                  <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -251,15 +249,16 @@ export default function PortalContentPage() {
                     </div>
 
                     {/* Action Button */}
-                    <a href={item.url || item.file_path || '#'} target="_blank" rel="noopener noreferrer" className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
-                      {item.type === 'VIDEO' && <Play className="w-4 h-4 mr-2" />}
-                      {item.type === 'WEBINAR' && <Calendar className="w-4 h-4 mr-2" />}
-                      {item.url ? <ExternalLink className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
-
-                      View Content
-                    </a>
-                  </div>
-                </div>
+                    <Button asChild className="w-full">
+                      <a href={item.url || item.file_path || '#'} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center">
+                        {item.type === 'VIDEO' && <Play className="w-4 h-4 mr-2" />}
+                        {item.type === 'WEBINAR' && <Calendar className="w-4 h-4 mr-2" />}
+                        {item.url ? <ExternalLink className="w-4 h-4 mr-2" /> : <Download className="w-4 h-4 mr-2" />}
+                        View Content
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
               )
             })}
           </div>

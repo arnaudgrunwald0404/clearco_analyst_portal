@@ -5,6 +5,7 @@ import { Plus, Search, Filter, Eye, Edit, Send } from 'lucide-react'
 import { cn, formatDateTime } from '@/lib/utils'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 
 interface Newsletter {
   id: string
@@ -23,11 +24,15 @@ interface Newsletter {
   }
 }
 
+const SendNewsletterModal = dynamic(() => import('@/components/modals/send-newsletter-modal'), { ssr: false })
+
 export default function NewslettersClientPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [sendingId, setSendingId] = useState<string | null>(null)
   const [newsletters, setNewsletters] = useState<Newsletter[]>([])
+  const [sendModalOpen, setSendModalOpen] = useState(false)
+  const [activeNewsletterId, setActiveNewsletterId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -215,15 +220,12 @@ export default function NewslettersClientPage() {
                     <button
                       className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
                       onClick={async () => {
-                        setSendingId(newsletter.id)
-                        await fetch(`/api/newsletters/${newsletter.id}/send`, { method: 'POST' })
-                        setSendingId(null)
-                        fetchNewsletters() // Refresh the data
+                        setActiveNewsletterId(newsletter.id)
+                        setSendModalOpen(true)
                       }}
-                      disabled={sendingId === newsletter.id}
                     >
                       <Send className="w-4 h-4 mr-1" />
-                      {sendingId === newsletter.id ? 'Sending...' : 'Send'}
+                      Send via Gmail
                     </button>
                   </>
                 )}
@@ -237,6 +239,18 @@ export default function NewslettersClientPage() {
         <div className="text-center py-12">
           <div className="text-gray-500">No newsletters found matching your criteria.</div>
         </div>
+      )}
+      {activeNewsletterId && (
+        <SendNewsletterModal
+          isOpen={sendModalOpen}
+          onClose={() => setSendModalOpen(false)}
+          newsletterId={activeNewsletterId}
+          onSent={() => {
+            setSendModalOpen(false)
+            setActiveNewsletterId(null)
+            fetchNewsletters()
+          }}
+        />
       )}
     </div>
   )

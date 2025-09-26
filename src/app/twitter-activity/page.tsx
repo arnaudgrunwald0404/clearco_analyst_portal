@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { X, Heart, MessageCircle, Repeat2, ExternalLink, TrendingUp, Users, Activity, Clock, RefreshCw } from 'lucide-react'
+import { XLogo } from '@/components/ui/x-logo'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface XPost {
   id: string
@@ -127,7 +129,7 @@ export default function XActivityPage() {
         </div>
         
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <SpinningCupcake size="lg" />
           <span className="ml-3 text-gray-600">Loading X activity...</span>
         </div>
       </div>
@@ -168,7 +170,7 @@ export default function XActivityPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <X className="w-8 h-8 text-black" />
+            <XLogo size="lg" />
             X Activity
           </h1>
           <p className="mt-2 text-gray-600">

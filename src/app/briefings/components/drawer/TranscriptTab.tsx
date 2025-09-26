@@ -27,23 +27,28 @@ export default function TranscriptTab({
 }) {
   return (
     <div className="p-6 space-y-6">
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-gray-900">Transcript Management</h3>
-          <div className="flex items-center space-x-2">
+      
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-700">
+          Transcript
+        </label>
+
+        <div className=" pb-2">
+      <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Upload a CSV or TXT file to automatically populate the transcript field
+            </div>
             <button
               type="button"
               onClick={() => document.getElementById(`transcript-file-input-${briefing.id}`)?.click()}
-              className="flex items-center px-3 py-1.5 text-sm border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+              className="flex items-center px-3 py-1.5 text-sm  text-blue-700 rounded hover:bg-gray-50 transition-colors"
             >
               <Upload className="w-4 h-4 mr-1" />
               Upload text file
             </button>
           </div>
-        </div>
-        <p className="text-sm text-gray-600">
-          Upload a CSV or TXT file (Word documents not yet supported), or manually enter the transcript below.
-        </p>
+        
         <input
           id={`transcript-file-input-${briefing.id}`}
           type="file"
@@ -77,11 +82,6 @@ export default function TranscriptTab({
           }}
         />
       </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Transcript
-        </label>
         <textarea
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
@@ -91,7 +91,7 @@ export default function TranscriptTab({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
           Additional Notes
         </label>
         <textarea

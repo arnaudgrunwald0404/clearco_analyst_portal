@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { Switch } from '@/components/ui/switch'
 import { Calendar, Plus, RefreshCw, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
@@ -115,7 +116,7 @@ export default function CalendarSection({
         {/* Calendar Connections List */}
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <RefreshCw className="w-5 h-5 animate-spin text-blue-600 mr-2" />
+            <SpinningCupcake size="md" className="mr-2" />
             <span className="text-gray-600">Loading calendar connections...</span>
           </div>
         ) : calendarConnections.length === 0 ? (

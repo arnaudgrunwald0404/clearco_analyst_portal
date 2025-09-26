@@ -9,11 +9,11 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params
+    const { id } = await params
     const supabase = await createClient()
 
     const { data: newsletter, error } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .select('*')
       .eq('id', id)
       .single()
@@ -44,15 +44,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const {
       title,
+      description,
       subject,
       content,
       htmlContent,
       status,
-      scheduledAt
+      scheduledAt,
+      recipientAnalystIds
     } = body
 
     const supabase = await createClient()
@@ -62,6 +64,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     if (title !== undefined) updateData.title = title
+    if (description !== undefined) updateData.description = description
     if (subject !== undefined) updateData.subject = subject
     if (content !== undefined) updateData.content = content
     if (htmlContent !== undefined) updateData.htmlContent = htmlContent
@@ -71,7 +74,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 
     const { data: newsletter, error } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -79,6 +82,41 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     if (error || !newsletter) {
       return NextResponse.json({ error: 'Newsletter not found or failed to update' }, { status: 404 })
+    }
+
+    // Update recipients if provided
+    if (recipientAnalystIds !== undefined && Array.isArray(recipientAnalystIds)) {
+      console.log(`📧 Updating recipients for newsletter ${id}:`, recipientAnalystIds)
+      
+      // First, delete existing subscriptions
+      const { error: deleteError } = await supabase
+        .from('newsletter_subscriptions')
+        .delete()
+        .eq('newsletterId', id)
+
+      if (deleteError) {
+        console.error('Error deleting existing subscriptions:', deleteError)
+        return NextResponse.json({ error: 'Failed to update recipients' }, { status: 500 })
+      }
+
+      // Then, create new subscriptions
+      if (recipientAnalystIds.length > 0) {
+        const subscriptions = recipientAnalystIds.map((analystId: string) => ({
+          newsletterId: id,
+          analystId: analystId
+        }))
+
+        const { error: insertError } = await supabase
+          .from('newsletter_subscriptions')
+          .insert(subscriptions)
+
+        if (insertError) {
+          console.error('Error creating new subscriptions:', insertError)
+          return NextResponse.json({ error: 'Failed to update recipients' }, { status: 500 })
+        }
+
+        console.log(`📧 Created ${recipientAnalystIds.length} new subscriptions`)
+      }
     }
 
     console.log(`📧 Newsletter updated: ${newsletter.title}`)
@@ -99,7 +137,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient()
 
     const { error } = await supabase
-      .from('Newsletter')
+      .from('newsletters')
       .delete()
       .eq('id', id)
 

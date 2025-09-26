@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Shield, Clock, Plus, Settings } from 'lucide-react';
-import AnalystPortalSettingsForm from '@/components/forms/analyst-portal-settings-form';
+import { Users, Shield, Clock, Plus, Settings, FileText } from 'lucide-react';
+import AnalystPortalSettingsForm from '@/components/forms/analyst-portal-settings-form.placeholder';
 import { AnalystAccessForm } from '@/components/forms/analyst-access-form';
+import ContentSection from '@/app/settings/ContentSection';
 
 interface AnalystAccess {
   id: string
@@ -25,7 +26,7 @@ interface AnalystAccess {
 }
 
 interface AnalystPortalSectionProps {
-  initialTab?: 'settings' | 'access'
+  initialTab?: 'settings' | 'content' | 'access'
   /** When false, hides the Access Management tab and content */
   showAccessTab?: boolean
 }
@@ -35,7 +36,7 @@ export default function AnalystPortalSection({ initialTab = 'settings', showAcce
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedAnalystId, setSelectedAnalystId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'settings' | 'access'>(initialTab)
+const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access'>(initialTab)
 
   const fetchAnalystAccess = async () => {
     try {
@@ -108,7 +109,18 @@ export default function AnalystPortalSection({ initialTab = 'settings', showAcce
             }`}
           >
             <Settings className="w-4 h-4 inline mr-2" />
-            Portal Settings
+            Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'content'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FileText className="w-4 h-4 inline mr-2" />
+            Content
           </button>
           {showAccessTab && (
             <button
@@ -136,16 +148,23 @@ export default function AnalystPortalSection({ initialTab = 'settings', showAcce
         <Card className="shadow-sm border border-gray-200">
           <CardHeader className="pb-6 px-8 pt-8">
             <CardTitle className="text-xl font-bold text-gray-900">
-              Portal Configuration
+              Vendor Contact
             </CardTitle>
             <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
-              Configure the analyst portal welcome experience and content
+              Enter the contact details provided to analysts.
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-2 px-8 pb-8">
             <AnalystPortalSettingsForm />
           </CardContent>
         </Card>
+      )}
+
+      {/* Content Tab */}
+      {activeTab === 'content' && (
+        <div className="space-y-6">
+          <ContentSection />
+        </div>
       )}
 
       {/* Access Management Tab */}

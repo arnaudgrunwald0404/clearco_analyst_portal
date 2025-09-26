@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react"
 import { Briefing } from "../../types"
 import { cn } from "@/lib/utils"
-import { Calendar as CalendarIcon, X, Eye, FileText, Video, Bot, CheckCircle } from "lucide-react"
-import ContentSection from "./ContentSection"
+import { Calendar as CalendarIcon, X, Eye, FileText, Video, Bot, CheckCircle, Upload } from "lucide-react"
 import TranscriptTab from "./TranscriptTab"
+import MaterialsTab from "./MaterialsTab"
+import { useAuth } from "@/contexts/AuthContext"
 
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString("en-US", {
@@ -39,11 +40,12 @@ export default function Drawer({
   onUpdate,
 }: {
   briefing: Briefing
-  activeTab: "overview" | "transcript"
-  onTabChange: (tab: "overview" | "transcript") => void
+  activeTab: "overview" | "materials" | "transcript"
+  onTabChange: (tab: "overview" | "materials" | "transcript") => void
   onClose: () => void
   onUpdate: () => void
 }) {
+  const { user } = useAuth()
   const [isUpdating, setIsUpdating] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [transcript, setTranscript] = useState(briefing.transcript || "")
@@ -138,9 +140,28 @@ export default function Drawer({
   const handleSaveTranscript = async () => {
     try {
       setIsUpdating(true)
+      
+      // Prepare headers with authentication context
+      const headers: Record<string, string> = { 
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      }
+      
+      // Add analyst context headers if user is available
+      if (user?.email) {
+        headers['x-analyst-email'] = user.email
+        
+        // Try to get analyst ID from the briefing's analysts array
+        const analyst = briefing.analysts?.find(a => a.email === user.email)
+        if (analyst?.id) {
+          headers['x-analyst-id'] = analyst.id
+        }
+        
+      }
+      
       const response = await fetch(`/api/briefings/${briefing.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           transcript,
           notes,
@@ -288,6 +309,18 @@ export default function Drawer({
           </div>
         </button>
         <button
+          onClick={() => onTabChange("materials")}
+          className={cn(
+            "flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors",
+            activeTab === "materials" ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+          )}
+        >
+          <div className="flex items-center justify-center">
+            <Upload className="w-4 h-4 mr-2" />
+            Materials
+          </div>
+        </button>
+        <button
           onClick={() => onTabChange("transcript")}
           className={cn(
             "flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors",
@@ -310,6 +343,12 @@ export default function Drawer({
             onAddAsTestimonial={handleAddAsTestimonial}
             onUpdate={onUpdate}
             highlightSections={highlightSections}
+          />
+        )}
+        {activeTab === "materials" && (
+          <MaterialsTab
+            briefing={briefing}
+            onUpdate={onUpdate}
           />
         )}
         {activeTab === "transcript" && (
@@ -508,10 +547,7 @@ function OverviewTab({ briefing, onEdit, onRemove, onAddAsTestimonial, onUpdate,
 
   return (
     <div className="p-6 space-y-6">
-      {/* Content Section - Moved to top */}
-      <ContentSection briefing={briefing} onUpdate={onUpdate} />
-
-      {/* AI-derived Content with specific formatting */}
+      {/* AI-derived Content */}
       <div className="grid grid-cols-1 gap-4">
         <div className={cn("bg-white border rounded-lg p-4", highlightSections && "ring-2 ring-yellow-400")}>
           <h3 className="font-semibold text-gray-900 mb-3">Key Topics</h3>

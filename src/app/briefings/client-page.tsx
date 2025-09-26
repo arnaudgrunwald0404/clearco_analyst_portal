@@ -18,6 +18,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Briefing } from './types'
 import BriefingCard from './components/BriefingCard'
@@ -80,7 +81,7 @@ export default function ClientBriefingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('ALL')
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null)
-  const [drawerTab, setDrawerTab] = useState<'overview' | 'transcript'>('overview')
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'materials' | 'transcript'>('overview')
   const [hasMore, setHasMore] = useState(true)
   const [cursor, setCursor] = useState<string | null>(null)
   
@@ -96,6 +97,9 @@ export default function ClientBriefingsPage() {
   
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef<HTMLDivElement>(null)
+  
+  // Polling control for calendar sync monitoring
+  const pollRef = useRef<{ timeoutId: ReturnType<typeof setTimeout> | null; cancelled: boolean }>({ timeoutId: null, cancelled: false })
 
   // Intersection observer callback
   const lastElementRef = useCallback((node: HTMLDivElement) => {
@@ -127,10 +131,16 @@ export default function ClientBriefingsPage() {
     checkCalendarConnection()
   }, [selectedStatus])
 
-  // Cleanup observer on unmount
+  // Cleanup observer and any in-flight sync polling on unmount
   useEffect(() => {
     return () => {
       if (observerRef.current) observerRef.current.disconnect()
+      // cancel polling if component unmounts
+      pollRef.current.cancelled = true
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
     }
   }, [])
 
@@ -214,6 +224,13 @@ export default function ClientBriefingsPage() {
       // Add cancel message to progress
       setSyncProgress(prev => [...prev, { type: 'error', message: 'Sync cancelled by user' } as any])
       
+      // Cancel polling immediately
+      pollRef.current.cancelled = true
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
+      
       // Reset sync state
       setIsSyncInProgress(false)
       setSyncStatus({ isInProgress: false, timeElapsed: 0 })
@@ -294,6 +311,13 @@ export default function ClientBriefingsPage() {
       // Simplified sync monitoring - just wait for completion via last_sync_at
       setSyncProgress([{ type: 'progress', message: 'Calendar sync started...' }])
 
+      // reset/cancel any previous polling chain and start a fresh one
+      pollRef.current.cancelled = false
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
+
       const startTime = Date.now()
       const timeoutMs = 300_000 // 5 minutes timeout
       const intervalMs = 5000 // Check every 5 seconds instead of 2
@@ -301,6 +325,7 @@ export default function ClientBriefingsPage() {
       // Simple polling for completion
       const checkCompletion = async () => {
         try {
+          if (pollRef.current.cancelled) return
           const resp = await fetch('/api/settings/calendar-connections')
           const body = await resp.json()
           const list = Array.isArray(body.data) ? body.data : []
@@ -308,6 +333,12 @@ export default function ClientBriefingsPage() {
           
           if (updated && updated.last_sync_at && updated.last_sync_at !== baselineLastSync) {
             // Sync completed
+            // stop polling
+            pollRef.current.cancelled = true
+            if (pollRef.current.timeoutId) {
+              clearTimeout(pollRef.current.timeoutId)
+              pollRef.current.timeoutId = null
+            }
             setSyncProgress([{ type: 'complete', message: 'Calendar sync completed successfully!' }])
             setIsSyncInProgress(false)
             setSyncStatus({ isInProgress: false, timeElapsed: Math.round((Date.now() - startTime) / 60000) })
@@ -325,9 +356,17 @@ export default function ClientBriefingsPage() {
           }
 
           // Continue polling
-          setTimeout(checkCompletion, intervalMs)
+          if (!pollRef.current.cancelled) {
+            pollRef.current.timeoutId = setTimeout(checkCompletion, intervalMs)
+          }
         } catch (err) {
           console.error('Sync monitoring error:', err)
+          // stop polling on error
+          pollRef.current.cancelled = true
+          if (pollRef.current.timeoutId) {
+            clearTimeout(pollRef.current.timeoutId)
+            pollRef.current.timeoutId = null
+          }
           setSyncProgress([{ type: 'error', message: err instanceof Error ? err.message : 'Sync monitoring failed' }])
           setIsSyncInProgress(false)
           setSyncStatus({ isInProgress: false, timeElapsed: 0 })
@@ -336,7 +375,7 @@ export default function ClientBriefingsPage() {
       }
 
       // Start monitoring
-      setTimeout(checkCompletion, intervalMs)
+      pollRef.current.timeoutId = setTimeout(checkCompletion, intervalMs)
 
     } catch (error) {
       console.error('Error syncing calendar meetings:', error)
@@ -394,6 +433,14 @@ export default function ClientBriefingsPage() {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Link
+            href="/briefings/create"
+            className="inline-flex items-center px-4 py-2 text-gray-600 bg-gray-100 border border-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Briefing
+          </Link>
+          
           {hasCalendarConnection && (
             <button
               onClick={syncCalendarMeetings}
@@ -404,14 +451,6 @@ export default function ClientBriefingsPage() {
               {isSyncInProgress ? 'Syncing...' : 'Sync Calendar'}
             </button>
           )}
-          
-          <Link
-            href="/briefings/create"
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Briefing
-          </Link>
         </div>
       </div>
 
@@ -450,7 +489,7 @@ export default function ClientBriefingsPage() {
         {/* Briefings Grid */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+            <SpinningCupcake size="lg" />
             <span className="ml-2 text-gray-600">Loading briefings...</span>
           </div>
         ) : briefings.length === 0 ? (
@@ -526,7 +565,7 @@ export default function ClientBriefingsPage() {
               
               {loadingMore && (
                 <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="w-5 h-5 animate-spin text-blue-600" />
+                  <SpinningCupcake size="md" />
                   <span className="ml-2 text-gray-600">Loading more briefings...</span>
                 </div>
               )}

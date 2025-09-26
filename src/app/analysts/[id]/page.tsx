@@ -28,7 +28,9 @@ import {
   RefreshCw,
   ChevronUp
 } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { cn } from '@/lib/utils'
+import { Icons } from '@/components/ui/icons'
 
 interface SocialHandle {
   id: string
@@ -238,7 +240,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <SpinningCupcake size="lg" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading analyst profile...</p>
         </div>
       </div>
@@ -309,7 +311,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
           className="text-gray-800 hover:text-gray-600 transition-colors"
           title={`X (Twitter) Profile${handle.displayName ? ` - ${handle.displayName}` : ''}`}
         >
-          <Twitter className="w-5 h-5" />
+          <Icons.twitter className="w-5 h-5 fill-current" />
         </a>
       )
     })
@@ -325,7 +327,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
           className="text-gray-800 hover:text-gray-600 transition-colors"
           title="X (Twitter) Profile"
         >
-          <Twitter className="w-5 h-5" />
+          <Icons.twitter className="w-5 h-5 fill-current" />
         </a>
       )
     }

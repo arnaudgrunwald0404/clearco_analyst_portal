@@ -96,6 +96,9 @@ export default function ClientBriefingsPage() {
   
   const observerRef = useRef<IntersectionObserver | null>(null)
   const loadingRef = useRef<HTMLDivElement>(null)
+  
+  // Polling control for calendar sync monitoring
+  const pollRef = useRef<{ timeoutId: ReturnType<typeof setTimeout> | null; cancelled: boolean }>({ timeoutId: null, cancelled: false })
 
   // Intersection observer callback
   const lastElementRef = useCallback((node: HTMLDivElement) => {
@@ -127,10 +130,16 @@ export default function ClientBriefingsPage() {
     checkCalendarConnection()
   }, [selectedStatus])
 
-  // Cleanup observer on unmount
+  // Cleanup observer and any in-flight sync polling on unmount
   useEffect(() => {
     return () => {
       if (observerRef.current) observerRef.current.disconnect()
+      // cancel polling if component unmounts
+      pollRef.current.cancelled = true
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
     }
   }, [])
 
@@ -214,6 +223,13 @@ export default function ClientBriefingsPage() {
       // Add cancel message to progress
       setSyncProgress(prev => [...prev, { type: 'error', message: 'Sync cancelled by user' } as any])
       
+      // Cancel polling immediately
+      pollRef.current.cancelled = true
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
+      
       // Reset sync state
       setIsSyncInProgress(false)
       setSyncStatus({ isInProgress: false, timeElapsed: 0 })
@@ -294,6 +310,13 @@ export default function ClientBriefingsPage() {
       // Simplified sync monitoring - just wait for completion via last_sync_at
       setSyncProgress([{ type: 'progress', message: 'Calendar sync started...' }])
 
+      // reset/cancel any previous polling chain and start a fresh one
+      pollRef.current.cancelled = false
+      if (pollRef.current.timeoutId) {
+        clearTimeout(pollRef.current.timeoutId)
+        pollRef.current.timeoutId = null
+      }
+
       const startTime = Date.now()
       const timeoutMs = 300_000 // 5 minutes timeout
       const intervalMs = 5000 // Check every 5 seconds instead of 2
@@ -301,6 +324,7 @@ export default function ClientBriefingsPage() {
       // Simple polling for completion
       const checkCompletion = async () => {
         try {
+          if (pollRef.current.cancelled) return
           const resp = await fetch('/api/settings/calendar-connections')
           const body = await resp.json()
           const list = Array.isArray(body.data) ? body.data : []
@@ -308,6 +332,12 @@ export default function ClientBriefingsPage() {
           
           if (updated && updated.last_sync_at && updated.last_sync_at !== baselineLastSync) {
             // Sync completed
+            // stop polling
+            pollRef.current.cancelled = true
+            if (pollRef.current.timeoutId) {
+              clearTimeout(pollRef.current.timeoutId)
+              pollRef.current.timeoutId = null
+            }
             setSyncProgress([{ type: 'complete', message: 'Calendar sync completed successfully!' }])
             setIsSyncInProgress(false)
             setSyncStatus({ isInProgress: false, timeElapsed: Math.round((Date.now() - startTime) / 60000) })
@@ -325,9 +355,17 @@ export default function ClientBriefingsPage() {
           }
 
           // Continue polling
-          setTimeout(checkCompletion, intervalMs)
+          if (!pollRef.current.cancelled) {
+            pollRef.current.timeoutId = setTimeout(checkCompletion, intervalMs)
+          }
         } catch (err) {
           console.error('Sync monitoring error:', err)
+          // stop polling on error
+          pollRef.current.cancelled = true
+          if (pollRef.current.timeoutId) {
+            clearTimeout(pollRef.current.timeoutId)
+            pollRef.current.timeoutId = null
+          }
           setSyncProgress([{ type: 'error', message: err instanceof Error ? err.message : 'Sync monitoring failed' }])
           setIsSyncInProgress(false)
           setSyncStatus({ isInProgress: false, timeElapsed: 0 })
@@ -336,7 +374,7 @@ export default function ClientBriefingsPage() {
       }
 
       // Start monitoring
-      setTimeout(checkCompletion, intervalMs)
+      pollRef.current.timeoutId = setTimeout(checkCompletion, intervalMs)
 
     } catch (error) {
       console.error('Error syncing calendar meetings:', error)

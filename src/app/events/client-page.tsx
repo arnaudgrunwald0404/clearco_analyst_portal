@@ -1,6 +1,7 @@
 'use client'
 
 import { CalendarDays, Plus, RefreshCw, Search, Filter, Loader, ArrowUpDown, Check, Handshake, Eye, DollarSign, Plane } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
 import EventActionsMenu from '@/components/actions/event-actions-menu'
@@ -217,18 +218,8 @@ export default function EventsClientPage() {
                   <input type="checkbox" checked={selectedEvents.has(ev.id)} onChange={()=>toggleEventSelection(ev.id)} />
                 </td>
                 <td className="px-6 py-4 w-1/2 whitespace-normal break-words">
-                  <div className="text-sm font-medium text-gray-900 flex items-center">
+                  <div className="text-sm font-medium text-gray-900">
                     {ev.eventName || 'Untitled Event'}
-                    {ev.participationStatus === 'SPONSORING' && (
-<span className="ml-2 inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-1" title="Sponsoring">
-                        <DollarSign className="w-4 h-4" />
-                      </span>
-                    )}
-                    {ev.participationStatus === 'ATTENDING' && (
-<span className="ml-2 inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-1" title="Attending">
-                        <Plane className="w-4 h-4" />
-                      </span>
-                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -256,19 +247,25 @@ export default function EventsClientPage() {
                     <SelectContent>
                       <SelectItem value="SPONSORING">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-purple-600"></span>
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-1">
+                            <DollarSign className="w-4 h-4" />
+                          </span>
                           Sponsoring
                         </span>
                       </SelectItem>
                       <SelectItem value="ATTENDING">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                          <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-1">
+                            <Plane className="w-4 h-4" />
+                          </span>
                           Attending
                         </span>
                       </SelectItem>
                       <SelectItem value="CONSIDERING">
                         <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                          <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-1">
+                            <Eye className="w-4 h-4" />
+                          </span>
                           Considering
                         </span>
                       </SelectItem>
@@ -321,11 +318,29 @@ export default function EventsClientPage() {
                       <div className="relative">
                         <button onClick={() => setTagOpen(!tagOpen)} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100">Change tag</button>
                         {tagOpen && (
-                          <div className="absolute left-full top-0 ml-1 w-40 bg-white border rounded shadow">
-                            <button onClick={() => bulkChangeTag('SPONSORING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Sponsoring</button>
-                            <button onClick={() => bulkChangeTag('ATTENDING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Attending</button>
-                            <button onClick={() => bulkChangeTag('CONSIDERING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Considering</button>
-                            <button onClick={() => bulkChangeTag(null)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100">Not Attending</button>
+                          <div className="absolute left-full top-0 ml-1 w-48 bg-white border rounded shadow">
+                            <button onClick={() => bulkChangeTag('SPONSORING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 px-2 py-1">
+                                <DollarSign className="w-4 h-4" />
+                              </span>
+                              Sponsoring
+                            </button>
+                            <button onClick={() => bulkChangeTag('ATTENDING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-1">
+                                <Plane className="w-4 h-4" />
+                              </span>
+                              Attending
+                            </button>
+                            <button onClick={() => bulkChangeTag('CONSIDERING')} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-1">
+                                <Eye className="w-4 h-4" />
+                              </span>
+                              Considering
+                            </button>
+                            <button onClick={() => bulkChangeTag(null)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-gray-700"></span>
+                              Not Attending
+                            </button>
                           </div>
                         )}
                       </div>
@@ -385,7 +400,7 @@ export default function EventsClientPage() {
       {loading && (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center space-x-3">
-            <Loader className="w-6 h-6 animate-spin text-blue-600" />
+            <SpinningCupcake size="lg" />
             <span className="text-gray-600">Loading events...</span>
           </div>
         </div>

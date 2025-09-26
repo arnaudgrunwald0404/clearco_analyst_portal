@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface Contribution {
   date: string
@@ -97,7 +98,7 @@ const BriefingDensityChart = () => {
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center h-48">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <SpinningCupcake size="lg" />
           </div>
         ) : (
           <div className="flex flex-col">

@@ -1,0 +1,151 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Calendar, MessageSquarePlus, FolderOpen, LifeBuoy, Settings } from 'lucide-react'
+import Drawer from '@/app/briefings/components/drawer/Drawer'
+
+interface Briefing {
+  id: string
+  title: string
+  scheduledAt: string
+  completedAt?: string
+  transcript?: string
+  notes?: string
+  updatedAt: string
+  analysts: Array<{
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+  }>
+}
+
+export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
+  const router = useRouter()
+  const [supportEmail, setSupportEmail] = useState<string | null>(null)
+  const [mostRecentBriefing, setMostRecentBriefing] = useState<Briefing | null>(null)
+  const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null)
+  const [drawerTab, setDrawerTab] = useState<"overview" | "materials" | "transcript">("overview")
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        // Fetch support email
+        const resp = await fetch('/api/settings/analyst-portal', { cache: 'no-store' })
+        if (resp.ok) {
+          const json = await resp.json().catch(() => null as any)
+          if (!cancelled) {
+            // prefer explicit supportEmail if present, else fall back to contactEmail
+            setSupportEmail(json?.supportEmail || json?.contactEmail || null)
+          }
+        }
+
+        // Fetch most recent briefing
+        const briefingsResp = await fetch('/api/briefings?limit=1&order=desc', { cache: 'no-store' })
+        if (briefingsResp.ok) {
+          const briefingsJson = await briefingsResp.json().catch(() => null as any)
+          if (!cancelled && briefingsJson?.data?.length > 0) {
+            setMostRecentBriefing(briefingsJson.data[0])
+          }
+        }
+      } catch {
+        if (!cancelled) {
+          setSupportEmail(null)
+          setMostRecentBriefing(null)
+        }
+      }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const handleViewLastBriefing = () => {
+    if (mostRecentBriefing) {
+      setSelectedBriefing(mostRecentBriefing)
+    } else {
+      // Fallback to briefings page if no recent briefing
+      router.push('/portal/briefings')
+    }
+  }
+
+  const Actions = (
+    <>
+      <div className="flex items-center justify-between">
+        <div className="text-base font-semibold text-gray-900">Quick Actions</div>
+      </div>
+      <div className="flex flex-col gap-2 mt-2">
+        <Button variant="ghost" className="justify-start gap-2" onClick={handleViewLastBriefing}>
+          <Calendar className="w-4 h-4" />
+          View Last Briefing
+        </Button>
+        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/scheduling-agent')}>
+          <MessageSquarePlus className="w-4 h-4" />
+          Request a Conversation
+        </Button>
+        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/portal/resources')}>
+          <FolderOpen className="w-4 h-4" />
+          Access Recent Materials
+        </Button>
+        <Button asChild variant="ghost" className="justify-start gap-2">
+          <a href="mailto:support@cupcake.com">
+            <LifeBuoy className="w-4 h-4" />
+            Contact Support
+          </a>
+        </Button>
+        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/portal/settings')}>
+          <Settings className="w-4 h-4" />
+          My Settings
+        </Button>
+      </div>
+    </>
+  )
+
+  if (minimal) {
+    return (
+      <div className="pt-3">
+        {Actions}
+        
+        {/* Briefing Drawer */}
+        {selectedBriefing && (
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
+            <Drawer
+              key={`quick-actions-briefing-drawer-${selectedBriefing.id}-${selectedBriefing.updatedAt}`}
+              briefing={selectedBriefing}
+              activeTab={drawerTab}
+              onTabChange={setDrawerTab}
+              onClose={() => setSelectedBriefing(null)}
+              onUpdate={() => setSelectedBriefing(null)}
+            />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <Card className="shadow-none border-t rounded-none">
+        <CardContent className="p-4">
+          {Actions}
+        </CardContent>
+      </Card>
+      
+      {/* Briefing Drawer */}
+      {selectedBriefing && (
+        <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
+          <Drawer
+            key={`quick-actions-briefing-drawer-${selectedBriefing.id}-${selectedBriefing.updatedAt}`}
+            briefing={selectedBriefing}
+            activeTab={drawerTab}
+            onTabChange={setDrawerTab}
+            onClose={() => setSelectedBriefing(null)}
+            onUpdate={() => setSelectedBriefing(null)}
+          />
+        </div>
+      )}
+    </>
+  )
+}

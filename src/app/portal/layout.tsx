@@ -2,22 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import { PortalHeader } from '@/components/portal/PortalHeader'
-import { getRandomBannerImagePath } from '@/lib/banner-utils'
 import { useAuth } from '@/contexts/AuthContext'
-import BriefingSummary from '@/components/briefings/BriefingSummary'
+import { PortalHeader } from '@/components/portal/PortalHeader'
+import PortalShell from '@/components/portal/PortalShell'
+import ProfileSummary from '@/components/portal/ProfileSummary'
+import CompanyContact from '@/components/portal/CompanyContact'
+import VendorSwitcherDrawer from '@/components/portal/VendorSwitcherDrawer'
+import { QuickActionsList } from '@/components/portal/QuickActionsList'
 
 interface PortalLayoutProps {
   children: React.ReactNode
 }
 
-export default function PortalLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const [companySettings, setCompanySettings] = useState<any>(null)
+export default function PortalLayout({ children }: PortalLayoutProps) {
+  const [vendorSettings, setVendorSettings] = useState<any>(null)
+  const [vendorDrawerOpen, setVendorDrawerOpen] = useState(false)
+  const [selectedVendorName, setSelectedVendorName] = useState<string | null>(null)
   const router = useRouter()
   const { user, loading } = useAuth()
 
@@ -34,19 +34,32 @@ export default function PortalLayout({
     }
   }, [user, loading, router])
 
-  // Fetch company settings after auth is ready
+  // Fetch vendor settings after auth is ready
   useEffect(() => {
     if (loading || !user) return
-    const fetchCompanySettings = async () => {
+    const fetchVendorSettings = async () => {
       try {
         const response = await fetch('/api/settings/general')
-        const data = await response.json()
-        setCompanySettings(data)
+        if (response.ok) {
+          try {
+            const data = await response.json()
+            setVendorSettings(data)
+            const name = data?.company_name || null
+            // Initialize selected vendor from localStorage or settings
+            const stored = typeof window !== 'undefined' ? localStorage.getItem('selectedVendorName') : null
+            setSelectedVendorName(stored || name)
+            if (!stored && name && typeof window !== 'undefined') {
+              localStorage.setItem('selectedVendorName', name)
+            }
+          } catch (parseError) {
+            console.error('Error parsing vendor settings:', parseError)
+          }
+        }
       } catch (error) {
-        console.error('Error fetching company settings:', error)
+        console.error('Error fetching vendor settings:', error)
       }
     }
-    fetchCompanySettings()
+    fetchVendorSettings()
   }, [loading, user])
 
   // Show loading while checking authentication
@@ -58,18 +71,42 @@ export default function PortalLayout({
     )
   }
 
-
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <PortalHeader companyName={companySettings?.companyName} />
+      <PortalHeader selectedVendorName={selectedVendorName || vendorSettings?.company_name} />
 
-      {/* Briefing Summary */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      
-        {/* Main Content */}
+      {/* Drawer for switching vendor */}
+      <VendorSwitcherDrawer
+        open={vendorDrawerOpen}
+        onClose={() => setVendorDrawerOpen(false)}
+        vendors={vendorSettings?.company_name ? [vendorSettings.company_name] : []}
+        selected={selectedVendorName}
+        onSelect={(name) => {
+          setSelectedVendorName(name)
+          try { localStorage.setItem('selectedVendorName', name) } catch {}
+          setVendorDrawerOpen(false)
+        }}
+      />
+
+      {/* Render a persistent 3-column shell for all /portal pages */}
+      <PortalShell
+        sidebar={
+          <div className="space-y-4">
+            <CompanyContact
+              selectedVendorName={selectedVendorName || vendorSettings?.company_name}
+              onSwitchVendor={() => setVendorDrawerOpen(true)}
+            />
+            <QuickActionsList />
+          </div>
+        }
+        rightSidebar={
+          <div className="space-y-4">
+            <ProfileSummary />
+          </div>
+        }
+      >
         {children}
-      </div>
+      </PortalShell>
     </div>
   )
 }

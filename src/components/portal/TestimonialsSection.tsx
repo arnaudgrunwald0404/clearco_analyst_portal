@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { Star, Quote } from 'lucide-react'
 import { Caveat } from 'next/font/google'
+import { useSettings } from '@/contexts/SettingsContext'
 
 const caveat = Caveat({ subsets: ['latin'], weight: ['400', '700'] })
 
@@ -19,6 +20,8 @@ interface Testimonial {
 export function TestimonialsSection() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { settings } = useSettings()
+  const companyName = (settings?.companyName || 'your company').trim()
 
   useEffect(() => {
     const fetchTestimonials = async () => {
@@ -41,7 +44,7 @@ export function TestimonialsSection() {
     return (
       <section className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Vendor Testimonials
+          Testimonials for {companyName}
         </h2>
         <div className="animate-pulse space-y-4">
           {[1, 2].map((i) => (
@@ -59,7 +62,7 @@ export function TestimonialsSection() {
   return (
     <section className="bg-white rounded-xl shadow-sm p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">
-        Vendor Testimonials
+        Testimonials for {companyName}
       </h2>
       
       <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
@@ -88,8 +91,23 @@ export function TestimonialsSection() {
 
                   {/* Bottom author area */}
                   <div className="mt-4 pt-3 border-t border-yellow-200 flex items-center gap-3">
-                    {/* Avatar placeholder with initials */}
-                    <div className="w-10 h-10 rounded-full bg-yellow-300 text-yellow-900 flex items-center justify-center font-bold">
+                    {/* Avatar: real-looking deterministic placeholder */}
+                    <img
+                      src={`https://i.pravatar.cc/40?u=${encodeURIComponent(t.author || t.id)}`}
+                      alt={t.author}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        // fallback to initials-style circle if remote image fails
+                        const target = e.currentTarget as HTMLImageElement
+                        target.style.display = 'none'
+                        const sibling = target.nextElementSibling as HTMLElement | null
+                        if (sibling) sibling.style.display = 'flex'
+                      }}
+                    />
+                    <div
+                      className="w-10 h-10 rounded-full bg-yellow-300 text-yellow-900 items-center justify-center font-bold hidden"
+                      aria-hidden
+                    >
                       {initials}
                     </div>
                     <div className="min-w-0">

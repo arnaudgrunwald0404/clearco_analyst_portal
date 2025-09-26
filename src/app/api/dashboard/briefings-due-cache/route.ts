@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // In-memory cache for briefings due counts
 interface BriefingsDueCache {
@@ -34,51 +35,64 @@ async function refreshBriefingsDueInBackground(): Promise<void> {
         cachedBriefingsDue.isLoading = true
       }
 
-      // Fetch fresh data from the main briefings due endpoint
-      const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/briefings/due?force=true`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        throw new Error(`API responded with ${response.status}`)
-      }
-
-      const data = await response.json()
+      // Fetch fresh data directly using service client (avoid HTTP call)
+      const supabase = createServiceClient()
       
-      if (data.success && data.countsByTier) {
-        const counts = data.countsByTier
-        
-        // Calculate highest tier and next tier counts
-        const tiers = [
-          { name: 'VERY_HIGH', count: counts.VERY_HIGH || 0, priority: 1 },
-          { name: 'HIGH', count: counts.HIGH || 0, priority: 2 },
-          { name: 'MEDIUM', count: counts.MEDIUM || 0, priority: 3 },
-          { name: 'LOW', count: counts.LOW || 0, priority: 4 }
-        ]
+      // Call briefings due API directly using the same logic
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'
+      console.log(`🔄 [Background] Calling briefings due API at: ${baseUrl}/api/briefings/due?force=true`)
+      
+      try {
+        const response = await fetch(`${baseUrl}/api/briefings/due?force=true`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        })
 
-        // Find highest tier with count > 0
-        const highestTierWithCount = tiers.find(tier => tier.count > 0)
-        const highestTier = highestTierWithCount ? highestTierWithCount.count : 0
-
-        // Find next tier with count > 0 (after highest)
-        const nextTierWithCount = tiers.find(tier => 
-          tier.priority > (highestTierWithCount?.priority || 0) && tier.count > 0
-        )
-        const nextTier = nextTierWithCount ? nextTierWithCount.count : 0
-
-        // Update cache
-        cachedBriefingsDue = {
-          counts,
-          highestTier,
-          nextTier,
-          updatedAt: Date.now(),
-          isLoading: false
+        if (!response.ok) {
+          throw new Error(`API responded with ${response.status}: ${response.statusText}`)
         }
 
-        console.log(`✅ [Background] Briefings due refreshed: Highest=${highestTier}, Next=${nextTier}`)
-      } else {
-        throw new Error('Invalid response format')
+        const data = await response.json()
+        console.log(`🔄 [Background] Briefings due API response:`, data)
+        
+        if (data.success && data.countsByTier) {
+          const counts = data.countsByTier
+          
+          // Calculate highest tier and next tier counts
+          const tiers = [
+            { name: 'VERY_HIGH', count: counts.VERY_HIGH || 0, priority: 1 },
+            { name: 'HIGH', count: counts.HIGH || 0, priority: 2 },
+            { name: 'MEDIUM', count: counts.MEDIUM || 0, priority: 3 },
+            { name: 'LOW', count: counts.LOW || 0, priority: 4 }
+          ]
+
+          // Find highest tier with count > 0
+          const highestTierWithCount = tiers.find(tier => tier.count > 0)
+          const highestTier = highestTierWithCount ? highestTierWithCount.count : 0
+
+          // Find next tier with count > 0 (after highest)
+          const nextTierWithCount = tiers.find(tier => 
+            tier.priority > (highestTierWithCount?.priority || 0) && tier.count > 0
+          )
+          const nextTier = nextTierWithCount ? nextTierWithCount.count : 0
+
+          // Update cache
+          cachedBriefingsDue = {
+            counts,
+            highestTier,
+            nextTier,
+            updatedAt: Date.now(),
+            isLoading: false
+          }
+
+          console.log(`✅ [Background] Briefings due refreshed: Highest=${highestTier}, Next=${nextTier}`, counts)
+        } else {
+          console.error('❌ [Background] Invalid response format:', data)
+          throw new Error('Invalid response format')
+        }
+      } catch (fetchError) {
+        console.error('❌ [Background] Fetch error:', fetchError)
+        throw fetchError
       }
     } catch (error) {
       console.error('❌ [Background] Failed to refresh briefings due:', error)

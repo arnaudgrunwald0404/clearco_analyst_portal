@@ -110,8 +110,13 @@ export default function AnalystActionsMenu({
         }
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error occurred' }))
-        console.error('Failed to archive analyst:', errorData)
-        addToast({ type: 'error', message: errorData.error || 'Failed to archive analyst. Please try again.' })
+        console.error('Failed to archive analyst:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          response: response
+        })
+        addToast({ type: 'error', message: errorData.error || `Failed to archive analyst. Status: ${response.status}` })
       }
     } catch (error) {
       console.error('Error archiving analyst:', error)

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Plus, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Loader, Upload } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { cn, getPriorityColor } from '@/lib/utils'
 import AwardDrawer from '@/components/drawers/award-drawer'
 import AddAwardModal from '@/components/modals/add-award-modal'
@@ -246,7 +247,7 @@ export default function AwardsPage() {
       {loading && (
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center space-x-3">
-            <Loader className="w-6 h-6 animate-spin text-blue-600" />
+            <SpinningCupcake size="lg" />
             <span className="text-gray-600">Loading awards...</span>
           </div>
         </div>

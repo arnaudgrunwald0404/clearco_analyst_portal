@@ -14,6 +14,7 @@ export interface Briefing {
   ai_summary?: any
   duration?: number
   attendeeEmails?: string[]
+  attendees?: string[][]
   analysts: {
     id: string
     firstName: string

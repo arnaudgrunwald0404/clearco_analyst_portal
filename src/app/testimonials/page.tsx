@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Eye, Edit, Trash2, MessageSquare, Quote } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -106,10 +107,10 @@ export default function TestimonialsPage() {
 
   const filteredTestimonials = testimonials?.filter(testimonial => {
     const matchesSearch = 
-      testimonial.quote.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.analyst.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.analyst.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      testimonial.analyst.company.toLowerCase().includes(searchTerm.toLowerCase())
+      (testimonial.quote || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (testimonial.analyst?.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (testimonial.analyst?.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (testimonial.analyst?.company || '').toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesFilter = 
       filterStatus === 'ALL' || 
@@ -432,7 +433,7 @@ export default function TestimonialsPage() {
       {/* Loading State */}
       {loading && (
         <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <SpinningCupcake size="lg" />
           <span className="ml-3 text-gray-600">Loading testimonials...</span>
         </div>
       )}
@@ -441,83 +442,112 @@ export default function TestimonialsPage() {
       {!loading && filteredTestimonials && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredTestimonials.map((testimonial) => (
-          <Card key={testimonial.id} className="p-6 hover:shadow-lg transition-shadow">
-            {/* Header with status and actions */}
-            <div className="flex justify-between items-start mb-4">
-              <button
-                onClick={() => handleTogglePublished(testimonial)}
-                className={cn(
-                  'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity',
-                  testimonial.isPublished 
-                    ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                    : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+          <Card key={testimonial.id} className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
+            <div className="flex-1">
+              {/* Header with status and actions */}
+              <div className="flex justify-between items-start mb-4">
+                <button
+                  onClick={() => handleTogglePublished(testimonial)}
+                  className={cn(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity',
+                    testimonial.isPublished 
+                      ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                      : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                  )}
+                  title={`Click to ${testimonial.isPublished ? 'unpublish' : 'publish'} this testimonial`}
+                >
+                  {testimonial.isPublished ? 'Published' : 'Draft'}
+                </button>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => handleEdit(testimonial)}
+                    className="p-1 text-gray-400 hover:text-blue-600"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(testimonial.id)}
+                    className="p-1 text-gray-400 hover:text-red-600"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Quote */}
+              <div className="mb-4">
+                <Quote className="w-5 h-5 text-gray-300 mb-2" />
+                <p className="text-gray-900 font-medium leading-relaxed">
+                  {testimonial.quote}
+                </p>
+                {testimonial.context && (
+                  <p className="text-sm text-gray-500 mt-2 italic">
+                    — {testimonial.context}
+                  </p>
                 )}
-                title={`Click to ${testimonial.isPublished ? 'unpublish' : 'publish'} this testimonial`}
-              >
-                {testimonial.isPublished ? 'Published' : 'Draft'}
-              </button>
-              
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleEdit(testimonial)}
-                  className="p-1 text-gray-400 hover:text-blue-600"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDelete(testimonial.id)}
-                  className="p-1 text-gray-400 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
-            {/* Quote */}
-            <div className="mb-4">
-              <Quote className="w-5 h-5 text-gray-300 mb-2" />
-              <p className="text-gray-900 font-medium leading-relaxed">
-                "{testimonial.quote}"
-              </p>
-              {testimonial.context && (
-                <p className="text-sm text-gray-500 mt-2 italic">
-                  — {testimonial.context}
-                </p>
-              )}
-            </div>
-
-            {/* Analyst Info */}
-            <div className="flex items-center">
-              {testimonial.analyst.profileImageUrl ? (
-                <img 
-                  src={testimonial.analyst.profileImageUrl} 
-                  alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
-                  className="w-10 h-10 rounded-full object-cover"
-                />
-              ) : (
+            {/* Analyst Info - Now at bottom */}
+            <div className="mt-auto">
+              <div className="flex items-center mb-4">
+                {(() => {
+                  const hasUrl = Boolean(testimonial.analyst.profileImageUrl)
+                  if (hasUrl) {
+                    return (
+                      <img
+                        src={testimonial.analyst.profileImageUrl as string}
+                        alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
+                        className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          const t = e.currentTarget as HTMLImageElement
+                          // swap to deterministic placeholder when original fails
+                          const unique = testimonial.analyst.id || `${testimonial.analyst.firstName}-${testimonial.analyst.lastName}`
+                          t.src = `https://i.pravatar.cc/40?u=${encodeURIComponent(unique)}`
+                        }}
+                      />
+                    )
+                  }
+                  // No URL: render deterministic placeholder directly
+                  return (
+                    <img
+                      src={`https://i.pravatar.cc/40?u=${encodeURIComponent(testimonial.analyst.id || testimonial.analyst.firstName)}`}
+                      alt={`${testimonial.analyst.firstName} ${testimonial.analyst.lastName}`}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => {
+                        // last resort: colored initials
+                        const target = e.currentTarget as HTMLImageElement
+                        target.style.display = 'none'
+                        const fallback = target.nextElementSibling as HTMLElement | null
+                        if (fallback) fallback.style.display = 'flex'
+                      }}
+                    />
+                  )
+                })()}
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm",
                   getAvatarColor(testimonial.analyst.firstName, testimonial.analyst.lastName)
-                )}>
+                )} style={{ display: 'none' }}>
                   {getInitials(testimonial.analyst.firstName, testimonial.analyst.lastName)}
                 </div>
-              )}
-              <div className="ml-3">
-                <p className="font-semibold text-gray-900 text-sm">
-                  {testimonial.analyst.firstName} {testimonial.analyst.lastName}
-                </p>
-                <p className="text-xs text-gray-600">
-                  {testimonial.analyst.title}
-                </p>
-                <p className="text-xs font-medium text-blue-600">
-                  {testimonial.analyst.company}
-                </p>
+                <div className="ml-3">
+                  <p className="font-semibold text-gray-900 text-sm">
+                    {testimonial.analyst.firstName} {testimonial.analyst.lastName}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    {testimonial.analyst.title}
+                  </p>
+                  <p className="text-xs font-medium text-blue-600">
+                    {testimonial.analyst.company}
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500">
-              Order: {testimonial.displayOrder} • Created: {new Date(testimonial.createdAt).toLocaleDateString()}
+              {/* Footer */}
+              <div className="pt-4 border-t border-gray-200 text-xs text-gray-500">
+                Created: {new Date(testimonial.createdAt).toLocaleDateString()}
+              </div>
             </div>
           </Card>
         ))}

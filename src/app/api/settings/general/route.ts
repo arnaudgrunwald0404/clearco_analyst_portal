@@ -4,8 +4,8 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { requireAuth } from '@/lib/auth-utils'
 
-type general_settings = Database['public']['Tables']['general_settings']['Row']
-type general_settingsInsert = Database['public']['Tables']['general_settings']['Insert']
+type vendor_domains = Database['public']['Tables']['vendor_domains']['Row']
+type vendor_domainsInsert = Database['public']['Tables']['vendor_domains']['Insert']
 
 // Simple CUID-like ID generator
 function generateId(): string {
@@ -38,9 +38,9 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Get the first (and only) general settings record
+    // Get the first (and only) vendor domain record
     const { data: settings, error: fetchError } = await supabase
-      .from('general_settings')
+      .from('vendor_domains')
       .select('*')
       .limit(1)
       .single()
@@ -49,7 +49,7 @@ export async function GET() {
 
     // If no settings exist, create default ones
     if (fetchError?.code === 'PGRST116' || !settings) {
-      const defaultSettings: general_settingsInsert = {
+      const defaultSettings: vendor_domainsInsert = {
         id: generateId(),
         company_name: '',
         protected_domain: '',
@@ -58,7 +58,7 @@ export async function GET() {
       }
 
       const { data: newSettings, error: createError } = await supabase
-        .from('general_settings')
+        .from('vendor_domains')
         .insert(defaultSettings)
         .select()
         .single()
@@ -84,9 +84,9 @@ export async function GET() {
       cacheAge: 0
     })
   } catch (error) {
-    console.error('Error fetching general settings:', error)
+    console.error('Error fetching vendor domains:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch general settings' },
+      { error: 'Failed to fetch vendor domains' },
       { status: 500 }
     )
   }
@@ -153,7 +153,7 @@ export async function PUT(request: NextRequest) {
 
     // Check if settings already exist
     const { data: existingSettings } = await supabase
-      .from('general_settings')
+      .from('vendor_domains')
       .select('*')
       .limit(1)
       .single()
@@ -169,7 +169,7 @@ export async function PUT(request: NextRequest) {
     if (existingSettings) {
       // Update existing settings
       const { data: updatedSettings, error: updateError } = await supabase
-        .from('general_settings')
+        .from('vendor_domains')
         .update(updateData)
         .eq('id', existingSettings.id)
         .select()
@@ -183,13 +183,13 @@ export async function PUT(request: NextRequest) {
       settings = updatedSettings
     } else {
       // Create new settings
-      const newSettingsData: general_settingsInsert = {
+      const newSettingsData: vendor_domainsInsert = {
         id: generateId(),
         ...updateData
       }
 
       const { data: newSettings, error: createError } = await supabase
-        .from('general_settings')
+        .from('vendor_domains')
         .insert(newSettingsData)
         .select()
         .single()
@@ -206,7 +206,7 @@ export async function PUT(request: NextRequest) {
     settingsCache = null;
     cacheTimestamp = 0;
     
-    console.log('✅ General settings updated successfully:', settings)
+    console.log('✅ Vendor domains updated successfully:', settings)
     
     return NextResponse.json(settings)
   } catch (error) {

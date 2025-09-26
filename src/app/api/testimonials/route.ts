@@ -54,6 +54,15 @@ export async function GET(request: NextRequest) {
     // Transform the data to match the expected format
     const normalized = (data || []).map((t: any) => {
       const analyst = t.analysts || {}
+      const firstName = analyst.firstName || (t.author?.split(' ')[0] || t.author)
+      const lastName = analyst.lastName || (t.author?.split(' ').slice(1).join(' ') || '')
+
+      // Fallback avatar: deterministic pravatar URL so it looks real and stays consistent
+      const unique = analyst.id || t.author || t.id
+      const fallbackAvatar = unique
+        ? `https://i.pravatar.cc/96?u=${encodeURIComponent(unique)}`
+        : null
+
       return {
         id: t.id,
         quote: t.text, // Map 'text' to 'quote' for the frontend
@@ -63,11 +72,11 @@ export async function GET(request: NextRequest) {
         createdAt: t.created_at,
         analyst: {
           id: analyst.id || '',
-          firstName: analyst.firstName || t.author.split(' ')[0] || t.author,
-          lastName: analyst.lastName || t.author.split(' ').slice(1).join(' ') || '',
+          firstName,
+          lastName,
           company: analyst.company || t.company || 'Unknown',
           title: analyst.title || 'Analyst',
-          profileImageUrl: analyst.profileImageUrl || null
+          profileImageUrl: analyst.profileImageUrl || fallbackAvatar
         }
       }
     })

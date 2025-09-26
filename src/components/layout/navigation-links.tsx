@@ -27,7 +27,8 @@ export function NavigationLinks() {
     const password = process.env.NEXT_PUBLIC_DEFAULT_ANALYST_PASSWORD || 'changeme123!'
     const res = await signInAnalyst(analyst.email, password)
     if (res.success) {
-      router.push('/portal')
+      // Include analystId in URL so server components know the context
+      router.push(`/portal?analystId=${encodeURIComponent(analyst.id)}`)
     } else {
       alert(res.error || 'Failed to open portal as analyst')
     }

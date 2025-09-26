@@ -27,7 +27,7 @@ export const SettingsLoader: React.FC<SettingsLoaderProps> = ({ children }) => {
               className="object-contain animate-spin-slow-to-medium"
             />
           </div>
-          <p className="text-gray-600 text-lg font-medium">Loading your sweetnesses...</p>
+          <p className="text-gray-600 text-lg font-medium">Loading all the sweetness...</p>
           <p className="text-gray-500 text-sm mt-2">You're in for a treat!</p>
         </div>
       </div>

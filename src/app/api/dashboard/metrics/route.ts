@@ -190,7 +190,24 @@ export async function GET(request: NextRequest) {
     // Also compute due counts by tier for coverage calculation
     let dueByTier: Record<string, number> = { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3000`;
+      // Get vendor domain for filtering
+      let vendorDomainFilter = null
+      try {
+        const { data: vendorDomain, error: vendorError } = await supabase
+          .from('vendor_domains')
+          .select('protected_domain')
+          .limit(1)
+          .single()
+        
+        if (!vendorError && vendorDomain?.protected_domain) {
+          vendorDomainFilter = vendorDomain.protected_domain.toLowerCase()
+          console.log(`🏢 [Dashboard Metrics] Filtering by vendor domain: ${vendorDomainFilter}`)
+        }
+      } catch (error) {
+        console.warn('⚠️ [Dashboard Metrics] Could not fetch vendor domain:', error)
+      }
+      
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3001`;
       const dueResp = await fetch(`${baseUrl}/api/briefings/due?page=1&limit=10000`, { cache: 'no-store' });
       if (dueResp.ok) {
         const dueJson = await dueResp.json();

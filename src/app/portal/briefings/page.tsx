@@ -22,7 +22,8 @@ import {
   RefreshCw,
   Download,
   Bot,
-  Settings
+  Settings,
+  CheckSquare
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
@@ -44,6 +45,7 @@ interface Briefing {
   ai_summary?: any
   duration?: number
   attendeeEmails?: string[]
+  attendees?: string[][]
   analysts: {
     id: string
     firstName: string
@@ -111,7 +113,7 @@ export default function PortalBriefingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('ALL')
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null)
-  const [drawerTab, setDrawerTab] = useState<'overview' | 'transcript'>('overview')
+  const [drawerTab, setDrawerTab] = useState<'overview' | 'materials' | 'transcript'>('overview')
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showSyncOptions, setShowSyncOptions] = useState(false)
@@ -354,6 +356,55 @@ function BriefingCard({
   isUpcoming: boolean 
 }) {
   const { date, time } = formatDateTime(briefing.scheduledAt)
+
+  // Calculate follow-up status
+  const getFollowUpState = (followUpId: string) => {
+    if (typeof window === 'undefined') return { isCompleted: false }
+    const saved = localStorage.getItem(`followup-${followUpId}`)
+    return saved ? JSON.parse(saved) : { isCompleted: false }
+  }
+
+  const followUpActions = briefing.followUpActions || []
+  const totalFollowUps = followUpActions.length
+  const completedFollowUps = followUpActions.filter((_, index) => 
+    getFollowUpState(`${briefing.id}-${index}`).isCompleted
+  ).length
+
+  const hasFollowUps = totalFollowUps > 0
+  const hasOverdueFollowUps = hasFollowUps && completedFollowUps < totalFollowUps
+
+  // Attendees breakdown (match admin section)
+  const attendeeRows = Array.isArray(briefing.attendees) ? briefing.attendees : []
+  const attendees = attendeeRows
+    .filter((row) => Array.isArray(row) && row.length >= 1)
+    .map((row) => {
+      const email = (row[0] || '').toString()
+      const name = (row[1] || '').toString()
+      const status = (row[2] || '').toString().toLowerCase()
+      return { email, name, status }
+    })
+
+  const invitedCount = attendees.length
+  const attendingCount = attendees.filter(a => ['accepted', 'yes'].includes(a.status)).length
+
+  const analystEmails = new Set(
+    Array.isArray(briefing.analysts)
+      ? briefing.analysts.map((a: any) => (a?.email || '').toLowerCase()).filter(Boolean)
+      : []
+  )
+  const analystAttendees = attendees.filter(a => analystEmails.has(a.email.toLowerCase()))
+  const analystsCount = analystAttendees.length || briefing.analysts.length || 0
+
+  const toNamesList = (list: { email: string; name: string }[]) =>
+    list.map(a => (a.name && a.name.trim() ? a.name : a.email)).join(', ')
+
+  const invitedTitle = attendees.length ? toNamesList(attendees) : 'No invitees'
+  const attendingTitle = attendees.length
+    ? toNamesList(attendees.filter(a => ['accepted', 'yes'].includes(a.status))) || 'None confirmed'
+    : 'None confirmed'
+  const analystsTitle = analystAttendees.length
+    ? toNamesList(analystAttendees)
+    : (briefing.analysts || []).map((a: any) => a?.firstName || a?.lastName ? `${a.firstName || ''} ${a.lastName || ''}`.trim() || a?.email || '' : a?.email || '').filter(Boolean).join(', ')
   
   return (
     <div 
@@ -372,41 +423,31 @@ function BriefingCard({
             )} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 truncate">
-              {briefing.title}
-            </h3>
-            <div className="flex items-center text-sm text-gray-600 space-x-4 mb-3">
+            {/* Date and time first (date emphasized), then title below */}
+            <div className="text-sm text-gray-700 mb-1">
               <div className="flex items-center">
                 <CalendarIcon className="w-4 h-4 mr-1" />
-                {date}
-              </div>
-              <div className="flex items-center">
+                <span className="font-semibold">{date}</span>
+                <span className="mx-2 text-gray-300">•</span>
                 <Clock className="w-4 h-4 mr-1" />
-                {time}
-                {briefing.duration && ` (${briefing.duration} min)`}
-              </div>
-              <div className="flex items-center">
-                <Users className="w-4 h-4 mr-1" />
-                {briefing.analysts.length} analyst{briefing.analysts.length !== 1 ? 's' : ''}
+                <span>{time}{briefing.duration && ` (${briefing.duration} min)`}</span>
               </div>
             </div>
-            {/* Analyst chips */}
-            <div className="flex flex-wrap gap-2">
-              {briefing.analysts.slice(0, 3).map((analyst) => (
-                <div key={analyst.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs">
-                  <span className="font-medium">
-                    {analyst.firstName} {analyst.lastName}
-                  </span>
-                  {analyst.company && (
-                    <span className="text-gray-500 ml-1">• {analyst.company}</span>
-                  )}
-                </div>
-              ))}
-              {briefing.analysts.length > 3 && (
-                <div className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs text-gray-500">
-                  +{briefing.analysts.length - 3} more
-                </div>
-              )}
+            <div className="text-base text-gray-900 font-medium truncate mb-3">{briefing.title}</div>
+
+            {/* Attendees summary like admin */}
+            <div className="flex items-center gap-3 text-xs text-gray-700">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100" title={invitedTitle}>
+                Invited: <strong>{invitedCount}</strong>
+              </span>
+              <span className="text-gray-300">|</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-green-50 text-green-700" title={attendingTitle}>
+                Attending: <strong>{attendingCount}</strong>
+              </span>
+              <span className="text-gray-300">|</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700" title={analystsTitle}>
+                Analysts: <strong>{analystsCount}</strong>
+              </span>
             </div>
           </div>
         </div>
@@ -428,6 +469,23 @@ function BriefingCard({
             <div className="flex items-center text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded">
               <Bot className="w-3 h-3 mr-1" />
               AI Summary
+            </div>
+          )}
+          {/* Follow-up Indicator */}
+          {hasFollowUps && (
+            <div className={cn(
+              'flex items-center px-2 py-1 rounded text-xs font-medium',
+              hasOverdueFollowUps 
+                ? 'bg-amber-50 text-amber-700 border border-amber-200' 
+                : 'bg-green-50 text-green-700 border border-green-200'
+            )}>
+              <CheckSquare className={cn(
+                'w-3 h-3 mr-1',
+                hasOverdueFollowUps ? 'text-amber-600' : 'text-green-600'
+              )} />
+              <span>
+                {completedFollowUps} of {totalFollowUps} follow-ups {completedFollowUps < totalFollowUps ? 'due' : 'done'}
+              </span>
             </div>
           )}
         </div>

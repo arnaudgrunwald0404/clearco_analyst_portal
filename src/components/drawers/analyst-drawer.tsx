@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { X, User, Building, Mail, Phone, Linkedin, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
+import { Icons } from '@/components/ui/icons'
 
 interface AnalystDrawerProps {
   isOpen: boolean
@@ -893,7 +895,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                     className="inline-flex items-center space-x-2 px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50"
                   >
                     {isSaving ? (
-                      <Loader className="w-4 h-4 animate-spin" />
+                      <SpinningCupcake size="sm" />
                     ) : (
                       <Save className="w-4 h-4" />
                     )}
@@ -1057,7 +1059,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               title="Search with AI"
                             >
                               {socialSearchLoading.phone ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <SpinningCupcake size="sm" />
                               ) : (
                                 <Search className="w-3 h-3" />
                               )}
@@ -1099,7 +1101,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               title="Search with AI"
                             >
                               {socialSearchLoading.linkedin ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <SpinningCupcake size="sm" />
                               ) : (
                                 <Search className="w-3 h-3" />
                               )}
@@ -1120,7 +1122,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
 
                     {/* X (formerly Twitter) */}
                     <div className="flex items-center space-x-3">
-                      <X className="w-4 h-4 text-gray-400" />
+                      <Icons.twitter className="w-4 h-4 text-gray-400 fill-current" />
                       <div className="flex-1">
                         <div className="text-xs font-medium text-gray-500">X (formerly Twitter)</div>
                         {isEditMode ? (
@@ -1139,7 +1141,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               title="Search with AI"
                             >
                               {socialSearchLoading.twitter ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <SpinningCupcake size="sm" />
                               ) : (
                                 <Search className="w-3 h-3" />
                               )}
@@ -1179,7 +1181,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                               title="Search with AI"
                             >
                               {socialSearchLoading.website ? (
-                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <SpinningCupcake size="sm" />
                               ) : (
                                 <Search className="w-3 h-3" />
                               )}
@@ -1264,42 +1266,43 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   )}
                 </div>
 
-                {/* Social Media Activity */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-medium text-gray-900">Social Media Activity</h3>
+                {/* Social Media Activity - Only show if X handle is defined */}
+                {analyst.twitter && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-medium text-gray-900">Social Media Activity</h3>
+                      {loading.socialPosts ? (
+                        <SpinningCupcake size="sm" />
+                      ) : (
+                        <span className="text-sm text-gray-500">Latest 5 posts</span>
+                      )}
+                    </div>
+                    
                     {loading.socialPosts ? (
-                      <Loader className="w-4 h-4 animate-spin text-blue-600" />
+                      <div className="flex items-center justify-center py-4">
+                        <SpinningCupcake size="lg" />
+                      </div>
+                    ) : socialPosts.length === 0 ? (
+                      <div className="text-center py-4 text-gray-500">
+                        <MessageSquare className="w-6 h-6 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No social media posts found.</p>
+                      </div>
                     ) : (
-                      <span className="text-sm text-gray-500">Latest 5 posts</span>
-                    )}
-                  </div>
-                  
-                  {loading.socialPosts ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader className="w-6 h-6 animate-spin text-blue-600" />
-                    </div>
-                  ) : socialPosts.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500">
-                      <MessageSquare className="w-6 h-6 mx-auto mb-2 text-gray-400" />
-                      <p className="text-sm">No social media posts found.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {socialPosts.slice(0, 5).map((post) => (
-                        <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all">
-                          {/* Post Header */}
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              {getPlatformIcon(post.platform)}
-                              <span className="text-xs font-medium text-gray-600">
-                                {post.platform}
-                              </span>
-                              <span className="text-xs text-gray-400">•</span>
-                              <span className="text-xs text-gray-500">
-                                {formatDate(post.postedAt)}
-                              </span>
-                            </div>
+                      <div className="space-y-3">
+                        {socialPosts.slice(0, 5).map((post) => (
+                          <div key={post.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-all">
+                            {/* Post Header */}
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                {getPlatformIcon(post.platform)}
+                                <span className="text-xs font-medium text-gray-600">
+                                  {post.platform}
+                                </span>
+                                <span className="text-xs text-gray-400">•</span>
+                                <span className="text-xs text-gray-500">
+                                  {formatDate(post.postedAt)}
+                                </span>
+                              </div>
                             
                             <div className="flex items-center space-x-1">
                               {post.url && (
@@ -1346,10 +1349,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Bio */}
                 {analyst.bio && (
@@ -1390,7 +1394,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 </div>
                 {loading.publications ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader className="w-8 h-8 animate-spin text-blue-600" />
+                    <SpinningCupcake size="lg" />
                   </div>
                 ) : publications.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -1446,7 +1450,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                 </div>
                 {loading.briefings ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader className="w-8 h-8 animate-spin text-blue-600" />
+                    <SpinningCupcake size="lg" />
                   </div>
                 ) : briefings.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -1610,7 +1614,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                             className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50"
                           >
                             {isGeneratingAI ? (
-                              <Loader className="w-4 h-4 animate-spin" />
+                              <SpinningCupcake size="sm" />
                             ) : (
                               <Wand2 className="w-4 h-4" />
                             )}
@@ -1833,7 +1837,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
               <div className="p-6">
                 {profilePictureModal.loading ? (
                   <div className="flex flex-col items-center justify-center py-12">
-                    <Loader className="w-8 h-8 animate-spin text-blue-600 mb-4" />
+                    <SpinningCupcake size="lg" className="mb-4" />
                     <p className="text-sm text-gray-600">Searching for profile pictures...</p>
                   </div>
                 ) : profilePictureModal.pictures.length === 0 ? (

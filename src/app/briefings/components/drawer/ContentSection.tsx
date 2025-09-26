@@ -4,8 +4,10 @@ import { useState, useRef, useEffect } from 'react'
 import { Briefing } from '../../types'
 import { cn } from '@/lib/utils'
 import { ExternalLink, Upload, Trash2 } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
-export default function ContentSection({ briefing, onUpdate }: { briefing: Briefing; onUpdate?: () => void }) {
+export default function ContentSection({ briefing, onUpdate, hideHeader = false }: { briefing: Briefing; onUpdate?: () => void; hideHeader?: boolean }) {
+  const { user } = useAuth()
   const [url, setUrl] = useState<string>((briefing as any).contentUrl || (briefing as any).contenturl || '')
   const [uploading, setUploading] = useState(false)
 
@@ -44,9 +46,26 @@ export default function ContentSection({ briefing, onUpdate }: { briefing: Brief
   const handleSave = async () => {
     setSaving(true)
     try {
+      // Prepare headers with authentication context
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+      
+      // Add analyst context headers if user is available
+      if (user?.email) {
+        headers['x-analyst-email'] = user.email
+        
+        // Try to get analyst ID from the briefing's analysts array
+        const analyst = briefing.analysts?.find(a => a.email === user.email)
+        if (analyst?.id) {
+          headers['x-analyst-id'] = analyst.id
+        }
+      }
+      
       const resp = await fetch(`/api/briefings/${briefing.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ contentUrl: url || null })
       })
       const json = await resp.json().catch(() => ({}))
@@ -68,9 +87,26 @@ export default function ContentSection({ briefing, onUpdate }: { briefing: Brief
     if (!confirm('Remove attached content from this briefing?')) return
     setSaving(true)
     try {
+      // Prepare headers with authentication context
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+      
+      // Add analyst context headers if user is available
+      if (user?.email) {
+        headers['x-analyst-email'] = user.email
+        
+        // Try to get analyst ID from the briefing's analysts array
+        const analyst = briefing.analysts?.find(a => a.email === user.email)
+        if (analyst?.id) {
+          headers['x-analyst-id'] = analyst.id
+        }
+      }
+      
       const resp = await fetch(`/api/briefings/${briefing.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ contenturl: null })
       })
       const json = await resp.json().catch(() => ({}))
@@ -91,7 +127,10 @@ export default function ContentSection({ briefing, onUpdate }: { briefing: Brief
 
   return (
     <div>
-      <h3 className="font-semibold text-gray-900 mb-3">Materials used during the meeting</h3>
+      {!hideHeader && (
+        <h3 className="font-semibold text-gray-900 mb-3">Materials used during the meeting</h3>
+      )}
+
       <div className="border border-gray-200 rounded-lg overflow-hidden">
         {/* Show tabs only when no content is loaded */}
         {!url && (

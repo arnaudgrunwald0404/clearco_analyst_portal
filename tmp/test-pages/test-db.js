@@ -34,23 +34,23 @@ async function testConnection() {
   try {
     console.log('🔍 Testing service role connection...')
     
-    // Test general_settings table
-    console.log('📝 Testing general_settings table...')
+    // Test vendor_domains table
+    console.log('📝 Testing vendor_domains table...')
     const { data, error } = await supabaseServiceRole
-      .from('general_settings')
+      .from('vendor_domains')
       .select('*')
       .limit(1)
     
     if (error) {
-      console.error('❌ Error accessing general_settings:', error)
+      console.error('❌ Error accessing vendor_domains:', error)
     } else {
-      console.log('✅ Successfully accessed general_settings:', data)
+      console.log('✅ Successfully accessed vendor_domains:', data)
     }
     
     // Test table permissions
     console.log('\n🔍 Testing table info...')
     const { data: tableInfo, error: tableError } = await supabaseServiceRole
-      .rpc('get_table_info', { table_name: 'general_settings' })
+      .rpc('get_table_info', { table_name: 'vendor_domains' })
     
     if (tableError) {
       console.log('ℹ️ Could not get table info (function may not exist):', tableError.message)

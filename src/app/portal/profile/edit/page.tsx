@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { AnalystProfileForm } from '@/components/forms/analyst-profile-form'
 import { useToast } from '@/components/ui/toast'
+import { X } from 'lucide-react'
 
 export default function EditProfilePage() {
   const { user } = useAuth()
@@ -13,6 +14,20 @@ export default function EditProfilePage() {
   const [analyst, setAnalyst] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+
+  // Animate in on mount and add Escape-to-close
+  useEffect(() => {
+    const t = setTimeout(() => setIsOpen(true), 0)
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -53,6 +68,12 @@ export default function EditProfilePage() {
 
     fetchAnalystData()
   }, [user, router, toast])
+
+  const handleClose = () => {
+    setIsOpen(false)
+    // Allow transition to play before navigating away
+    setTimeout(() => router.push('/portal'), 300)
+  }
 
   const handleSubmit = async (values: any) => {
     setIsSubmitting(true)
@@ -111,14 +132,39 @@ export default function EditProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Edit Your Profile</h1>
-      <div className="bg-white p-8 rounded-lg shadow-md">
-        <AnalystProfileForm
-          defaultValues={analyst}
-          onSubmit={handleSubmit}
-          loading={isSubmitting}
-        />
+    <div className="fixed inset-0 z-50" aria-modal="true" role="dialog">
+      {/* Dim background */}
+      <div
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+        onClick={handleClose}
+      />
+
+      {/* Right-side drawer */}
+      <div
+        className={`absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 flex flex-col transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h2 className="text-lg font-semibold text-gray-900">Edit Your Profile</h2>
+          <button
+            onClick={handleClose}
+            aria-label="Close"
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Drawer content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-5">
+            <AnalystProfileForm
+              defaultValues={analyst}
+              onSubmit={handleSubmit}
+              loading={isSubmitting}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

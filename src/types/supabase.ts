@@ -88,7 +88,7 @@ export interface Database {
           updatedAt?: string
         }
       }
-      general_settings: {
+      vendor_domains: {
         Row: {
           id: string
           company_name: string
@@ -262,6 +262,7 @@ export interface Database {
           contentUrl: string | null
           transcript: string | null
           ai_summary: Json | null
+          attendees: string[][] | null
           createdAt: string
           updatedAt: string
         }
@@ -279,6 +280,7 @@ export interface Database {
           contentUrl?: string | null
           transcript?: string | null
           ai_summary?: Json | null
+          attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
         }
@@ -296,6 +298,7 @@ export interface Database {
           contentUrl?: string | null
           transcript?: string | null
           ai_summary?: Json | null
+          attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
         }
@@ -305,18 +308,21 @@ export interface Database {
           id: string
           briefingId: string
           analystId: string
+          vendor_domain_id: string | null
           createdAt: string
         }
         Insert: {
           id?: string
           briefingId: string
           analystId: string
+          vendor_domain_id?: string | null
           createdAt?: string
         }
         Update: {
           id?: string
           briefingId?: string
           analystId?: string
+          vendor_domain_id?: string | null
           createdAt?: string
         }
       }

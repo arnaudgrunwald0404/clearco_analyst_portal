@@ -31,9 +31,9 @@ export async function GET(request: NextRequest) {
     console.log('🔧 [Admin Users API] Creating service client...')
     const serviceSupabase = createServiceClient()
     
-    console.log('📋 [Admin Users API] Fetching general settings...')
+    console.log('📋 [Admin Users API] Fetching vendor domain settings...')
     const { data: settings, error: settingsError } = await serviceSupabase
-      .from('general_settings')
+      .from('vendor_domains')
       .select('protected_domain')
       .limit(1)
       .single()
@@ -45,9 +45,9 @@ export async function GET(request: NextRequest) {
     })
 
     if (settingsError || !settings?.protected_domain) {
-      console.error('❌ [Admin Users API] Error fetching general settings:', settingsError)
+      console.error('❌ [Admin Users API] Error fetching vendor domain settings:', settingsError)
       return NextResponse.json(
-        { success: false, error: 'Protected domain not configured in general settings' },
+        { success: false, error: 'Protected domain not configured in vendor domain settings' },
         { status: 400 }
       )
     }
@@ -73,6 +73,31 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Fetch user profiles to check for corresponding entries
+    console.log('👤 [Admin Users API] Fetching user profiles...')
+    const { data: userProfiles, error: profilesError } = await serviceSupabase
+      .from('user_profiles')
+      .select('id, name, role, company, email')
+
+    console.log('👤 [Admin Users API] User profiles result:', { 
+      hasProfiles: !!userProfiles, 
+      totalProfiles: userProfiles?.length || 0,
+      profilesError: profilesError?.message
+    })
+
+    if (profilesError) {
+      console.error('❌ [Admin Users API] Error fetching user profiles:', profilesError)
+      // Continue without profiles data, just log the error
+    }
+
+    // Create a map of user profiles by ID for quick lookup
+    const profilesMap = new Map()
+    if (userProfiles) {
+      userProfiles.forEach(profile => {
+        profilesMap.set(profile.id, profile)
+      })
+    }
+
     // Filter users by the protected domain and transform the data
     const filteredUsers = authUsers.users
       .filter(authUser => {
@@ -81,13 +106,34 @@ export async function GET(request: NextRequest) {
         return emailDomain === protectedDomain
       })
       .map(authUser => {
+        // Check if user has a corresponding profile
+        const userProfile = profilesMap.get(authUser.id)
+        const hasProfile = !!userProfile
+        
+        // Debug logging (can be removed in production)
+        if (process.env.NODE_ENV === 'development' && authUser.email?.includes('debug')) {
+          console.log(`🔍 [Admin Users API] Debug for ${authUser.email}:`, {
+            authUserId: authUser.id,
+            hasProfile,
+            userProfile: userProfile ? { id: userProfile.id, name: userProfile.name } : null
+          })
+        }
+
         // Extract first name and last name from user metadata or email
         const userMetadata = authUser.user_metadata || {}
         const rawMetadata = authUser.raw_user_meta_data || {}
         
-        // Try to get names from metadata, fallback to parsing email
+        // Try to get names from profile first, then metadata, then fallback to parsing email
+        // Note: user_profiles table uses 'name' field, not separate first_name/last_name
         let firstName = userMetadata.firstName || userMetadata.first_name || rawMetadata.firstName || rawMetadata.first_name
         let lastName = userMetadata.lastName || userMetadata.last_name || rawMetadata.lastName || rawMetadata.last_name
+        
+        // If we have a profile with name, try to split it
+        if (userProfile?.name && !firstName && !lastName) {
+          const nameParts = userProfile.name.trim().split(/\s+/)
+          firstName = nameParts[0] || ''
+          lastName = nameParts.slice(1).join(' ') || ''
+        }
         
         // If no names in metadata, try to parse from email
         if (!firstName && !lastName && authUser.email) {
@@ -104,12 +150,14 @@ export async function GET(request: NextRequest) {
           firstName: firstName || 'Unknown',
           lastName: lastName || 'User',
           email: authUser.email || '',
-          role: userMetadata.role || rawMetadata.role || 'User',
+          role: userProfile?.role || userMetadata.role || rawMetadata.role || 'EDITOR',
           createdAt: authUser.created_at,
           updatedAt: authUser.updated_at || authUser.created_at,
           emailConfirmed: !!authUser.email_confirmed_at,
           lastSignIn: authUser.last_sign_in_at,
-          provider: authUser.app_metadata?.provider || 'email'
+          provider: authUser.app_metadata?.provider || 'email',
+          hasProfile: hasProfile,
+          company: userProfile?.company || null
         }
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -170,18 +218,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the protected domain from general settings
+    // Get the protected domain from vendor domains
     const serviceSupabase = createServiceClient()
     const { data: settings, error: settingsError } = await serviceSupabase
-      .from('general_settings')
+      .from('vendor_domains')
       .select('protected_domain')
       .limit(1)
       .single()
 
     if (settingsError || !settings?.protected_domain) {
-      console.error('Error fetching general settings:', settingsError)
+      console.error('Error fetching vendor domain settings:', settingsError)
       return NextResponse.json(
-        { success: false, error: 'Protected domain not configured in general settings' },
+        { success: false, error: 'Protected domain not configured in vendor domain settings' },
         { status: 400 }
       )
     }
@@ -250,6 +298,102 @@ export async function POST(request: NextRequest) {
       { 
         success: false,
         error: 'Failed to create user',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    // Check if user is authenticated
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      )
+    }
+
+    const body = await request.json()
+    const { userId } = body
+
+    // Validate required fields
+    if (!userId?.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`🗑️ [Admin Users API] Deleting user with ID: ${userId}`)
+
+    // Use service client to delete user from auth.users
+    const serviceSupabase = createServiceClient()
+    
+    // First, check if the user has a corresponding profile
+    const { data: userProfile, error: profileCheckError } = await serviceSupabase
+      .from('user_profiles')
+      .select('id, first_name, last_name')
+      .eq('id', userId)
+      .single()
+
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error checking user profile:', profileCheckError)
+      return NextResponse.json(
+        { success: false, error: 'Failed to check user profile' },
+        { status: 500 }
+      )
+    }
+
+    // If user has a profile, don't allow deletion
+    if (userProfile) {
+      console.log(`❌ [Admin Users API] User ${userId} has a corresponding profile, deletion not allowed`)
+      return NextResponse.json(
+        { success: false, error: 'Cannot delete user with existing profile data. User has associated profile information.' },
+        { status: 400 }
+      )
+    }
+
+    console.log(`✅ [Admin Users API] User ${userId} has no corresponding profile, proceeding with deletion`)
+
+    // Delete user from Supabase Auth
+    const { data: deletedUser, error: deleteError } = await serviceSupabase.auth.admin.deleteUser(userId)
+
+    if (deleteError) {
+      console.error('Error deleting auth user:', deleteError)
+      
+      // Handle specific error cases
+      if (deleteError.message?.includes('not found')) {
+        return NextResponse.json(
+          { success: false, error: 'User not found' },
+          { status: 404 }
+        )
+      }
+      
+      return NextResponse.json(
+        { success: false, error: 'Failed to delete user account' },
+        { status: 500 }
+      )
+    }
+
+    console.log(`✅ [Admin Users API] Successfully deleted user with ID: ${userId}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'User successfully deleted'
+    })
+
+  } catch (error) {
+    console.error('❌ [Admin Users API] Error deleting user:', error)
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to delete user',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

@@ -28,7 +28,7 @@ async function checkTables() {
       'calendar_meetings',
       'action_items',
       'influence_tiers',
-      'general_settings',
+      'vendor_domains',
       
       // Legacy PascalCase (for reference only)
       'Publication',

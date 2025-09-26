@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,7 +63,7 @@ export default function TwitterUsageDashboard() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-center">
-            <RefreshCw className="h-6 w-6 animate-spin" />
+            <SpinningCupcake size="lg" />
             <span className="ml-2">Loading usage data...</span>
           </div>
         </CardContent>

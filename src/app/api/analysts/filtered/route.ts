@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { Database } from '@/types/supabase'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +15,10 @@ export async function POST(request: NextRequest) {
       limit = 1000
     } = body
 
-    const supabase = await createClient()
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     // Start with base query
     let query = supabase
@@ -65,9 +69,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`🔍 Found ${analysts?.length || 0} analysts matching filters`)
 
+    // Get unique filter options from all analysts for dropdowns
+    const allAnalystsQuery = await supabase
+      .from('analysts')
+      .select('company, influence, status, type, relationshipHealth')
+      .eq('status', 'ACTIVE')
+
+    const { data: allAnalysts } = allAnalystsQuery
+
+    const filterOptions = {
+      companies: [...new Set((allAnalysts || []).map(a => a.company).filter(Boolean))].sort(),
+      influences: [...new Set((allAnalysts || []).map(a => a.influence).filter(Boolean))].sort(),
+      statuses: [...new Set((allAnalysts || []).map(a => a.status).filter(Boolean))].sort(),
+      types: [...new Set((allAnalysts || []).map(a => a.type).filter(Boolean))].sort(),
+      relationshipHealths: [...new Set((allAnalysts || []).map(a => a.relationshipHealth).filter(Boolean))].sort(),
+    }
+
     return NextResponse.json({
       success: true,
-      data: analysts || [],
+      data: {
+        analysts: analysts || [],
+        filterOptions
+      },
       count: analysts?.length || 0,
       filters: {
         companies,

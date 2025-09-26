@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
+// Ensure this API runs in the Node.js runtime where server env vars are available
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 interface FollowUp {
   id: string
   briefingId: string
@@ -10,6 +14,12 @@ interface FollowUp {
   analystId: string
   description: string
   assignedTo?: string
+  assignedUser?: {
+    id: string
+    name: string
+    email: string
+    role: string
+  }
   comment?: string
   isCompleted: boolean
   completedAt?: string
@@ -18,7 +28,64 @@ interface FollowUp {
 
 export async function GET(request: NextRequest) {
   try {
+    // Soft guard for missing service env vars in local dev: degrade gracefully
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.warn('⚠️ [Follow-ups API] Missing Supabase service env vars. Returning empty result.')
+      return NextResponse.json({ success: true, data: [] })
+    }
+
     const supabase = createServiceClient()
+    
+    // Fetch admin users for assignee matching
+    console.log('👥 [Follow-ups API] Fetching admin users for assignee matching...')
+    const { data: adminUsers, error: usersError } = await supabase
+      .from('user_profiles')
+      .select('id, name, email, role')
+    
+    if (usersError) {
+      console.error('❌ [Follow-ups API] Error fetching admin users:', usersError)
+      // Continue without user matching - don't fail the entire request
+    }
+    
+    console.log(`👥 [Follow-ups API] Found ${adminUsers?.length || 0} admin users`)
+    
+    // Create a helper function to match assignee names with users
+    const matchAssigneeToUser = (assigneeName: string) => {
+      if (!adminUsers || !assigneeName) return null
+      
+      // Normalize the assignee name for matching
+      const normalizedAssignee = assigneeName.toLowerCase().trim()
+      
+      // Try exact name match first
+      let matchedUser = adminUsers.find(user => 
+        user.name?.toLowerCase().trim() === normalizedAssignee
+      )
+      
+      // If no exact match, try partial matches
+      if (!matchedUser) {
+        matchedUser = adminUsers.find(user => {
+          const userName = user.name?.toLowerCase().trim() || ''
+          // Check if assignee name is contained in user name or vice versa
+          return userName.includes(normalizedAssignee) || normalizedAssignee.includes(userName)
+        })
+      }
+      
+      // Try matching with first name only
+      if (!matchedUser) {
+        const assigneeFirstName = normalizedAssignee.split(/\s+/)[0]
+        matchedUser = adminUsers.find(user => {
+          const userFirstName = user.name?.toLowerCase().trim().split(/\s+/)[0] || ''
+          return userFirstName === assigneeFirstName && assigneeFirstName.length > 2
+        })
+      }
+      
+      return matchedUser ? {
+        id: matchedUser.id,
+        name: matchedUser.name || '',
+        email: matchedUser.email || '',
+        role: matchedUser.role || 'USER'
+      } : null
+    }
     
     // Fetch completed briefings with AI summaries
     const { data: briefings, error } = await supabase
@@ -111,6 +178,9 @@ export async function GET(request: NextRequest) {
             }
           }
 
+          // Match assignee with admin user
+          const matchedUser = assignedTo ? matchAssigneeToUser(assignedTo) : null
+          
           followUps.push({
             id: `${briefing.id}-${index}`,
             briefingId: briefing.id,
@@ -120,6 +190,7 @@ export async function GET(request: NextRequest) {
             analystId: primaryAnalyst?.id || '',
             description,
             assignedTo: assignedTo || undefined,
+            assignedUser: matchedUser,
             comment: '',
             isCompleted: false,
             createdAt: briefing.createdAt
@@ -128,7 +199,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const matchedCount = followUps.filter(f => f.assignedUser).length
+    const assignedCount = followUps.filter(f => f.assignedTo).length
+    
     console.log(`📋 Found ${followUps.length} follow-ups from ${briefings?.length || 0} briefings`)
+    console.log(`👤 Matched ${matchedCount}/${assignedCount} assignees with admin users`)
 
     return NextResponse.json({
       success: true,
