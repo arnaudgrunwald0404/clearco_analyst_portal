@@ -17,7 +17,7 @@ export async function GET() {
     const { data: newsletters, error } = await supabase
       .from('newsletters')
       .select('*')
-      .order('createdAt', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching newsletters:', error)
@@ -76,12 +76,12 @@ export async function POST(request: NextRequest) {
       title,
       subject: subject || '',
       content: content || '',
-      htmlContent: htmlContent || '',
+      html_content: htmlContent || '',
       status,
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      createdBy: createdBy || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      created_by: createdBy || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     }
     
     // Add description if provided (only if column exists)
@@ -108,8 +108,8 @@ export async function POST(request: NextRequest) {
       console.log(`📧 Creating ${recipientAnalystIds.length} subscriptions for newsletter ${newsletter.id}`)
       
       const subscriptions = recipientAnalystIds.map((analystId: string) => ({
-        newsletterId: newsletter.id,
-        analystId: analystId
+        newsletter_id: newsletter.id,
+        analyst_id: analystId
       }))
 
       const { error: subscriptionError } = await supabase

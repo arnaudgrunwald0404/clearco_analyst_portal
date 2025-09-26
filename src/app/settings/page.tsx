@@ -646,8 +646,13 @@ function SettingsPageContent() {
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
           {activeSection === 'events' && <EventsSection />}
           {activeSection === 'analyst-portal' && (
-            <AnalystPortalSection
-              initialTab={(searchParams.get('tab') === 'content' ? 'content' : (searchParams.get('tab') === 'access' ? 'access' : 'settings'))}
+<AnalystPortalSection
+              initialTab={(
+                searchParams.get('tab') === 'content' ? 'content' :
+                searchParams.get('tab') === 'access' ? 'access' :
+                searchParams.get('tab') === 'company' ? 'company' :
+                'settings'
+              )}
               showAccessTab={false}
             />
           )}

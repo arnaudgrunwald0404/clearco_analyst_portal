@@ -115,7 +115,7 @@ function mergeTemplate(html: string, data: any) {
     .replace(/\{\{analyst\.email\}\}/g, data.analyst?.email || '')
 }
 
-type Step = 1 | 2 | 3
+type Step = 1 | 2 | 3 | 4
 
 export default function CreateNewsletterPage() {
   const router = useRouter()
@@ -415,11 +415,13 @@ export default function CreateNewsletterPage() {
   const canProceedToStep2 = title.trim() && description.trim() && objectives.trim()
   const canProceedToStep3 = selectedAnalysts.length > 0
   const canSubmit = subject.trim() && content.trim() && templateId
+  const canProceedToStep4 = !!canSubmit
 
   const steps = [
     { id: 1, title: 'Newsletter Basics', icon: FileText, description: 'Name and objectives' },
     { id: 2, title: 'Audience Selection', icon: Target, description: 'Choose recipients' },
-    { id: 3, title: 'Email Creation', icon: Mail, description: 'Content and template' }
+    { id: 3, title: 'Email Creation', icon: Mail, description: 'Content and template' },
+    { id: 4, title: 'Confirm & Send', icon: Send, description: 'Review and finalize' }
   ]
 
   return (
@@ -992,12 +994,12 @@ export default function CreateNewsletterPage() {
                       Back
                     </Button>
                     <Button 
-                      onClick={handleSubmit}
-                      disabled={submitting || !canSubmit}
+                      onClick={() => setCurrentStep(4)}
+                      disabled={submitting || !canProceedToStep4}
                       className="flex-1 py-3 text-lg rounded-lg"
                     >
-                      <Send className="mr-2 h-5 w-5" />
-                      {submitting ? 'Creating...' : 'Create Newsletter'}
+                      <ArrowRight className="ml-0 mr-2 h-5 w-5" />
+                      Continue to Confirm
                     </Button>
                   </div>
                   </CardContent>
@@ -1053,6 +1055,88 @@ export default function CreateNewsletterPage() {
                   </CardContent>
                 </Card>
               </div>
+            )}
+
+            {currentStep === 4 && (
+              <Card className="p-2 sm:p-4 md:p-6 lg:p-8">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-2xl">
+                    <Send className="h-6 w-6" />
+                    Confirm & Send
+                  </CardTitle>
+                  <CardDescription className="text-base mt-2">Review details, then save as draft, schedule, or send.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm text-gray-500">Name</div>
+                        <div className="text-base font-medium">{title || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Description</div>
+                        <div className="text-base whitespace-pre-wrap">{description || '—'}</div>
+                      </div>
+                      {objectives && (
+                        <div>
+                          <div className="text-sm text-gray-500">Objectives</div>
+                          <div className="text-base whitespace-pre-wrap">{objectives}</div>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm text-gray-500">Audience</div>
+                        <div className="text-base">{selectedAnalysts.length} recipients</div>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm text-gray-500">Subject</div>
+                        <div className="text-base font-medium">{subject || '—'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Template</div>
+                        <div className="text-base">{selectedTemplate?.name || 'None selected'}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">Schedule</div>
+                        <div className="text-base">{status === 'SCHEDULED' && scheduledAt ? new Date(scheduledAt).toLocaleString() : 'Not scheduled'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <Button 
+                      variant="outline"
+                      onClick={() => setCurrentStep(3)}
+                      className="sm:flex-1 py-3 text-lg rounded-lg"
+                    >
+                      <ArrowLeft className="mr-2 h-5 w-5" />
+                      Back
+                    </Button>
+                    <Button 
+                      onClick={handleSubmit}
+                      disabled={submitting || selectedAnalysts.length === 0 || !canSubmit}
+                      className="sm:flex-1 py-3 text-lg rounded-lg"
+                    >
+                      <Send className="mr-2 h-5 w-5" />
+                      {submitting ? 'Creating...' : (status === 'SCHEDULED' ? 'Schedule Newsletter' : 'Create & Send Later')}
+                    </Button>
+                  </div>
+
+                  {/* Inline preview snapshot */}
+                  {selectedTemplate && (
+                    <div className="mt-6 border rounded-lg overflow-hidden">
+                      <iframe
+                        title="Newsletter Preview"
+                        srcDoc={previewHtml}
+                        className="w-full h-[400px] bg-white"
+                        style={{ border: 'none' }}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* Error/Success Messages */}

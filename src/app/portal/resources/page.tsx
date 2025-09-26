@@ -1,11 +1,9 @@
-import { BrandKit } from '@/components/portal/BrandKit'
-import { ResourcesList } from '@/components/portal/ResourcesList'
+import CompanyResourcesTable from '@/components/portal/CompanyResourcesTable'
 
 export default function ResourcesPage() {
   return (
     <div className="space-y-6">
-      <BrandKit />
-      <ResourcesList />
+      <CompanyResourcesTable />
     </div>
   )
 }

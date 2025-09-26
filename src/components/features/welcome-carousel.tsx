@@ -48,7 +48,17 @@ export default function WelcomeCarousel({ analystUser, companySettings }: Welcom
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch('/api/settings/analyst-portal')
+        let vendorDomain: string | undefined
+        try {
+          const g = await fetch('/api/settings/general')
+          if (g.ok) {
+            const gj = await g.json().catch(() => null as any)
+            vendorDomain = gj?.protected_domain || undefined
+          }
+        } catch {}
+        const qs = new URLSearchParams()
+        if (vendorDomain) qs.set('vendorDomain', vendorDomain)
+        const res = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`)
         if (res.ok) {
           const data = await res.json()
           // Some handlers may return { success, data }; handle both shapes

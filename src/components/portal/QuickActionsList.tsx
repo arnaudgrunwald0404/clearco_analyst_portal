@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Calendar, MessageSquarePlus, FolderOpen, LifeBuoy, Settings } from 'lucide-react'
 import Drawer from '@/app/briefings/components/drawer/Drawer'
@@ -34,12 +33,19 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
     let cancelled = false
     ;(async () => {
       try {
-        // Fetch support email
-        const resp = await fetch('/api/settings/analyst-portal', { cache: 'no-store' })
+        // Fetch general to get vendor domain, then scoped portal settings for support email
+        const generalResp = await fetch('/api/settings/general', { cache: 'no-store' })
+        let vendorDomain: string | undefined
+        if (generalResp.ok) {
+          const gj = await generalResp.json().catch(() => null as any)
+          vendorDomain = gj?.protected_domain || undefined
+        }
+        const qs = new URLSearchParams()
+        if (vendorDomain) qs.set('vendorDomain', vendorDomain)
+        const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' })
         if (resp.ok) {
           const json = await resp.json().catch(() => null as any)
           if (!cancelled) {
-            // prefer explicit supportEmail if present, else fall back to contactEmail
             setSupportEmail(json?.supportEmail || json?.contactEmail || null)
           }
         }
@@ -127,11 +133,9 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
 
   return (
     <>
-      <Card className="shadow-none border-t rounded-none">
-        <CardContent className="p-4">
-          {Actions}
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+        {Actions}
+      </div>
       
       {/* Briefing Drawer */}
       {selectedBriefing && (

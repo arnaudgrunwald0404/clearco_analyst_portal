@@ -9,74 +9,62 @@ function generateId(): string {
   return `cl${timestamp}${randomPart}`
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url)
+    const vendorId = url.searchParams.get('vendorId') || undefined
+    const vendorDomain = url.searchParams.get('vendorDomain') || undefined
     // Use service role key for server-side operations to bypass RLS
     const supabase = createServiceClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
     
-    // Get the first (and only) analyst portal settings record
-    const { data: settings, error } = await supabase
-      .from('analyst_portal_settings')
-      .select('*')
-      .limit(1)
-      .single()
-    
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching analyst portal settings:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch analyst portal settings' },
-        { status: 500 }
-      )
+    // Fetch vendor-scoped portal settings from vendor_domains
+    let query = supabase.from('vendor_domains').select('*').limit(1)
+    if (vendorId) {
+      query = supabase.from('vendor_domains').select('*').eq('id', vendorId).limit(1)
+    } else if (vendorDomain) {
+      query = supabase.from('vendor_domains').select('*').ilike('protected_domain', vendorDomain).limit(1)
     }
-    
-    // If no settings exist, create default ones
-    if (!settings) {
-      // Fallback: try to auto-populate contact from admin users API / first matching user
-      let contactFallback: any = {}
-      try {
-        const adminResp = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/admin/users`, { cache: 'no-store' })
-        const adminJson = await adminResp.json().catch(() => ({} as any))
-        const firstUser = Array.isArray(adminJson?.data) ? adminJson.data[0] : null
-        if (firstUser) {
-          contactFallback = {
-            contactName: `${firstUser.firstName || ''} ${firstUser.lastName || ''}`.trim(),
-            contactTitle: firstUser.role || '',
-            contactEmail: firstUser.email || ''
-          }
-        }
-      } catch {}
 
-      const defaultSettings = {
-        id: generateId(),
-        welcomeQuote: 'Welcome {first_name}, I am so glad you are here to learn more about {company_name}!',
-        // Keep legacy quoteAuthor populated using the contact fields
-        quoteAuthor: `${contactFallback.contactName || 'Arnaud Grunwald'}${contactFallback.contactTitle ? `, ${contactFallback.contactTitle}` : ', Chief Product Officer'}`,
-        authorImageUrl: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
-      
-      const { data: newSettings, error: createError } = await supabase
-        .from('analyst_portal_settings')
-        .insert(defaultSettings)
-        .select()
-        .single()
-      
-      if (createError) {
-        console.error('Error creating default analyst portal settings:', createError)
-        return NextResponse.json(
-          { error: 'Failed to create default analyst portal settings' },
-          { status: 500 }
-        )
-      }
-      
-      return NextResponse.json(newSettings)
+    const { data: vendorRow, error } = await query.single()
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error fetching vendor domain for portal settings:', error)
+      return NextResponse.json({ error: 'Failed to fetch portal settings' }, { status: 500 })
     }
-    
-    return NextResponse.json(settings)
+
+    if (!vendorRow) {
+      // No vendor row found; return empty defaults to avoid breaking UI
+      return NextResponse.json({
+        welcomeQuote: '',
+        quoteAuthor: '',
+        authorImageUrl: '',
+        contactName: '',
+        contactTitle: '',
+        contactEmail: '',
+        contactPhone: '',
+        contactImageUrl: '',
+        company_profile: {}
+      })
+    }
+
+    const quoteAuthor = [vendorRow.portal_contact_name || '', vendorRow.portal_contact_title || '']
+      .filter(Boolean)
+      .join(', ')
+
+    return NextResponse.json({
+      welcomeQuote: vendorRow.portal_welcome_quote || '',
+      quoteAuthor,
+      authorImageUrl: vendorRow.portal_contact_image_url || '',
+      contactName: vendorRow.portal_contact_name || '',
+      contactTitle: vendorRow.portal_contact_title || '',
+      contactEmail: vendorRow.portal_contact_email || '',
+      contactPhone: vendorRow.portal_contact_phone || '',
+      contactImageUrl: vendorRow.portal_contact_image_url || '',
+      company_profile: vendorRow.company_profile || {}
+    })
   } catch (error) {
     console.error('Error fetching analyst portal settings:', error)
     return NextResponse.json(
@@ -88,8 +76,12 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const url = new URL(request.url)
+    const vendorId = url.searchParams.get('vendorId') || undefined
+    const vendorDomain = url.searchParams.get('vendorDomain') || undefined
+
     const body = await request.json()
-    let { welcomeQuote, quoteAuthor, authorImageUrl, resources, contactName, contactTitle, contactEmail, contactPhone, contactImageUrl } = body
+    let { welcomeQuote, quoteAuthor, authorImageUrl, resources, contactName, contactTitle, contactEmail, contactPhone, contactImageUrl, companyProfile } = body
 
     // Backward compatibility: if only quoteAuthor is provided, split into name and title
     if (!contactName && !contactTitle && typeof quoteAuthor === 'string' && quoteAuthor?.trim()) {
@@ -102,31 +94,35 @@ export async function PUT(request: NextRequest) {
       quoteAuthor = `${contactName || ''}${contactTitle ? `, ${contactTitle}` : ''}`.trim()
     }
     
-    const supabase = await createClient()
-    
-    // Get existing settings or create if none exist
-    const { data: existingSettings } = await supabase
-      .from('analyst_portal_settings')
-      .select('id')
-      .limit(1)
-      .single()
-    
-    if (existingSettings) {
+    // Use service role for vendor-scoped updates
+    const supabase = createServiceClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Identify target vendor row
+    let vendorQuery = supabase.from('vendor_domains').select('*').limit(1)
+    if (vendorId) {
+      vendorQuery = supabase.from('vendor_domains').select('*').eq('id', vendorId).limit(1)
+    } else if (vendorDomain) {
+      vendorQuery = supabase.from('vendor_domains').select('*').ilike('protected_domain', vendorDomain).limit(1)
+    }
+    const { data: vendorRow } = await vendorQuery.single()
+
+    if (vendorRow) {
       // Update existing settings
-      const { data: updatedSettings, error: updateError } = await supabase
-        .from('analyst_portal_settings')
+      const { data: updatedVendor, error: updateError } = await supabase
+        .from('vendor_domains')
         .update({
-          welcomeQuote: welcomeQuote || '',
-          quoteAuthor: quoteAuthor || '',
-          authorImageUrl: authorImageUrl || '',
-          contactName: contactName || '',
-          contactTitle: contactTitle || '',
-          contactEmail: contactEmail || '',
-          contactPhone: contactPhone || '',
-          contactImageUrl: contactImageUrl || '',
-          updatedAt: new Date().toISOString()
+          portal_welcome_quote: welcomeQuote || '',
+          portal_contact_name: contactName || '',
+          portal_contact_title: contactTitle || '',
+          portal_contact_email: contactEmail || '',
+          portal_contact_phone: contactPhone || '',
+          portal_contact_image_url: contactImageUrl || authorImageUrl || '',
+          company_profile: companyProfile || null
         })
-        .eq('id', existingSettings.id)
+        .eq('id', vendorRow.id)
         .select()
         .single()
       
@@ -136,7 +132,7 @@ export async function PUT(request: NextRequest) {
         const missingCols = msg.includes('column') && msg.includes('does not exist')
         if (missingCols) {
           return NextResponse.json(
-            { error: 'Database is missing contact fields (contactName, contactTitle, contactEmail, contactPhone, contactImageUrl). Please run supabase/migrations/20250914_add_contact_fields_to_analyst_portal_settings.sql in your Supabase project and try again.' },
+            { error: 'Database is missing fields required by Analyst Portal settings (contact or company profile). Please run supabase/migrations/20250914_add_contact_fields_to_analyst_portal_settings.sql and supabase/migrations/20250926_add_company_profile_to_analyst_portal_settings.sql in your Supabase project, then try again.' },
             { status: 400 }
           )
         }
@@ -149,27 +145,28 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Analyst portal settings updated successfully',
-        data: updatedSettings
+        data: updatedVendor
       })
     } else {
-      // Create new settings
-      const newSettings = {
+      // No vendor row exists yet; create a vendor_domains row with provided values
+      const newVendor = {
         id: generateId(),
-        welcomeQuote: welcomeQuote || '',
-        quoteAuthor: quoteAuthor || '',
-        authorImageUrl: authorImageUrl || '',
-        contactName: contactName || '',
-        contactTitle: contactTitle || '',
-        contactEmail: contactEmail || '',
-        contactPhone: contactPhone || '',
-        contactImageUrl: contactImageUrl || '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        company_name: '',
+        protected_domain: '',
+        logo_url: '',
+        industry_name: 'HR Technology',
+        portal_welcome_quote: welcomeQuote || '',
+        portal_contact_name: contactName || '',
+        portal_contact_title: contactTitle || '',
+        portal_contact_email: contactEmail || '',
+        portal_contact_phone: contactPhone || '',
+        portal_contact_image_url: contactImageUrl || authorImageUrl || '',
+        company_profile: companyProfile || null
       }
       
-      const { data: createdSettings, error: createError } = await supabase
-        .from('analyst_portal_settings')
-        .insert(newSettings)
+      const { data: createdVendor, error: createError } = await supabase
+        .from('vendor_domains')
+        .insert(newVendor)
         .select()
         .single()
       
@@ -179,7 +176,7 @@ export async function PUT(request: NextRequest) {
         const missingCols = msg.includes('column') && msg.includes('does not exist')
         if (missingCols) {
           return NextResponse.json(
-            { error: 'Database is missing contact fields (contactName, contactTitle, contactEmail, contactPhone, contactImageUrl). Please run supabase/migrations/20250914_add_contact_fields_to_analyst_portal_settings.sql in your Supabase project and try again.' },
+            { error: 'Database is missing vendor_domains portal fields. Please run supabase/migrations/20250926_vendor_domains_add_portal_and_company_profile.sql in your Supabase project, then try again.' },
             { status: 400 }
           )
         }
@@ -192,7 +189,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'Analyst portal settings created successfully',
-        data: createdSettings
+        data: createdVendor
       })
     }
   } catch (error) {

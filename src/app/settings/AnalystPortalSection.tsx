@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Shield, Clock, Plus, Settings, FileText } from 'lucide-react';
+import { Users, Shield, Clock, Plus, Settings, FileText, Building } from 'lucide-react';
 import AnalystPortalSettingsForm from '@/components/forms/analyst-portal-settings-form.placeholder';
+import CompanyProfileForm from '@/components/forms/company-profile-form';
 import { AnalystAccessForm } from '@/components/forms/analyst-access-form';
 import ContentSection from '@/app/settings/ContentSection';
 
@@ -26,7 +27,7 @@ interface AnalystAccess {
 }
 
 interface AnalystPortalSectionProps {
-  initialTab?: 'settings' | 'content' | 'access'
+  initialTab?: 'settings' | 'content' | 'access' | 'company'
   /** When false, hides the Access Management tab and content */
   showAccessTab?: boolean
 }
@@ -36,7 +37,7 @@ export default function AnalystPortalSection({ initialTab = 'settings', showAcce
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [selectedAnalystId, setSelectedAnalystId] = useState<string | null>(null)
-const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access'>(initialTab)
+const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access' | 'company'>(initialTab)
 
   const fetchAnalystAccess = async () => {
     try {
@@ -122,6 +123,17 @@ const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access'>(in
             <FileText className="w-4 h-4 inline mr-2" />
             Content
           </button>
+          <button
+            onClick={() => setActiveTab('company')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'company'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Building className="w-4 h-4 inline mr-2" />
+            Company
+          </button>
           {showAccessTab && (
             <button
               onClick={() => setActiveTab('access')}
@@ -165,6 +177,23 @@ const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access'>(in
         <div className="space-y-6">
           <ContentSection />
         </div>
+      )}
+
+      {/* Company Tab */}
+      {activeTab === 'company' && (
+        <Card className="shadow-sm border border-gray-200">
+          <CardHeader className="pb-6 px-8 pt-8">
+            <CardTitle className="text-xl font-bold text-gray-900">
+              Company Profile
+            </CardTitle>
+            <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
+              Provide company details presented to analysts throughout the portal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2 px-8 pb-8">
+            <CompanyProfileForm />
+          </CardContent>
+        </Card>
       )}
 
       {/* Access Management Tab */}

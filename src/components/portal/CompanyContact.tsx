@@ -34,13 +34,14 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
     let cancelled = false
     ;(async () => {
       try {
-        const [portalResp, generalResp] = await Promise.all([
-          fetch('/api/settings/analyst-portal', { cache: 'no-store' }).catch(() => null),
-          fetch('/api/settings/general', { cache: 'no-store' }).catch(() => null),
-        ])
+        // Fetch general first to get vendorDomain, then fetch portal with vendor scoping
+        const generalResp = await fetch('/api/settings/general', { cache: 'no-store' }).catch(() => null)
+        const generalJson = generalResp && generalResp.ok ? await generalResp.json().catch(() => null) : null
+        const qs = new URLSearchParams()
+        if (generalJson?.protected_domain) qs.set('vendorDomain', generalJson.protected_domain)
+        const portalResp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' }).catch(() => null)
+        const portalJson = portalResp && portalResp.ok ? await portalResp.json().catch(() => null) : null
         if (!cancelled) {
-          const portalJson = portalResp && portalResp.ok ? await portalResp.json().catch(() => null) : null
-          const generalJson = generalResp && generalResp.ok ? await generalResp.json().catch(() => null) : null
           setPortal(portalJson)
           setGeneral(generalJson)
         }
@@ -59,7 +60,7 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
   const companyName = general?.company_name || general?.companyName || 'Company'
   const displayVendorName = selectedVendorName || companyName
   const logoUrl = general?.logo_url
-  const displayHeader = companyName ? `Contact at ${companyName} ` : 'Vendor Contact'
+  const displayHeader = companyName ? `Your Contact at ${companyName} ` : 'Vendor Contact'
 
   const handleSwitchVendor = () => {
     if (onSwitchVendor) return onSwitchVendor()
@@ -118,10 +119,10 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
       </div>
 
       {/* Contact Information Section */}
-      <div className="border-t border-gray-200 pt-4">
+      <div className=" pt-2">
         <div className="text-sm font-normal text-gray-600 mb-3">{displayHeader}</div>
         
-        <div className="flex items-center gap-4 mb-4">
+        <div className="flex items-center gap-4 mb-6">
           {/* Avatar */}
           <div className="relative">
             {contactImageUrl ? (

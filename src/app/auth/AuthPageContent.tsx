@@ -123,7 +123,10 @@ export default function AuthPageContent() {
   // Show loading while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div
+        className="min-h-screen flex items-center justify-center bg-cover bg-center"
+        style={{ backgroundImage: "url('/banner-art/5tEKURo4T77ldqhwOMzP9.png')" }}
+      >
         <div className="text-center">
           <SpinningCupcake size="xl" className="mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
@@ -138,27 +141,15 @@ export default function AuthPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+    <div
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center"
+      style={{ backgroundImage: "url('/banner-art/5tEKURo4T77ldqhwOMzP9.png')" }}
+    >
       <div className="w-full max-w-md">
         {/* Logo and Header */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-60 h-60 mb-6 relative">
-            <Image
-              src="/cupcake_logo.png"
-              alt="Cupcake"
-              fill
-              className="object-contain"
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">
-            Welcome to Cupcake!
-          </h1>
-          <p className="text-gray-600 text-lg mb-6">
-            Cupcake is your delicious Industry Relationship Management portal.
-          </p>
-          <p className="text-gray-600 text-lg">
-            Choose your preferred sign-in method
-          </p>
+          
+         
         </div>
 
         {/* Auth Form */}
@@ -176,8 +167,26 @@ export default function AuthPageContent() {
                 <p className="text-green-700 text-sm">{success}</p>
               </div>
             </div>
-          )}
-
+                     )}
+          <div className="mx-auto w-50 h-50 mb-2 relative">
+            <Image
+              src="/cupcake_logo.png"
+              alt="Cupcake"
+              fill
+              className="object-contain"
+            />
+          </div>
+          <div className="mx-auto mb-6 relative text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">
+            Welcome to Cupcake!
+          </h1>
+          <p className="text-gray-600 text-lg mb-6">
+            Cupcake is your delicious Industry Relationship Management portal.
+          </p>
+          <p className="text-gray-600 text-lg">
+            Choose your preferred sign-in method:
+          </p>
+          </div> 
           {/* Google Sign In - Primary Option */}
           <Button
             type="button"

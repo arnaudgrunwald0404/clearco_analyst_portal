@@ -73307,3 +73307,11 @@ npm error   npm run
 npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-09-23T09_00_02_234Z-debug-0.log
 [Tue Sep 23 02:00:02 PDT 2025] Publication discovery failed with exit code 1
 [Tue Sep 23 02:00:02 PDT 2025] ----------------------------------------
+[Fri Sep 26 02:00:00 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-09-26T09_00_01_253Z-debug-0.log
+[Fri Sep 26 02:00:01 PDT 2025] Publication discovery failed with exit code 1
+[Fri Sep 26 02:00:01 PDT 2025] ----------------------------------------

@@ -145,6 +145,55 @@ function matchAnalystByEmail(email: string, analysts: any[]): any | null {
   return match || null
 }
 
+// Normalize names for comparison (remove diacritics/punctuation, lowercase)
+function normalizeName(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+// Attempt to match an analyst by a human-readable name (e.g., attendee displayName or event title)
+function matchAnalystByName(name: string, analysts: any[]): any | null {
+  if (!name || !analysts.length) return null
+  const normalized = normalizeName(name)
+  if (!normalized) return null
+
+  // Exact "first last" match
+  for (const a of analysts) {
+    const full = normalizeName(`${a.firstName || ''} ${a.lastName || ''}`)
+    if (full && normalized === full) return a
+  }
+
+  // Contains both first and last names somewhere in the string
+  for (const a of analysts) {
+    const first = normalizeName(a.firstName || '')
+    const last = normalizeName(a.lastName || '')
+    if (first && last && normalized.includes(first) && normalized.includes(last)) {
+      return a
+    }
+  }
+
+  // Handle simple swapped order scenarios ("last, first" or extra tokens)
+  const parts = normalized.split(' ')
+  if (parts.length >= 2) {
+    const first = parts[0]
+    const last = parts[parts.length - 1]
+    for (const a of analysts) {
+      const aFirst = normalizeName(a.firstName || '')
+      const aLast = normalizeName(a.lastName || '')
+      if ((aFirst === first && aLast === last) || (aFirst === last && aLast === first)) {
+        return a
+      }
+    }
+  }
+
+  return null
+}
+
 async function startCalendarSync(
   connectionId: string, 
   forceSync: boolean = false, 
@@ -330,10 +379,27 @@ async function startCalendarSync(
         const isDuplicate = briefingSet.has(briefingKey)
 
         if (!isDuplicate) {
-          // Try to match attendees with analysts
-          const matchedAnalysts = attendeeEmails
-            .map(email => email ? matchAnalystByEmail(email, analysts) : null)
+// Try to match attendees with analysts (email first, then by display name, then by event title)
+          let matchedAnalysts = attendeeEmails
+            .map(email => (email ? matchAnalystByEmail(email, analysts) : null))
             .filter(Boolean) as any[]
+
+          let matchConfidence = matchedAnalysts.length > 0 ? 0.8 : 0.0
+
+          if (matchedAnalysts.length === 0) {
+            const attendeeNames: string[] = (Array.isArray(event.attendees) ? event.attendees : [])
+              .map((a: any) => (a && (a.displayName || a.organizerName) ? String(a.displayName || a.organizerName) : ''))
+              .filter(Boolean)
+            for (const name of attendeeNames) {
+              const m = matchAnalystByName(name, analysts)
+              if (m) { matchedAnalysts = [m]; matchConfidence = 0.6; break }
+            }
+          }
+
+          if (matchedAnalysts.length === 0 && event.summary) {
+            const m = matchAnalystByName(String(event.summary), analysts)
+            if (m) { matchedAnalysts = [m]; matchConfidence = 0.55 }
+          }
 
           // Create or upsert calendar meeting record
           const meetingData: CalendarMeetingInsert = {
@@ -347,7 +413,7 @@ async function startCalendarSync(
             attendees: attendeeEmails.length ? JSON.stringify(attendeeEmails) : null,
             analyst_id: matchedAnalysts[0]?.id || null,
             is_analyst_meeting: matchedAnalysts.length > 0,
-            confidence: matchedAnalysts.length > 0 ? 0.8 : 0.0,
+            confidence: matchConfidence,
             tags: null
           }
 

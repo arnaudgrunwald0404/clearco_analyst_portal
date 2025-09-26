@@ -60,17 +60,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient()
 
     const updateData: any = {
-      updatedAt: new Date().toISOString()
+      updated_at: new Date().toISOString()
     }
 
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
     if (subject !== undefined) updateData.subject = subject
     if (content !== undefined) updateData.content = content
-    if (htmlContent !== undefined) updateData.htmlContent = htmlContent
+    if (htmlContent !== undefined) updateData.html_content = htmlContent
     if (status !== undefined) updateData.status = status
     if (scheduledAt !== undefined) {
-      updateData.scheduledAt = scheduledAt ? new Date(scheduledAt).toISOString() : null
+      updateData.scheduled_at = scheduledAt ? new Date(scheduledAt).toISOString() : null
     }
 
     const { data: newsletter, error } = await supabase
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       const { error: deleteError } = await supabase
         .from('newsletter_subscriptions')
         .delete()
-        .eq('newsletterId', id)
+        .eq('newsletter_id', id)
 
       if (deleteError) {
         console.error('Error deleting existing subscriptions:', deleteError)
@@ -102,8 +102,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       // Then, create new subscriptions
       if (recipientAnalystIds.length > 0) {
         const subscriptions = recipientAnalystIds.map((analystId: string) => ({
-          newsletterId: id,
-          analystId: analystId
+          newsletter_id: id,
+          analyst_id: analystId
         }))
 
         const { error: insertError } = await supabase

@@ -25,7 +25,18 @@ export function ResourcesList() {
       try {
         // 1) Try pulling from portal settings (Settings > Analyst Portal)
         // Expecting an optional `resources` array in the payload
-        const s = await fetch('/api/settings/analyst-portal')
+        // Vendor-scoped portal settings resources
+        let vendorDomain: string | undefined
+        try {
+          const g = await fetch('/api/settings/general')
+          if (g.ok) {
+            const gj = await g.json().catch(() => ({} as any))
+            vendorDomain = gj?.protected_domain || undefined
+          }
+        } catch {}
+        const qs = new URLSearchParams()
+        if (vendorDomain) qs.set('vendorDomain', vendorDomain)
+        const s = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`)
         if (s.ok) {
           const sj = await s.json().catch(() => ({} as any))
           const fromSettings: PortalResource[] = Array.isArray(sj?.resources) ? sj.resources : []

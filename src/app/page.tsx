@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSettings } from '@/contexts/SettingsContext'
 import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2, BookOpen, File } from 'lucide-react'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
+import { DotWave } from '@/components/ui/dot-wave'
 // import SocialMediaActivity from '@/components/features/social-media-activity'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
@@ -625,19 +626,27 @@ function DashboardContent() {
                         <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Very High</span>
-                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.VERY_HIGH ?? 0}%</span>
+                            <span className="font-semibold text-gray-900">
+                              <WaveNumber value={metrics?.coverageByTier?.VERY_HIGH} format={(n) => `${n}%`} />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">High</span>
-                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.HIGH ?? 0}%</span>
+                            <span className="font-semibold text-gray-900">
+                              <WaveNumber value={metrics?.coverageByTier?.HIGH} format={(n) => `${n}%`} />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Medium</span>
-                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.MEDIUM ?? 0}%</span>
+                            <span className="font-semibold text-gray-900">
+                              <WaveNumber value={metrics?.coverageByTier?.MEDIUM} format={(n) => `${n}%`} />
+                            </span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-gray-600">Low</span>
-                            <span className="font-semibold text-gray-900">{metrics?.coverageByTier?.LOW ?? 0}%</span>
+                            <span className="font-semibold text-gray-900">
+                              <WaveNumber value={metrics?.coverageByTier?.LOW} format={(n) => `${n}%`} />
+                            </span>
                           </div>
                         </div>
                       </dd>
@@ -767,15 +776,19 @@ function DashboardContent() {
                           
                         </dt>
                         <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.briefingsDue ?? 0}
+                          {metrics?.briefingsDueDetailed
+                            ? (metrics.briefingsDueDetailed.highestTier + metrics.briefingsDueDetailed.nextTier)
+                            : (metrics?.briefingsDue ?? 0)}
                         </dd>
                       </dl>
                       <div className="text-right">
                         <div className="text-xs text-gray-400">Very High / High</div>
                         <div className="text-lg font-semibold text-gray-900 mt-1">
-                          {metrics?.briefingsDueDetailed ? 
-                            `${metrics.briefingsDueDetailed.highestTier ?? 0} / ${metrics.briefingsDueDetailed.nextTier ?? 0}` :
-                            'Loading...'
+                          {metrics?.briefingsDueDetailed
+                            ? (metrics.briefingsDueDetailed.isLoading
+                                ? <DotWave size="sm" className="text-gray-400" />
+                                : `${metrics.briefingsDueDetailed.highestTier ?? 0} / ${metrics.briefingsDueDetailed.nextTier ?? 0}`)
+                            : <DotWave size="sm" className="text-gray-400" />
                           }
                         </div>
                       </div>

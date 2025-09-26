@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -26,10 +27,17 @@ export default function AnalystPortalSettingsForm() {
 
   const isValidEmail = (s: string) => !s || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)
 
+  const searchParams = useSearchParams()
+
   useEffect(() => {
     ;(async () => {
       try {
-        const resp = await fetch('/api/settings/analyst-portal')
+        const qs = new URLSearchParams()
+        const vendorId = searchParams.get('vendorId')
+        const vendorDomain = searchParams.get('vendorDomain')
+        if (vendorId) qs.set('vendorId', vendorId)
+        if (vendorDomain) qs.set('vendorDomain', vendorDomain)
+        const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`)
         if (resp.ok) {
           const json = await resp.json()
           let contactName = json.contactName || ''
@@ -64,7 +72,12 @@ export default function AnalystPortalSettingsForm() {
     }
 
     try {
-      const resp = await fetch('/api/settings/analyst-portal', {
+      const qs = new URLSearchParams()
+      const vendorId = searchParams.get('vendorId')
+      const vendorDomain = searchParams.get('vendorDomain')
+      if (vendorId) qs.set('vendorId', vendorId)
+      if (vendorDomain) qs.set('vendorDomain', vendorDomain)
+      const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

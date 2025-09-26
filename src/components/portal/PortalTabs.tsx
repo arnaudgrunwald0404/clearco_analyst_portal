@@ -7,9 +7,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const getBaseTabs = (companyName: string) => [
   { href: '/portal', value: 'relationship', label: 'Relationship' },
+  { href: '/portal/company', value: 'company', label: 'Company' },
   { href: '/portal/roadmap', value: 'roadmap', label: 'Product Roadmap' },
   { href: '/portal/testimonials', value: 'testimonials', label: 'Analyst Testimonials' },
-
   { href: '/portal/resources', value: 'resources', label: 'Resources' },
 ]
 
@@ -19,6 +19,7 @@ export function PortalTabs() {
   const [tabs, setTabs] = useState(getBaseTabs('Company'))
   
   const active =
+    pathname?.startsWith('/portal/company') ? 'company' :
     pathname?.startsWith('/portal/roadmap') ? 'roadmap' :
     pathname?.startsWith('/portal/testimonials') ? 'testimonials' :
     pathname?.startsWith('/portal/research') ? 'research' :
