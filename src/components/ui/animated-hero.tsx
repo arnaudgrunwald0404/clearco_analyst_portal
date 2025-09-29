@@ -2,9 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { MoveRight, PhoneCall } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSettings } from "@/contexts/SettingsContext";
 
 function Hero() {
   const [titleNumber, setTitleNumber] = useState(0);
+  const { settings } = useSettings();
+  const companyName = settings?.companyName || 'Company';
+  const logoUrl = settings?.logoUrl || '/logo.png';
+  
   const titles = useMemo(
     () => ["amazing", "new", "wonderful", "beautiful", "smart"],
     []
@@ -89,6 +94,9 @@ interface AnimatedHeroProps {
 
 function AnimatedHero({ title, subtitle, ctaText, onCtaClick }: AnimatedHeroProps) {
   const [titleNumber, setTitleNumber] = useState(0);
+  const { settings } = useSettings();
+  const companyName = settings?.companyName || 'Company';
+  const logoUrl = settings?.logoUrl || '/logo.png';
   
   // Parse the subtitle to extract rotating words or use default
   const titles = useMemo(() => {
@@ -111,11 +119,11 @@ function AnimatedHero({ title, subtitle, ctaText, onCtaClick }: AnimatedHeroProp
   return (
     <div className="w-full flex items-center justify-center">
       <div className="text-center max-w-lg">
-        {/* ClearCompany Logo */}
+        {/* Company Logo */}
         <div className="mb-12">
           <img 
-            src="/clearco-logo.png" 
-            alt="ClearCo Logo" 
+            src={logoUrl} 
+            alt={`${companyName} Logo`} 
             width={200} 
             height={80} 
             className="mx-auto"

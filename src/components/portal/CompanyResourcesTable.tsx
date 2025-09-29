@@ -27,7 +27,19 @@ export default function CompanyResourcesTable() {
 
         // 1) Portal resources (if available)
         try {
-          const resp = await fetch('/api/portal/resources')
+          // Get vendor domain for scoped resources
+          let vendorDomain: string | undefined
+          try {
+            const g = await fetch('/api/settings/general')
+            if (g.ok) {
+              const gj = await g.json().catch(() => ({} as any))
+              vendorDomain = gj?.protected_domain || undefined
+            }
+          } catch {}
+          
+          const resourcesQs = new URLSearchParams()
+          if (vendorDomain) resourcesQs.set('vendorDomain', vendorDomain)
+          const resp = await fetch(`/api/portal/resources${resourcesQs.toString() ? `?${resourcesQs.toString()}` : ''}`)
           if (resp.ok) {
             const json = await resp.json().catch(() => ({} as any))
             const list: any[] = Array.isArray(json) ? json : (json.data || [])
@@ -168,7 +180,7 @@ export default function CompanyResourcesTable() {
   if (loading) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Resources</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Content</h3>
         <div className="space-y-3 animate-pulse">
           {[1,2,3,4,5,6].map(i => (<div key={i} className="h-10 bg-gray-100 rounded" />))}
         </div>
@@ -179,7 +191,7 @@ export default function CompanyResourcesTable() {
   if (error) {
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Resources</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Content</h3>
         <p className="text-sm text-red-600">{error}</p>
       </div>
     )
@@ -188,7 +200,7 @@ export default function CompanyResourcesTable() {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="px-6 py-4 border-b">
-        <h3 className="text-lg font-semibold text-gray-900">Resources</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Content</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">

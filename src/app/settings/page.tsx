@@ -12,6 +12,7 @@ import TopicsSection from './TopicsSection'
 import CalendarSection from './CalendarSection'
 import InfluenceTiersSection from './InfluenceTiersSection'
 import EventsSection from './EventsSection'
+import CompanySection from './CompanySection'
 import { FloatingHelpText } from '@/components/ui/floating-help-text'
 import { useHelpText } from '@/hooks/useHelpText'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
@@ -43,7 +44,7 @@ import AdminUsersSection from './AdminUsersSection'
 function SettingsPageContent() {
   const { user, refreshUser } = useAuth()
   const searchParams = useSearchParams()
-  const [activeSection, setActiveSection] = useState('general')
+  const [activeSection, setActiveSection] = useState('company')
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -589,7 +590,7 @@ function SettingsPageContent() {
   // Define menu sections with proper ordering and grouping
   const menuSections = [
     // System Settings Group
-    { id: 'general', label: 'General', icon: Settings },
+    { id: 'company', label: 'Company', icon: Settings },
     { id: 'admin-users', label: 'Admin Users', icon: Users },
     { id: 'calendar', label: 'Calendar Sync', icon: Calendar },
     { id: 'events', label: 'Event Sources', icon: LinkIcon },
@@ -628,8 +629,8 @@ function SettingsPageContent() {
 
       <div className="flex gap-12">
         <SidebarNav activeSection={activeSection} setActiveSection={setActiveSection} menuSections={menuSections} />
-        <div className="w-6/12 space-y-8">
-          {activeSection === 'general' && <GeneralSection showHelp={showHelp} hideHelp={hideHelp} />}
+        <div className="w-6/12">
+          {activeSection === 'company' && <CompanySection showHelp={showHelp} hideHelp={hideHelp} />}
           {activeSection === 'topics' && <TopicsSection />}
           {activeSection === 'calendar' && (
             <CalendarSection
@@ -646,15 +647,7 @@ function SettingsPageContent() {
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
           {activeSection === 'events' && <EventsSection />}
           {activeSection === 'analyst-portal' && (
-<AnalystPortalSection
-              initialTab={(
-                searchParams.get('tab') === 'content' ? 'content' :
-                searchParams.get('tab') === 'access' ? 'access' :
-                searchParams.get('tab') === 'company' ? 'company' :
-                'settings'
-              )}
-              showAccessTab={false}
-            />
+            <AnalystPortalSection initialTab={'access'} onlyAccess />
           )}
           {activeSection === 'admin-users' && <AdminUsersSection />}
         </div>

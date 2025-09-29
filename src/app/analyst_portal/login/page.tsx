@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import AnalystLoginForm from '@/app/analyst-login/AnalystLoginForm'
+import AnalystLoginForm from './AnalystLoginForm'
 
 export const metadata: Metadata = {
   title: 'Analyst Portal Login',
@@ -7,5 +7,11 @@ export const metadata: Metadata = {
 }
 
 export default function AnalystPortalLoginPage() {
-  return <AnalystLoginForm />
+  return (
+    <AnalystLoginForm 
+      analystOnly 
+      crossLinkHref="/vendor_portal/login" 
+      crossLinkLabel="I am a vendor"
+    />
+  )
 }

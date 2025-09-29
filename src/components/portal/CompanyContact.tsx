@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Mail } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface PortalSettings {
   contactName?: string
@@ -94,10 +95,19 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
   }, [contactName])
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+    <div className="bg-white text-gray-900 rounded-lg border border-gray-200 shadow-sm p-4">
+           {/* Switch Vendor Button */}
+           <div className="border-b border-gray-200 pb-4 flex justify-center">
+        <button
+          onClick={handleSwitchVendor}
+          className="px-10 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 rounded-lg transition-colors"
+        >
+          Switch Vendor
+        </button>
+      </div>
       {/* Vendor Profile Header Section */}
-      <div className="text-sm text-gray-600 mb-4">
-        You are viewing <span className="font-semibold text-gray-900">{displayVendorName}</span>'s vendor profile.
+      <div className="text-sm text-gray-700 my-4">
+        You are viewing <span className="font-semibold">{displayVendorName}</span>'s vendor profile.
       </div>
       
       {/* Company Logo */}
@@ -111,7 +121,7 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
           />
         ) : (
           <div className="w-16 h-12 bg-gray-100 rounded flex items-center justify-center">
-            <span className="text-gray-500 font-semibold text-sm">
+            <span className="font-semibold text-sm">
               {displayVendorName.charAt(0).toUpperCase()}
             </span>
           </div>
@@ -120,7 +130,7 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
 
       {/* Contact Information Section */}
       <div className=" pt-2">
-        <div className="text-sm font-normal text-gray-600 mb-3">{displayHeader}</div>
+        <div className="text-sm font-normal text-gray-700 mb-3">{displayHeader}</div>
         
         <div className="flex items-center gap-4 mb-6">
           {/* Avatar */}
@@ -137,33 +147,32 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
           
           {/* Contact Info */}
           <div className="min-w-0 flex-1">
-            <div className="text-lg font-semibold text-gray-900 leading-tight break-words">{contactName}</div>
+            <div className="text-lg font-semibold leading-tight break-words">{contactName}</div>
             {contactTitle && (
               <div className="text-sm text-gray-700">{contactTitle}</div>
+            )}
+            {contactEmail && (
+              <div className="mt-2">
+                <Button
+                  asChild
+                  size="icon"
+                  variant="ghost"
+                  className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-transparent"
+                  aria-label={`Email ${contactName || 'contact'}`}
+                  title={`Email ${contactName || 'contact'}`}
+                >
+                  <a href={`mailto:${contactEmail}`}>
+                    <Mail className="w-4 h-4" />
+                  </a>
+                </Button>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Email Contact */}
-        <div className="flex items-center gap-2 text-sm text-gray-900 mb-4">
-          <Mail className="w-4 h-4 text-gray-400" />
-          {contactEmail ? (
-            <a className="hover:text-blue-600 break-words" href={`mailto:${contactEmail}`}>{contactEmail}</a>
-          ) : (
-            <span className="text-gray-500">No contact email provided</span>
-          )}
-        </div>
       </div>
 
-      {/* Switch Vendor Button */}
-      <div className="border-t border-gray-200 pt-4 flex justify-center">
-        <button
-          onClick={handleSwitchVendor}
-          className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300 rounded-lg transition-colors"
-        >
-          Switch Vendor
-        </button>
-      </div>
+ 
     </div>
   )
 }

@@ -67,13 +67,20 @@ export default function PortalSettingsPage() {
       setLoading(true)
       const response = await fetch('/api/settings/calendar-connections')
       if (response.ok) {
-        const data = await response.json()
-        setCalendarConnections(data || [])
+        const result = await response.json()
+        // API returns { success: boolean, data: CalendarConnection[] }
+        const list = Array.isArray(result) ? result : result?.data
+        setCalendarConnections(Array.isArray(list) ? list : [])
+      } else if (response.status === 401) {
+        // Unauthenticated – show empty list rather than crashing
+        setCalendarConnections([])
       } else {
-        console.error('Failed to fetch calendar connections')
+        console.error('Failed to fetch calendar connections', response.status, response.statusText)
+        setCalendarConnections([])
       }
     } catch (error) {
       console.error('Error fetching calendar connections:', error)
+      setCalendarConnections([])
     } finally {
       setLoading(false)
     }

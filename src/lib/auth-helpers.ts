@@ -13,7 +13,7 @@ export async function requireAuth() {
     return {
       user: null,
       response: NextResponse.json(
-        { error: 'Authentication required', redirectTo: '/auth' },
+        { error: 'Authentication required', redirectTo: '/vendor_portal/login' },
         { status: 401 }
       )
     }

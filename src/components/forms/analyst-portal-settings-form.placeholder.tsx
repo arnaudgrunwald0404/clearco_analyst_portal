@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { MetaTagsPills } from './MetaTagsPills'
 
 interface PortalSettingsFormData {
   welcomeQuote: string
@@ -19,6 +20,7 @@ export default function AnalystPortalSettingsForm() {
   const [form, setForm] = useState<PortalSettingsFormData>({ welcomeQuote: '', contactName: '', contactTitle: '', contactEmail: '', contactImageUrl: '' })
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
+  const [welcomeQuoteCursor, setWelcomeQuoteCursor] = useState<number | null>(null)
 
   // Web search modal state
   const [searchOpen, setSearchOpen] = useState(false)
@@ -26,6 +28,26 @@ export default function AnalystPortalSettingsForm() {
   const [searchResults, setSearchResults] = useState<Array<{ url: string; source: string; title?: string; confidence: number; thumbnail?: string }>>([])
 
   const isValidEmail = (s: string) => !s || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)
+
+  const handleMetaTagClick = (tag: string) => {
+    const cursorPosition = welcomeQuoteCursor ?? form.welcomeQuote.length
+    const newText = form.welcomeQuote.slice(0, cursorPosition) + tag + form.welcomeQuote.slice(cursorPosition)
+    setForm({ ...form, welcomeQuote: newText })
+    // Set cursor position after the inserted tag
+    setTimeout(() => {
+      const newCursorPosition = cursorPosition + tag.length
+      setWelcomeQuoteCursor(newCursorPosition)
+    }, 0)
+  }
+
+  const handleWelcomeQuoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setForm({ ...form, welcomeQuote: e.target.value })
+    setWelcomeQuoteCursor(e.target.selectionStart)
+  }
+
+  const handleWelcomeQuoteFocus = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    setWelcomeQuoteCursor(e.target.selectionStart)
+  }
 
   const searchParams = useSearchParams()
 
@@ -159,15 +181,15 @@ export default function AnalystPortalSettingsForm() {
       <div className="grid md:grid-cols-2 gap-4">
 
         <div>
-          <Label className="text-sm font-medium">Contact Name</Label>
+          <Label className="text-sm font-medium">Name</Label>
           <Input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} placeholder="Jane Doe" />
         </div>
         <div>
-          <Label className="text-sm font-medium">Contact Title</Label>
+          <Label className="text-sm font-medium">Title</Label>
           <Input value={form.contactTitle} onChange={(e) => setForm({ ...form, contactTitle: e.target.value })} placeholder="Director of AR" />
         </div>
         <div>
-          <Label className="text-sm font-medium">Contact Email Address</Label>
+          <Label className="text-sm font-medium">Email Address</Label>
           <Input
             type="email"
             value={form.contactEmail}
@@ -181,7 +203,7 @@ export default function AnalystPortalSettingsForm() {
         </div>
         {/* Contact Photo */}
         <div className="md:col-span-2 space-y-2">
-          <Label className="text-sm font-medium">Contact Photo</Label>
+          <Label className="text-sm font-medium">Photo</Label>
           <div className="flex items-center gap-3">
             {/* Photo Preview */}
             <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -238,11 +260,13 @@ export default function AnalystPortalSettingsForm() {
           <Label className="text-sm font-medium">Welcome Quote</Label>
           <Textarea 
             value={form.welcomeQuote} 
-            onChange={(e) => setForm({ ...form, welcomeQuote: e.target.value })} 
+            onChange={handleWelcomeQuoteChange}
+            onFocus={handleWelcomeQuoteFocus}
             rows={4}
-            placeholder="Enter a welcome message or quote for your portal..."
+            placeholder="Welcome {analyst_first_name}, I am so glad you are here to learn more about {vendor_company_name}!"
             className="resize-none"
           />
+          <MetaTagsPills onTagClick={handleMetaTagClick} />
         </div>
       </div>
 

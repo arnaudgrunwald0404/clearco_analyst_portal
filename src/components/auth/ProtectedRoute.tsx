@@ -13,7 +13,7 @@ interface ProtectedRouteProps {
 export default function ProtectedRoute({ 
   children, 
   allowedRoles = ['ADMIN', 'EDITOR'], 
-  redirectTo = '/auth'
+  redirectTo = '/vendor_portal/login'
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()

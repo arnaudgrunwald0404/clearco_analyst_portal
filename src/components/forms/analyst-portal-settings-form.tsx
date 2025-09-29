@@ -259,7 +259,7 @@ Welcome Quote *
       {/* Company Contact fields */}
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label className="text-sm font-medium">Contact Name</Label>
+         <Label className="text-sm font-medium">Name</Label>
           <Input value={formData.contactName || ''} onChange={(e) => handleInputChange('contactName', e.target.value)} placeholder="Jane Doe" />
         </div>
         <div className="space-y-2">
@@ -312,9 +312,9 @@ Welcome Quote *
         </div>
       </div>
 
-      {/* Resources List */}
+      {/* Content List */}
       <div className="space-y-3">
-        <Label className="text-sm font-medium">Resources (shown in the portal Resources tab)</Label>
+        <Label className="text-sm font-medium">Content (shown in the portal Content tab)</Label>
         {formData.resources.length === 0 && (
           <p className="text-sm text-gray-500">No resources added yet.</p>
         )}

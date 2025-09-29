@@ -79,7 +79,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Restrict app routes to ClearCompany email domain by default
+  // Restrict app routes to allowed email domains
   const protectedPaths = [
     '/',
     '/overview',
@@ -92,26 +92,37 @@ export async function middleware(request: NextRequest) {
     '/awards',
     '/events',
     '/analytics',
-    '/settings'
+    '/settings',
+    '/portal'
   ]
 
   if (protectedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
     try {
-      // Use a lightweight domain check via header cookie set by Supabase; if unavailable, allow Next.js to render and client will redirect via AuthContext
+      // Basic auth gate via Supabase cookies
       const email = request.cookies.get('sb-email')?.value || ''
-      
-      // Check for Supabase auth cookies (they include the project reference in the name)
+
+      // Supabase auth cookies (project ref is embedded; look for segment names)
       const allCookies = request.cookies.getAll()
       const accessCookie = allCookies.find(c => c.name.includes('auth-token.0'))?.value
       const refreshCookie = allCookies.find(c => c.name.includes('auth-token.1'))?.value
-      
+      const hasSession = Boolean(accessCookie || refreshCookie)
 
       const domain = email.split('@')[1]?.toLowerCase() || ''
-      console.log(`[MID ${reqId}] Protected path access check: email=${email || 'none'} domain=${domain || 'none'} sb-access=${accessCookie ? 'present' : 'missing'} sb-refresh=${refreshCookie ? 'present' : 'missing'}`)
-      
-      if (email && domain !== 'clearcompany.com') {
+      console.log(`[MID ${reqId}] Protected path access check: email=${email || 'none'} domain=${domain || 'none'} hasSession=${hasSession ? 'yes' : 'no'}`)
+
+      // If no session at all, force login
+      if (!hasSession) {
+        console.warn(`[MID ${reqId}] No session on protected path. Redirecting to /auth`)
+        const redir = NextResponse.redirect(new URL('/vendor_portal/login', request.url))
+        redir.headers.set('X-Request-Id', reqId)
+        return redir
+      }
+
+      // If session exists but domain is not in allowed domains, redirect to /auth
+      const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+      if (email && !allowedDomains.includes(domain)) {
         console.warn(`[MID ${reqId}] Redirecting to /auth due to domain mismatch: ${domain}`)
-        const redir = NextResponse.redirect(new URL('/auth', request.url))
+        const redir = NextResponse.redirect(new URL('/vendor_portal/login', request.url))
         redir.headers.set('X-Request-Id', reqId)
         return redir
       }

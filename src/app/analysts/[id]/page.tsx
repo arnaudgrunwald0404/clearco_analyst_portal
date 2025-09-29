@@ -412,9 +412,13 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
       <div className="bg-gray-100 border-b">
         <div className="px-8 py-4">
           <div className="flex items-center space-x-8">
-            <div className="flex items-center text-sm text-gray-600">
+            <div className="flex items-center text-sm text-gray-600 min-w-0">
               <Mail className="w-4 h-4 mr-2" />
-              <a href={`mailto:${analyst.email}`} className="hover:text-blue-600">
+              <a
+                href={`mailto:${analyst.email}`}
+                className="hover:text-blue-600 truncate max-w-[16rem]"
+                title={analyst.email}
+              >
                 {analyst.email}
               </a>
             </div>

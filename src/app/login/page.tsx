@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Image from 'next/image'
+import { useSettings } from '@/contexts/SettingsContext'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -41,6 +42,9 @@ function OldLoginPage() {
     email: '',
     password: ''
   })
+  const { settings } = useSettings()
+  const companyName = settings?.companyName || 'Company'
+  const logoUrl = settings?.logoUrl || '/logo.png'
   
   // Animated text effect
   const [titleNumber, setTitleNumber] = useState(0)
@@ -184,11 +188,11 @@ function OldLoginPage() {
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:flex-1 lg:justify-center lg:items-center">
         <div className="text-center max-w-lg">
-          {/* ClearCompany Logo */}
+          {/* Company Logo */}
           <div className="mb-12">
             <Image 
-              src="/clearco-logo.png" 
-              alt="ClearCo Logo" 
+              src={logoUrl} 
+              alt={`${companyName} Logo`} 
               width={200} 
               height={80} 
               className="mx-auto"
@@ -239,7 +243,7 @@ function OldLoginPage() {
             {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-purple-900 mb-2">
-                ClearCompany
+                {companyName}
               </h2>
               <h3 className="text-xl font-semibold text-purple-800 mb-4">
                 Vision & Roadmap

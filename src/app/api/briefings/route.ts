@@ -159,7 +159,10 @@ export async function GET(request: NextRequest) {
 
       // Filter by vendor if provided (now using vendor_domains.id)
       if (vendorDomainId && vendorDomainId.trim()) {
-        baQuery = baQuery.eq('vendor_domain_id', vendorDomainId.trim())
+        // Prefer explicit vendor match, but include legacy rows with NULL vendor_domain_id for backward compatibility
+        // This ensures older briefings (created before vendor association existed) still appear
+        const vId = vendorDomainId.trim()
+        baQuery = baQuery.or(`vendor_domain_id.eq.${vId},vendor_domain_id.is.null`)
       }
 
       if (upcoming) {
@@ -239,8 +242,25 @@ export async function GET(request: NextRequest) {
         }
       }
     } else {
-      // No analyst context: allow ClearCompany admins to view all briefings
-      const isAdminDomain = userEmail.split('@')[1] === 'clearcompany.com'
+      // No analyst context: check if this is a potentially insecure request
+      
+      // Security: Check if this might be an analyst impersonation request without proper headers
+      const referer = request.headers.get('referer') || ''
+      const hasAnalystIdInUrl = referer.includes('analystId=')
+      
+      if (hasAnalystIdInUrl && !analystEmailHeader) {
+        console.warn('🚨 SECURITY: Request from analyst impersonation page but missing analyst headers')
+        console.warn('🚨 Referer:', referer)
+        return NextResponse.json(
+          { success: false, error: 'Analyst context required for analyst impersonation requests' },
+          { status: 401 }
+        )
+      }
+      
+      // Allow authorized domain admins to view all briefings (only when NOT impersonating)
+      const domain = userEmail.split('@')[1]?.toLowerCase()
+      const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+      const isAdminDomain = allowedDomains.includes(domain)
       let isAdminRole = false
 
       if (user) {
@@ -362,6 +382,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log(`📊 Found ${searchFilteredBriefings.length} briefings${search ? ` (filtered from ${briefingsWithAnalysts.length} by search: "${search}")` : ''}`)
+    
     return NextResponse.json({
       success: true,
       data: searchFilteredBriefings,

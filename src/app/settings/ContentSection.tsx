@@ -12,40 +12,41 @@ import {
   FileText, 
   Video, 
   Play, 
-  Calendar, 
-  Download, 
+  Users,
+  Monitor,
+  Palette,
+  Package,
+  Archive,
   Edit, 
   Trash2, 
-  ExternalLink,
-  Search,
-  Filter,
-  X
+  ExternalLink
 } from 'lucide-react'
+import { EmptyStateTable } from '@/components/content/EmptyStateTable'
 
 interface Content {
   id: string
+  vendor_domain_id: string
   title: string
   description: string
-  type: 'VIDEO' | 'REPORT' | 'DEMO' | 'CASE_STUDY' | 'WEBINAR'
-  category: 'brand' | 'product' | 'misc'
+  category: 'PRODUCT' | 'DEMOS' | 'VIDEOS' | 'CASE_STUDIES' | 'PRESS_RELEASES' | 'REPORTS' | 'WEBINARS' | 'BRAND_KIT'
   url: string
-  fileSize?: string
   createdAt: string
   updatedAt: string
+  vendor_domains?: {
+    company_name: string
+    protected_domain: string
+  }
 }
 
-const contentTypes = [
-  { value: 'VIDEO', label: 'Video', icon: Video },
-  { value: 'REPORT', label: 'Report', icon: FileText },
-  { value: 'DEMO', label: 'Demo', icon: Play },
-  { value: 'CASE_STUDY', label: 'Case Study', icon: FileText },
-  { value: 'WEBINAR', label: 'Webinar', icon: Calendar }
-]
-
 const contentCategories = [
-  { value: 'brand', label: 'Brand Kit' },
-  { value: 'product', label: 'Product' },
-  { value: 'misc', label: 'Miscellaneous' }
+  { value: 'PRODUCT', label: 'Product', description: 'overview, roadmap, screenshots', icon: Package },
+  { value: 'DEMOS', label: 'Demos', icon: Play },
+  { value: 'VIDEOS', label: 'Videos', description: 'CEO address, company presentation', icon: Video },
+  { value: 'CASE_STUDIES', label: 'Case Studies', icon: Users },
+  { value: 'PRESS_RELEASES', label: 'Press Releases', icon: FileText },
+  { value: 'REPORTS', label: 'Reports', description: 'thought leadership, 3rd party reviews', icon: FileText },
+  { value: 'WEBINARS', label: 'Webinars', icon: Monitor },
+  { value: 'BRAND_KIT', label: 'Brand Kit', icon: Palette }
 ]
 
 export default function ContentSection() {
@@ -53,18 +54,49 @@ export default function ContentSection() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingContent, setEditingContent] = useState<Content | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<string>('ALL')
-  const [filterCategory, setFilterCategory] = useState<string>('ALL')
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'REPORT' as Content['type'],
-    category: 'misc' as Content['category'],
-    url: '',
-    fileSize: ''
+    category: 'PRODUCT' as Content['category'],
+    url: ''
   })
+
+  // Function to extract title from Google Docs URL
+  const extractTitleFromUrl = async (url: string) => {
+    if (!url) return ''
+    
+    try {
+      // Check if it's a Google Docs URL
+      if (url.includes('docs.google.com/document')) {
+        // For Google Docs, we can try to extract the document ID and fetch the title
+        const docIdMatch = url.match(/\/document\/d\/([a-zA-Z0-9-_]+)/)
+        if (docIdMatch) {
+          // For now, we'll extract a readable title from the URL
+          // In a real implementation, you'd make an API call to Google Docs
+          const title = url.split('/').pop()?.replace(/\?.*$/, '') || ''
+          return title.replace(/-/g, ' ').replace(/_/g, ' ')
+        }
+      }
+      
+      // For other URLs, try to extract a meaningful title from the URL
+      const urlObj = new URL(url)
+      const pathParts = urlObj.pathname.split('/').filter(part => part && part !== 'index.html' && part !== 'index.htm')
+      const lastPart = pathParts[pathParts.length - 1] || ''
+      
+      if (lastPart) {
+        return lastPart.replace(/\.(pdf|doc|docx|ppt|pptx|xls|xlsx)$/i, '')
+                      .replace(/-/g, ' ')
+                      .replace(/_/g, ' ')
+                      .replace(/\+/g, ' ')
+      }
+      
+      return urlObj.hostname.replace('www.', '')
+    } catch (error) {
+      console.error('Error extracting title from URL:', error)
+      return ''
+    }
+  }
 
   useEffect(() => {
     fetchContent()
@@ -91,18 +123,27 @@ export default function ContentSection() {
       const url = editingContent ? `/api/portal-content/${editingContent.id}` : '/api/portal-content'
       const method = editingContent ? 'PUT' : 'POST'
       
+      console.log('Submitting form data:', formData)
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
 
+      const result = await response.json()
+      console.log('API response:', result)
+
       if (response.ok) {
         await fetchContent()
         resetForm()
+      } else {
+        console.error('API error:', result.error)
+        alert(`Error: ${result.error}`)
       }
     } catch (error) {
       console.error('Error saving content:', error)
+      alert('An unexpected error occurred. Please try again.')
     }
   }
 
@@ -111,12 +152,22 @@ export default function ContentSection() {
     setFormData({
       title: item.title,
       description: item.description,
-      type: item.type,
       category: item.category,
-      url: item.url,
-      fileSize: item.fileSize || ''
+      url: item.url
     })
     setShowForm(true)
+  }
+
+  const handleUrlChange = async (url: string) => {
+    setFormData({ ...formData, url })
+    
+    // Auto-extract title if URL is provided and title is empty
+    if (url && !formData.title) {
+      const extractedTitle = await extractTitleFromUrl(url)
+      if (extractedTitle) {
+        setFormData({ ...formData, url, title: extractedTitle })
+      }
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -138,282 +189,233 @@ export default function ContentSection() {
     setFormData({
       title: '',
       description: '',
-      type: 'REPORT',
-      category: 'misc',
-      url: '',
-      fileSize: ''
+      category: 'PRODUCT',
+      url: ''
     })
     setEditingContent(null)
     setShowForm(false)
   }
 
-  const getTypeIcon = (type: string) => {
-    const typeConfig = contentTypes.find(t => t.value === type)
-    return typeConfig ? typeConfig.icon : FileText
+  const handleAddContentWithCategory = (category: string) => {
+    setFormData({
+      title: '',
+      description: '',
+      category: category as Content['category'],
+      url: ''
+    })
+    setEditingContent(null)
+    setShowForm(true)
   }
 
-  const getTypeColor = (type: string) => {
+  const getCategoryIcon = (category: string) => {
+    const categoryConfig = contentCategories.find(c => c.value === category)
+    return categoryConfig ? categoryConfig.icon : FileText
+  }
+
+  const getCategoryColor = (category: string) => {
     const colors = {
-      VIDEO: 'bg-red-100 text-red-800',
-      REPORT: 'bg-blue-100 text-blue-800',
-      DEMO: 'bg-green-100 text-green-800',
-      CASE_STUDY: 'bg-purple-100 text-purple-800',
-      WEBINAR: 'bg-orange-100 text-orange-800'
+      PRODUCT: 'bg-orange-100 text-orange-800',
+      DEMOS: 'bg-green-100 text-green-800',
+      VIDEOS: 'bg-red-100 text-red-800',
+      CASE_STUDIES: 'bg-purple-100 text-purple-800',
+      PRESS_RELEASES: 'bg-blue-100 text-blue-800',
+      REPORTS: 'bg-indigo-100 text-indigo-800',
+      WEBINARS: 'bg-cyan-100 text-cyan-800',
+      BRAND_KIT: 'bg-pink-100 text-pink-800'
     }
-    return colors[type as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
-  const filteredContent = content.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === 'ALL' || item.type === filterType
-    const matchesCategory = filterCategory === 'ALL' || item.category === filterCategory
-    
-    return matchesSearch && matchesType && matchesCategory
-  })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Content Management</CardTitle>
-        <CardDescription>
+    <div className="space-y-4"><Card className="shadow-sm border border-gray-200 p-6">
+      <CardHeader className="pb-6">
+        <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">Content</CardTitle>
+        <CardDescription className="text-base  text-gray-600 leading-relaxed">
           Manage the documents and resources available in the analyst portal.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-2 pl-4 mr-10">
         {/* Header Actions */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search content..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-64"
-              />
-            </div>
-            
-            {/* Filters */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="ALL">All Types</option>
-                {contentTypes.map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-              
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-3 py-2 border rounded-md text-sm"
-              >
-                <option value="ALL">All Categories</option>
-                {contentCategories.map(cat => (
-                  <option key={cat.value} value={cat.value}>{cat.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <Button onClick={() => setShowForm(true)}>
+        <div className="mb-6 flex justify-end">
+          <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="mr-2 h-4 w-4" />
-            Add New Content
+            Add Content
           </Button>
         </div>
 
-        {/* Add/Edit Form */}
+        {/* Add/Edit Form - Drawer */}
         {showForm && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>{editingContent ? 'Edit Content' : 'Add New Content'}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label>Title *</Label>
-                    <Input
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="Content title"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>URL *</Label>
-                    <Input
-                      value={formData.url}
-                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                      placeholder="https://... or resources/filename"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Type *</Label>
-                    <select
-                      value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as Content['type'] })}
-                      className="w-full px-3 py-2 border rounded-md"
-                      required
-                    >
-                      {contentTypes.map(type => (
-                        <option key={type.value} value={type.value}>{type.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <Label>Category *</Label>
-                    <select
-                      value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value as Content['category'] })}
-                      className="w-full px-3 py-2 border rounded-md"
-                      required
-                    >
-                      {contentCategories.map(cat => (
-                        <option key={cat.value} value={cat.value}>{cat.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <Label>File Size</Label>
-                    <Input
-                      value={formData.fileSize}
-                      onChange={(e) => setFormData({ ...formData, fileSize: e.target.value })}
-                      placeholder="e.g., 4.2 MB"
-                    />
-                  </div>
+          <div className="fixed inset-0 z-50">
+            <div className="absolute inset-0 bg-black/40" onClick={resetForm} />
+            <div className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white shadow-xl">
+              <div className="h-full flex flex-col">
+                <div className="px-6 py-5 border-b">
+                  <h2 className="text-2xl font-bold">{editingContent ? 'Edit Content' : 'Add New Content'}</h2>
                 </div>
-                
-                <div>
-                  <Label>Description</Label>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Brief description of the content"
-                    rows={3}
-                  />
+                <div className="flex-1 overflow-y-auto px-6 py-5">
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Title *</Label>
+                        <Input
+                          value={formData.title}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          placeholder="Content title"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>URL *</Label>
+                        <Input
+                          value={formData.url}
+                          onChange={(e) => handleUrlChange(e.target.value)}
+                          placeholder="https://... or resources/filename"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Category *</Label>
+                        <select
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value as Content['category'] })}
+                          className="w-full px-3 py-2 border rounded-md"
+                          required
+                        >
+                          {contentCategories.map(cat => (
+                            <option key={cat.value} value={cat.value}>{cat.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Description</Label>
+                      <Textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        placeholder="Brief description of the content"
+                        rows={3}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button type="button" variant="outline" onClick={resetForm}>
+                        Cancel
+                      </Button>
+                      <Button type="submit">
+                        Add content
+                      </Button>
+                    </div>
+                  </form>
                 </div>
-                
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={resetForm}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    {editingContent ? 'Update' : 'Create'} Content
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* Content List */}
+        {/* Content Display by Category */}
         {loading ? (
           <div className="border rounded-lg p-8 text-center">
             <p className="text-gray-500">Loading content...</p>
           </div>
-        ) : filteredContent.length === 0 ? (
-          <div className="border rounded-lg p-8 text-center">
-            <p className="text-gray-500">
-              {content.length === 0 ? 'No content added yet.' : 'No content matches your filters.'}
-            </p>
-          </div>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            <div className="bg-gray-50 px-6 py-3 border-b">
-              <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                <div className="col-span-4">Title</div>
-                <div className="col-span-2">Type</div>
-                <div className="col-span-2">Category</div>
-                <div className="col-span-2">Size</div>
-                <div className="col-span-2">Actions</div>
-              </div>
-            </div>
-            
-            <div className="divide-y">
-              {filteredContent.map((item) => {
-                const IconComponent = getTypeIcon(item.type)
-                return (
-                  <div key={item.id} className="px-6 py-4 hover:bg-gray-50">
-                    <div className="grid grid-cols-12 gap-4 items-center">
-                      <div className="col-span-4">
-                        <div className="flex items-center gap-3">
-                          <IconComponent className="h-5 w-5 text-gray-400" />
-                          <div>
-                            <div className="font-medium text-gray-900">{item.title}</div>
-                            {item.description && (
-                              <div className="text-sm text-gray-500 mt-1">{item.description}</div>
-                            )}
-                          </div>
+          <div className="space-y-6">
+            {contentCategories.map((category) => {
+              const categoryContent = content.filter(item => item.category === category.value)
+              
+              return (
+                <div key={category.value} className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <category.icon className="w-5 h-5" />
+                    {category.label}
+                    {category.description && (
+                      <span className="text-sm font-normal text-gray-500">
+                        ({category.description})
+                      </span>
+                    )}
+                  </h3>
+                  
+                  {categoryContent.length === 0 ? (
+                    <EmptyStateTable 
+                      category={category.value} 
+                      onAddContent={handleAddContentWithCategory}
+                    />
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-6 py-3 border-b">
+                        <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
+                          <div className="col-span-6">Content</div>
+                          <div className="col-span-3">Updated</div>
+                          <div className="col-span-3">Actions</div>
                         </div>
                       </div>
                       
-                      <div className="col-span-2">
-                        <Badge className={getTypeColor(item.type)}>
-                          {contentTypes.find(t => t.value === item.type)?.label}
-                        </Badge>
-                      </div>
-                      
-                      <div className="col-span-2">
-                        <span className="text-sm text-gray-600">
-                          {contentCategories.find(c => c.value === item.category)?.label}
-                        </span>
-                      </div>
-                      
-                      <div className="col-span-2">
-                        <span className="text-sm text-gray-500">
-                          {item.fileSize || '—'}
-                        </span>
-                      </div>
-                      
-                      <div className="col-span-2">
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => window.open(item.url, '_blank')}
-                            title="Open content"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleEdit(item)}
-                            title="Edit content"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleDelete(item.id)}
-                            title="Delete content"
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <div className="divide-y">
+                        {categoryContent.map((item) => {
+                          const IconComponent = getCategoryIcon(item.category)
+                          return (
+                            <div key={item.id} className="px-6 py-4 hover:bg-gray-50">
+                              <div className="grid grid-cols-12 gap-4 items-center">
+                                <div className="col-span-6">
+                                  <div className="flex items-center gap-3">
+                                    <IconComponent className="h-5 w-5 text-gray-400" />
+                                    <div>
+                                      <div className="font-medium text-gray-900">{item.title}</div>
+                                      {item.description && (
+                                        <div className="text-sm text-gray-500 mt-1">{item.description}</div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="col-span-3">
+                                  <div className="text-sm text-gray-500">
+                                    {new Date(item.createdAt).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                
+                                <div className="col-span-3">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => window.open(item.url, '_blank')}
+                                      title="Open content"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleEdit(item)}
+                                      title="Edit content"
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleDelete(item.id)}
+                                      title="Delete content"
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </CardContent>
     </Card>
+    </div>
   )
 }

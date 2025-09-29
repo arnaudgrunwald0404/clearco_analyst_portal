@@ -56,6 +56,14 @@ export default function CompanyProfileForm() {
   const [form, setForm] = useState<CompanyProfile>({ targetMarket: '', targetVerticals: [], targetGeographies: [] })
   const [loading, setLoading] = useState(true)
 
+  // Years from current year back to 1995
+  const years = useMemo(() => {
+    const current = new Date().getFullYear()
+    const arr: number[] = []
+    for (let y = current; y >= 1995; y--) arr.push(y)
+    return arr
+  }, [])
+
   useEffect(() => {
     ;(async () => {
       try {
@@ -121,14 +129,14 @@ export default function CompanyProfileForm() {
   if (loading) return <div className="text-sm text-gray-500">Loading…</div>
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
+    <form onSubmit={onSubmit} className="space-y-2">
       {message && (
         <div className={`text-sm rounded-md border px-3 py-2 ${message === 'Saved!' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>{message}</div>
       )}
 
       {/* Company Overview */}
       <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Overview</h3>
+        
         <div className="grid md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <Label>Mission</Label>
@@ -144,7 +152,16 @@ export default function CompanyProfileForm() {
           </div>
           <div>
             <Label>Year Founded</Label>
-            <Input type="text" inputMode="numeric" placeholder="e.g., 2004" value={form.yearFounded || ''} onChange={(e) => setForm({ ...form, yearFounded: e.target.value })} />
+            <select
+              className="mt-2 block w-full border rounded px-3 py-2"
+              value={form.yearFounded || ''}
+              onChange={(e) => setForm({ ...form, yearFounded: e.target.value })}
+            >
+              <option value="">Select year…</option>
+              {years.map(y => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
           </div>
           <div className="md:col-span-2">
             <Label>Brief History</Label>
@@ -157,15 +174,15 @@ export default function CompanyProfileForm() {
       <section>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Team</h3>
         <div className="grid md:grid-cols-3 gap-4">
-          <div>
+          <div className="md:col-span-3">
             <Label>CEO</Label>
             <Input value={form.ceo || ''} onChange={(e) => setForm({ ...form, ceo: e.target.value })} />
           </div>
-          <div>
+          <div className="md:col-span-3">
             <Label>CMO</Label>
             <Input value={form.cmo || ''} onChange={(e) => setForm({ ...form, cmo: e.target.value })} />
           </div>
-          <div>
+          <div className="md:col-span-3">
             <Label>CPO</Label>
             <Input value={form.cpo || ''} onChange={(e) => setForm({ ...form, cpo: e.target.value })} />
           </div>
@@ -173,17 +190,21 @@ export default function CompanyProfileForm() {
             <Label>Number of Employees</Label>
             <Input type="text" inputMode="numeric" value={form.numberOfEmployees || ''} onChange={(e) => setForm({ ...form, numberOfEmployees: e.target.value })} />
           </div>
-          <div>
-            <Label>% R&D</Label>
-            <Input type="text" inputMode="numeric" placeholder="e.g., 35" value={form.percentRD || ''} onChange={(e) => setForm({ ...form, percentRD: e.target.value })} />
-          </div>
-          <div>
-            <Label>% Customer Support</Label>
-            <Input type="text" inputMode="numeric" placeholder="e.g., 20" value={form.percentCustomerSupport || ''} onChange={(e) => setForm({ ...form, percentCustomerSupport: e.target.value })} />
-          </div>
-          <div>
-            <Label>% Sales & Marketing</Label>
-            <Input type="text" inputMode="numeric" placeholder="e.g., 25" value={form.percentSalesMarketing || ''} onChange={(e) => setForm({ ...form, percentSalesMarketing: e.target.value })} />
+          <div className="md:col-span-3">
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <Label>% R&D</Label>
+                <Input type="text" inputMode="numeric" placeholder="e.g., 35" value={form.percentRD || ''} onChange={(e) => setForm({ ...form, percentRD: e.target.value })} />
+              </div>
+              <div>
+                <Label>% Customer Support</Label>
+                <Input type="text" inputMode="numeric" placeholder="e.g., 20" value={form.percentCustomerSupport || ''} onChange={(e) => setForm({ ...form, percentCustomerSupport: e.target.value })} />
+              </div>
+              <div>
+                <Label>% Sales & Marketing</Label>
+                <Input type="text" inputMode="numeric" placeholder="e.g., 25" value={form.percentSalesMarketing || ''} onChange={(e) => setForm({ ...form, percentSalesMarketing: e.target.value })} />
+              </div>
+            </div>
           </div>
           <div className="md:col-span-3">
             <Label>Key Investors</Label>
@@ -192,6 +213,29 @@ export default function CompanyProfileForm() {
           <div className="md:col-span-3">
             <Label>Total Funding to Date</Label>
             <Input placeholder="e.g., $150M" value={form.totalFundingToDate || ''} onChange={(e) => setForm({ ...form, totalFundingToDate: e.target.value })} />
+          </div>
+        </div>
+      </section>
+
+      {/* Offerings */}
+      <section>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Offerings</h3>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <Label>Key Products</Label>
+            <Textarea rows={2} value={form.keyProducts || ''} onChange={(e) => setForm({ ...form, keyProducts: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Key Integrations</Label>
+            <Textarea rows={2} value={form.keyIntegrations || ''} onChange={(e) => setForm({ ...form, keyIntegrations: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Key Services</Label>
+            <Textarea rows={2} value={form.keyServices || ''} onChange={(e) => setForm({ ...form, keyServices: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Key Compliance Certifications</Label>
+            <Textarea rows={2} value={form.keyComplianceCertifications || ''} onChange={(e) => setForm({ ...form, keyComplianceCertifications: e.target.value })} />
           </div>
         </div>
       </section>
@@ -218,14 +262,17 @@ export default function CompanyProfileForm() {
           </div>
           <div className="md:col-span-2">
             <Label>Target Market</Label>
-            <div className="mt-2 flex flex-wrap gap-4 text-sm">
-              {(['SMB','Mid Market','Enterprise','Large Enterprise'] as const).map(opt => (
-                <label key={opt} className="inline-flex items-center gap-2">
-                  <input type="radio" name="targetMarket" checked={form.targetMarket === opt} onChange={() => setForm({ ...form, targetMarket: opt })} />
-                  <span>{opt}</span>
-                </label>
-              ))}
-            </div>
+            <select
+              className="mt-2 block w-full border rounded px-3 py-2 text-sm"
+              value={form.targetMarket || ''}
+              onChange={(e) => setForm({ ...form, targetMarket: e.target.value as CompanyProfile['targetMarket'] })}
+            >
+              <option value="">Select target market…</option>
+              <option value="SMB">SMB</option>
+              <option value="Mid Market">Mid Market</option>
+              <option value="Enterprise">Enterprise</option>
+              <option value="Large Enterprise">Large Enterprise</option>
+            </select>
           </div>
           <div className="md:col-span-2">
             <Label>Target Verticals</Label>
@@ -256,29 +303,6 @@ export default function CompanyProfileForm() {
           <div className="md:col-span-2">
             <Label>Partner Ecosystem</Label>
             <Textarea rows={2} value={form.partnerEcosystem || ''} onChange={(e) => setForm({ ...form, partnerEcosystem: e.target.value })} placeholder="Describe key partners" />
-          </div>
-        </div>
-      </section>
-
-      {/* Offerings */}
-      <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Offerings</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <Label>Key Products</Label>
-            <Textarea rows={2} value={form.keyProducts || ''} onChange={(e) => setForm({ ...form, keyProducts: e.target.value })} />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Key Integrations</Label>
-            <Textarea rows={2} value={form.keyIntegrations || ''} onChange={(e) => setForm({ ...form, keyIntegrations: e.target.value })} />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Key Services</Label>
-            <Textarea rows={2} value={form.keyServices || ''} onChange={(e) => setForm({ ...form, keyServices: e.target.value })} />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Key Compliance Certifications</Label>
-            <Textarea rows={2} value={form.keyComplianceCertifications || ''} onChange={(e) => setForm({ ...form, keyComplianceCertifications: e.target.value })} />
           </div>
         </div>
       </section>

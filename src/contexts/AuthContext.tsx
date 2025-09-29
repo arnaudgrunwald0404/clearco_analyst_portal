@@ -45,7 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     // Use full redirect to ensure state resets
     if (typeof window !== 'undefined') {
-      window.location.href = '/auth'
+      // Always send users to vendor portal access screen after forced logout
+      window.location.href = '/vendor_portal/login'
     }
   }
 
@@ -184,7 +185,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const email = authUser.email || ''
         const domain = email.split('@')[1]?.toLowerCase()
         console.log('[AuthContext] Domain:', domain)
-        if (domain === 'clearcompany.com') {
+        const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+        if (allowedDomains.includes(domain)) {
           const firstName = authUser.user_metadata?.first_name || email.split('@')[0] || 'User'
           const lastName = authUser.user_metadata?.last_name || ''
           const userData: UserProfile = {
@@ -192,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             name: firstName + (lastName ? ` ${lastName}` : ''),
             role: 'ADMIN',
-            company: 'ClearCompany',
+            company: domain ? domain.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') : 'Company',
             profileImageUrl: authUser.user_metadata?.avatar_url || null,
             createdAt: authUser.created_at,
             updatedAt: new Date().toISOString()
@@ -220,13 +222,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(userData)
         localStorage.setItem('user', JSON.stringify(userData))
-      } else if (profileError) {
+      } else if (result.error) {
         // Non-"not found" profile errors should NOT force logout.
         // Instead, keep the user signed in with a minimal profile if allowed.
-        console.warn('[AuthContext] Profile load error, falling back to minimal profile:', profileError)
+        console.warn('[AuthContext] Profile load error, falling back to minimal profile:', result.error)
         const email = authUser.email || ''
         const domain = email.split('@')[1]?.toLowerCase()
-        if (domain === 'clearcompany.com') {
+        const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+        if (allowedDomains.includes(domain)) {
           const firstName = authUser.user_metadata?.first_name || email.split('@')[0] || 'User'
           const lastName = authUser.user_metadata?.last_name || ''
           const userData: UserProfile = {
@@ -234,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email,
             name: firstName + (lastName ? ` ${lastName}` : ''),
             role: 'ADMIN',
-            company: 'ClearCompany',
+            company: domain ? domain.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') : 'Company',
             profileImageUrl: authUser.user_metadata?.avatar_url || null,
             createdAt: authUser.created_at,
             updatedAt: new Date().toISOString()
@@ -383,17 +386,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Add a small delay to ensure state is cleared
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      console.log('[AuthContext] ✅ Sign out completed, redirecting to /auth')
+      console.log('[AuthContext] ✅ Sign out completed')
       
-      // Use window.location.href instead of replace for more reliable redirect
-      window.location.href = '/auth'
+      // Always redirect to vendor portal access screen after sign out
+      window.location.href = '/vendor_portal/login'
     } catch (error) {
       console.error('[AuthContext] Sign out error:', error)
       // Emergency cleanup and redirect
       localStorage.removeItem('user')
       sessionStorage.clear()
       setUser(null)
-      window.location.href = '/auth'
+      window.location.href = '/vendor_portal/login'
     }
   }
 

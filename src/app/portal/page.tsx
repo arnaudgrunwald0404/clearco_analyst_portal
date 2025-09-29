@@ -4,7 +4,7 @@ import RelationshipStatusCard, { RelationshipStatusSkeleton } from './_component
 import BriefingsHeader from './_components/BriefingsHeader'
 import TestimonialsOnRelationship from './_components/TestimonialsOnRelationship'
 
-export default async function PortalPage({ searchParams }: { searchParams?: { analystId?: string } }) {
+export default function PortalPage({ searchParams }: { searchParams: { analystId?: string } }) {
   const analystId = searchParams?.analystId
   return (
     <div className="flex-1 flex flex-col min-h-0">

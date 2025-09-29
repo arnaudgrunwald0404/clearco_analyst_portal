@@ -14,8 +14,8 @@ export default function PortalShell({ sidebar, rightSidebar, children }: PortalS
   return (
     <div className="min-h-[100svh] bg-gray-50">
       {/* Main grid area (full width) */}
-      <div className="w-full px-24 py-6">
-        <div className={`grid grid-cols-1 gap-y-4 gap-x-18 ${hasRight ? 'lg:grid-cols-[2.5fr_7fr_2.5fr] xl:grid-cols-[2.5fr_7fr_2.5fr]' : 'lg:grid-cols-[2.5fr_9.5fr] xl:grid-cols-[2.5fr_9.5fr]'}`}>
+      <div className="w-full py-6">
+        <div className={`grid grid-cols-1 gap-y-4 gap-x-14 ${hasRight ? 'lg:grid-cols-[2.5fr_7fr_2.5fr] xl:grid-cols-[2.5fr_7fr_2.5fr]' : 'lg:grid-cols-[2.5fr_9.5fr] xl:grid-cols-[2.5fr_9.5fr]'}`}>
           {/* Left Sidebar */}
           <aside className="order-1 lg:order-none min-w-0">
             {sidebar}

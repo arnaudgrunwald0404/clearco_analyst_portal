@@ -241,13 +241,15 @@ async function startCalendarSync(
     let timeMaxDate: Date
 
     if (timeWindowOptions?.timeWindow === 'future') {
-      // Future meetings only: from today to 6 months ahead
-      timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
+      // Future-focused sync: include the last 7 days to catch very recent meetings
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      timeMin = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
       timeMaxDate = new Date(now)
       timeMaxDate.setMonth(timeMaxDate.getMonth() + 6)
     } else if (timeWindowOptions?.timeWindow === 'next30') {
-      // Next 30 days: from today to 30 days ahead
-      timeMin = new Date(now.getFullYear(), now.getMonth(), now.getDate()) // Start of today
+      // Next 30 days sync: include the last 7 days to capture recent meetings
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      timeMin = new Date(startOfToday.getTime() - 7 * 24 * 60 * 60 * 1000) // Last 7 days
       timeMaxDate = new Date(now)
       timeMaxDate.setDate(timeMaxDate.getDate() + 30) // 30 days ahead
     } else if (timeWindowOptions?.timeWindow === 'custom' && timeWindowOptions.startDate && timeWindowOptions.endDate) {

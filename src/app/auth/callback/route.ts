@@ -102,10 +102,12 @@ export async function GET(request: NextRequest) {
             return NextResponse.redirect(`${origin}/auth/auth-code-error?error=unauthorized`)
           }
 
-          // Check if email is from authorized domain OR is a registered analyst
-          const isAuthorizedDomain = emailDomain === 'clearcompany.com'
+          // Check if email is from authorized domain OR is a registered analyst OR matches a vendor domain
+          const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+          const isAuthorizedDomain = allowedDomains.includes(emailDomain)
           
           let isRegisteredAnalyst = false
+          let isVendorDomain = false
           if (!isAuthorizedDomain) {
             // Check if email exists in analysts table
             const { data: analyst, error: analystError } = await serviceClient!
@@ -115,22 +117,47 @@ export async function GET(request: NextRequest) {
               .single()
             
             isRegisteredAnalyst = !analystError && !!analyst
+
+          // Check vendor_domains for domain
+          console.log('🔍 Checking vendor domain for:', emailDomain)
+          const { data: vendorDomain, error: vendorError } = await serviceClient!
+            .from('vendor_domains')
+            .select('id')
+            .eq('protected_domain', emailDomain)
+            .maybeSingle()
+
+          console.log('🔍 Vendor domain query result:', { vendorDomain, vendorError })
+          isVendorDomain = !!vendorDomain && !vendorError
+          console.log('🔍 isVendorDomain:', isVendorDomain)
           }
 
-          if (!isAuthorizedDomain && !isRegisteredAnalyst) {
-            console.error('Access denied for email:', email, 'Domain:', emailDomain)
+          console.log('🔍 Authorization check:', { 
+            email, 
+            emailDomain, 
+            isAuthorizedDomain, 
+            isRegisteredAnalyst, 
+            isVendorDomain 
+          })
+          
+          if (!isAuthorizedDomain && !isRegisteredAnalyst && !isVendorDomain) {
+            console.error('❌ Access denied for email:', email, 'Domain:', emailDomain)
             return NextResponse.redirect(`${origin}/auth/auth-code-error?error=domain_restricted`)
           }
+          
+          console.log('✅ Access granted for email:', email)
 
           // Determine role based on validated authorization
           let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
           
           if (isAuthorizedDomain) {
-            // All @clearcompany.com users are admins
+            // All authorized domain users are admins
             role = 'ADMIN'
           } else if (isRegisteredAnalyst) {
             // Registered analysts get ANALYST role
             role = 'ANALYST'
+          } else if (isVendorDomain) {
+            // Vendors receive EDITOR role by default (limited dashboard access)
+            role = 'EDITOR'
           }
           
           const defaultProfile = {
@@ -141,7 +168,7 @@ export async function GET(request: NextRequest) {
                        data.user.email?.split('@')[0] || 'User',
             last_name: data.user.user_metadata?.last_name || '',
             company: data.user.user_metadata?.company || 
-                    (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
+                    (isAuthorizedDomain ? (emailDomain ? emailDomain.split('.')[0].charAt(0).toUpperCase() + emailDomain.split('.')[0].slice(1) : 'Company') : (isRegisteredAnalyst ? 'Analyst' : 'Vendor')) || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }
@@ -163,7 +190,7 @@ export async function GET(request: NextRequest) {
             if (fallbackError) {
               console.error('Fallback also failed:', fallbackError)
               // Do not block login; redirect and let client-side fallback handle
-              const redirectPath = role === 'ANALYST' ? '/portal' : '/'
+              const redirectPath = role === 'ANALYST' ? '/portal' : (isVendorDomain ? '/vendor_portal/login?welcome=1' : '/')
               return NextResponse.redirect(`${origin}${redirectPath}`, { 
                 headers: response.headers 
               })
@@ -174,14 +201,14 @@ export async function GET(request: NextRequest) {
           console.log('Profile details:', defaultProfile)
           
           // Redirect based on role
-          const redirectPath = role === 'ANALYST' ? '/portal' : '/'
+          const redirectPath = role === 'ANALYST' ? '/analyst_portal/login' : (isVendorDomain ? '/' : '/')
           return NextResponse.redirect(`${origin}${redirectPath}`, { 
             headers: response.headers 
           })
         } else if (profile) {
           
           // Redirect based on role
-          const redirectPath = profile.role === 'ANALYST' ? '/portal' : '/'
+          const redirectPath = profile.role === 'ANALYST' ? '/analyst_portal/login' : '/'
           return NextResponse.redirect(`${origin}${redirectPath}`, { 
             headers: response.headers 
           })
@@ -205,5 +232,5 @@ export async function GET(request: NextRequest) {
   }
 
   console.log('No code provided, redirecting to auth')
-  return NextResponse.redirect(`${origin}/auth`)
+  return NextResponse.redirect(`${origin}/vendor_portal/login`)
 }

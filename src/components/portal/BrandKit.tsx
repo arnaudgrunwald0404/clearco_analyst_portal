@@ -1,29 +1,88 @@
 "use client"
 
+import { useEffect, useState } from 'react'
+import { CompanyOverviewSection } from './brand-kit/CompanyOverviewSection'
+import { LeadershipTeamSection } from './brand-kit/LeadershipTeamSection'
+import { OfferingsSection } from './brand-kit/OfferingsSection'
+import { BusinessOverviewSection } from './brand-kit/BusinessOverviewSection'
+
+export interface CompanyProfile {
+  mission?: string
+  vision?: string
+  values?: string
+  yearFounded?: string
+  history?: string
+  // Team
+  ceo?: string
+  cmo?: string
+  cpo?: string
+  numberOfEmployees?: string
+  percentRD?: string
+  percentCustomerSupport?: string
+  percentSalesMarketing?: string
+  keyInvestors?: string
+  totalFundingToDate?: string
+  // Business
+  arrRange?: string
+  acvAverage?: string
+  packagingPricingModel?: string
+  numberOfCustomers?: string
+  targetMarket?: string
+  targetVerticals?: string[]
+  targetGeographies?: string[]
+  marqueeCustomers?: string
+  partnerEcosystem?: string
+  // Offerings
+  keyProducts?: string
+  keyIntegrations?: string
+  keyServices?: string
+  keyComplianceCertifications?: string
+}
+
 export function BrandKit() {
+  const [profile, setProfile] = useState<CompanyProfile | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const generalResp = await fetch('/api/settings/general', { cache: 'no-store' }).catch(() => null)
+        const generalJson = generalResp && generalResp.ok ? await generalResp.json().catch(() => null) : null
+        const qs = new URLSearchParams()
+        if (generalJson?.protected_domain) qs.set('vendorDomain', generalJson.protected_domain)
+
+        const response = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' })
+        if (response.ok) {
+          const data = await response.json()
+          const companyProfile = data?.company_profile || data?.companyProfile || {}
+          setProfile(companyProfile)
+        }
+      } catch (error) {
+        console.error('Failed to fetch company profile:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-8">
-      <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Mission</h3>
-        <p className="text-gray-700">Empower vendors and analysts to build trusted relationships through transparent insights and delightful collaboration.</p>
-      </section>
-      <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Vision</h3>
-        <p className="text-gray-700">Be the most loved platform for analyst relations — where every briefing becomes a breakthrough.</p>
-      </section>
-      <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Values</h3>
-        <ul className="list-disc list-inside text-gray-700 space-y-1">
-          <li>Trust and candor</li>
-          <li>Customer obsession</li>
-          <li>Craft and simplicity</li>
-          <li>Bias for action</li>
-        </ul>
-      </section>
-      <section>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">History</h3>
-        <p className="text-gray-700">Founded in 2024, we set out to modernize Analyst Relations tooling from scheduling to insight generation.</p>
-      </section>
+    <div className="space-y-12">
+      <CompanyOverviewSection profile={profile || {}} />
+      <LeadershipTeamSection profile={profile || {}} />
+      <OfferingsSection profile={profile || {}} />
+      <BusinessOverviewSection profile={profile || {}} />
     </div>
   )
 }

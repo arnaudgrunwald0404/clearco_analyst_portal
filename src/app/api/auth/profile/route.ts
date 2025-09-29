@@ -124,20 +124,23 @@ export async function GET(request: NextRequest) {
     
     if (profileError && profileError.code === 'PGRST116') {
       // Profile doesn't exist. Allow:
-      // 1) ClearCompany employees (domain-based ADMIN minimal profile)
+      // 1) Authorized domain employees (domain-based ADMIN minimal profile)
       // 2) Registered analysts (by email lookup in analysts table)
       const email = (user.email || '').toLowerCase()
       const [localPart, domainRaw] = email.split('@')
       const domain = domainRaw?.toLowerCase()
+      
+      const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+      const isAuthorizedDomain = allowedDomains.includes(domain)
 
-      if (domain === 'clearcompany.com') {
+      if (isAuthorizedDomain) {
         const minimalProfile = {
           id: user.id,
           email,
           role: 'ADMIN' as const,
           first_name: user.user_metadata?.first_name || email.split('@')[0] || 'User',
           last_name: user.user_metadata?.last_name || '',
-          company: 'ClearCompany',
+          company: domain ? domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1) : 'Company',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }
@@ -145,7 +148,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ profile: minimalProfile })
       }
 
-      // Not a ClearCompany domain — check if email belongs to a registered analyst
+      // Not an authorized domain — check if email belongs to a registered analyst
       const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
       const supabaseForAnalystLookup = hasServiceRole
         ? createServiceClient(

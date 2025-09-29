@@ -41,33 +41,32 @@ export async function POST(request: NextRequest) {
       return resp
     }
 
-    // Check if email is from authorized domain OR is a registered analyst
-    const isAuthorizedDomain = emailDomain === 'clearcompany.com'
+    // Check if email exists in auth.users table OR is a registered analyst
+    const supabaseServiceRole = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
-    let isRegisteredAnalyst = false
-    if (!isAuthorizedDomain) {
-      // Check if email exists in analysts table
-      const supabaseServiceRole = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
-      
-      const { data: analyst, error: analystError } = await supabaseServiceRole
-        .from('analysts')
-        .select('id, email')
-        .eq('email', email.toLowerCase())
-        .single()
-      
-      isRegisteredAnalyst = !analystError && !!analyst
-      console.log(`[LOGIN ${reqId}] isAuthorizedDomain=${isAuthorizedDomain} isRegisteredAnalyst=${isRegisteredAnalyst}`)
-    }
+    // Check if email exists in auth.users table
+    const { data: authUser, error: authUserError } = await supabaseServiceRole.auth.admin.getUserByEmail(email.toLowerCase())
+    const isExistingAuthUser = !authUserError && !!authUser?.user
+    
+    // Check if email exists in analysts table
+    const { data: analyst, error: analystError } = await supabaseServiceRole
+      .from('analysts')
+      .select('id, email')
+      .eq('email', email.toLowerCase())
+      .single()
+    
+    const isRegisteredAnalyst = !analystError && !!analyst
+    console.log(`[LOGIN ${reqId}] isExistingAuthUser=${isExistingAuthUser} isRegisteredAnalyst=${isRegisteredAnalyst}`)
 
-    if (!isAuthorizedDomain && !isRegisteredAnalyst) {
-      console.warn(`[LOGIN ${reqId}] Access denied (domain + analyst checks failed) for ${email}`)
+    if (!isExistingAuthUser && !isRegisteredAnalyst) {
+      console.warn(`[LOGIN ${reqId}] Access denied (auth user + analyst checks failed) for ${email}`)
       const resp = NextResponse.json(
         { 
           success: false, 
-          error: 'Access restricted to ClearCompany employees and registered analysts only' 
+          error: 'Access restricted to existing users and registered analysts only' 
         },
         { status: 403 }
       )
@@ -135,6 +134,14 @@ export async function POST(request: NextRequest) {
       return resp
     }
 
+    // Log magic link URL for development testing
+    if (magicLinkData?.user?.email_confirmation_token) {
+      const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback?token=${magicLinkData.user.email_confirmation_token}&type=magiclink`
+      console.log(`🔗 [LOGIN ${reqId}] Magic link URL for ${email}:`)
+      console.log(magicLinkUrl)
+      console.log(`📧 [LOGIN ${reqId}] Email sent to: ${email}`)
+    }
+
     console.log(`[LOGIN ${reqId}] ✅ Magic link sent successfully to: ${email}`)
     const resp = NextResponse.json({
       success: true,
@@ -177,12 +184,12 @@ export async function POST(request: NextRequest) {
     // Determine role based on validated authorization
     let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
     
-    if (isAuthorizedDomain) {
-      // All @clearcompany.com users are admins
-      role = 'ADMIN'
-    } else if (isRegisteredAnalyst) {
+    if (isRegisteredAnalyst) {
       // Registered analysts get ANALYST role
       role = 'ANALYST'
+    } else if (isExistingAuthUser) {
+      // Existing auth users get ADMIN role by default
+      role = 'ADMIN'
     }
 
     // Return user data without profile check

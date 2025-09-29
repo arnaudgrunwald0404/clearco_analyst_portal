@@ -11,7 +11,7 @@ interface PortalHeaderProps {
   selectedVendorName?: string
 }
 
-export function PortalHeader({ selectedVendorName = 'ClearCompany' }: PortalHeaderProps) {
+export function PortalHeader({ selectedVendorName }: PortalHeaderProps) {
   const { user, signOut } = useAuth()
   const { settings } = useSettings()
   const router = useRouter()

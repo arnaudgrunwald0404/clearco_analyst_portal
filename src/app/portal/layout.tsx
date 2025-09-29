@@ -25,7 +25,7 @@ export default function PortalLayout({ children }: PortalLayoutProps) {
   useEffect(() => {
     if (loading) return
     if (!user) {
-      router.push('/auth')
+      router.push('/vendor_portal/login')
       return
     }
     if (user.role !== 'ANALYST') {

@@ -7,6 +7,9 @@ export async function POST(request: NextRequest) {
 
     const origin = request.nextUrl.origin
 
+    // Read options from caller (e.g., UI modal)
+    const { timeWindowOptions } = await request.json().catch(() => ({} as any))
+
     // Fetch all active calendar connections
     const { data: connections, error } = await supabase
       .from('calendar_connections')
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
             'Content-Type': 'application/json',
             ...(internalSecret ? { 'X-Internal-Job': internalSecret } : {})
           },
-          body: JSON.stringify({ forceSync: true })
+          body: JSON.stringify({ forceSync: true, timeWindowOptions })
         })
       )
     )

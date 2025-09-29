@@ -7,6 +7,7 @@ import { useSettings } from '@/contexts/SettingsContext'
 import { Users, Mail, FileText, TrendingUp, AlertTriangle, Heart, Activity, Calendar, MessageSquare, Video, CheckCircle, X, ListTodo, Clock, UserCheck, Loader2, BookOpen, File } from 'lucide-react'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { DotWave } from '@/components/ui/dot-wave'
+import BriefingDensityChart from '@/components/analytics/briefing-density-chart'
 // import SocialMediaActivity from '@/components/features/social-media-activity'
 import { cn } from '@/lib/utils'
 import { getRandomBannerImagePath } from '@/lib/banner-utils'
@@ -106,6 +107,44 @@ const iconMap: { [key: string]: any } = {
   AlertTriangle,
   MessageSquare,
   Video
+}
+
+// Minimal WaveNumber component to safely render formatted numbers
+function WaveNumber({
+  value,
+  format = (n: number) => `${n}`,
+  placeholder = '—'
+}: {
+  value?: number | null
+  format?: (n: number) => string
+  placeholder?: string
+}) {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return <span className="text-gray-400">{placeholder}</span>
+  }
+  return <span>{format(value)}</span>
+}
+
+// NumberStat shows a loading indicator until the value is available,
+// then displays the number (including 0 as a valid value)
+function NumberStat({
+  value,
+  isLoading,
+  format = (n: number) => `${n}`,
+  placeholder = <DotWave size="sm" className="text-gray-400" />
+}: {
+  value?: number | null
+  isLoading: boolean
+  format?: (n: number) => string
+  placeholder?: JSX.Element
+}) {
+  if (isLoading) {
+    return <>{placeholder}</>
+  }
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return <span className="text-gray-400">—</span>
+  }
+  return <span>{format(value)}</span>
 }
 
 function DashboardContent() {
@@ -549,7 +588,7 @@ function DashboardContent() {
       {/* Dashboard Content */}
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8">
+          <div className="mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Overview</h1>
 
           {/* Notification Banner */}
@@ -578,7 +617,7 @@ function DashboardContent() {
         </div>
 
         {/* Band 1: Analysts */}
-        <div className="mb-8">
+        <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 pt-4 flex items-center">
             <Users className="h-5 w-5 text-blue-600 mr-2" />
             Analysts
@@ -599,8 +638,8 @@ function DashboardContent() {
                         <dt className="text-sm font-medium text-gray-500 truncate">
                           Total Analysts
                         </dt>
-                        <dd className="text-2xl font-semibold text-gray-900">
-                          {metrics?.totalAnalysts || 0}
+<dd className="text-2xl font-semibold text-gray-900">
+                          <NumberStat value={metrics?.totalAnalysts} isLoading={!metrics} />
                         </dd>
                       </dl>
                       <TotalAnalystsNewlyAdded newAnalysts={metrics?.newAnalysts || []} router={router} />
@@ -661,7 +700,7 @@ function DashboardContent() {
         </div>
 
         {/* Band 2: Briefings */}
-        <div className="mb-8">
+        <div className="mb-0">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center ">
             <Calendar className="h-5 w-5 text-blue-600 mr-2" />
             Briefings
@@ -679,8 +718,8 @@ function DashboardContent() {
                       <dt className="text-sm font-medium text-gray-500 truncate">
                         Briefings (YTD)
                       </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.briefingsYTD || 0}
+                        <dd className="text-2xl font-semibold text-gray-900">
+                        <NumberStat value={metrics?.briefingsYTD} isLoading={!metrics} />
                       </dd>
                     </dl>
                   </div>
@@ -703,10 +742,10 @@ function DashboardContent() {
                       <dt className="text-sm font-medium text-gray-500 truncate">
                         Follow Ups Completed
                       </dt>
-                      <dd className="text-2xl font-semibold text-gray-900">
-                        {metrics?.followUpsCount 
-                          ? `${metrics.followUpsCount.completed} out of ${metrics.followUpsCount.total}`
-                          : '0 out of 0'
+<dd className="text-2xl font-semibold text-gray-900">
+                        {!metrics || !metrics.followUpsCount
+                          ? <DotWave size="sm" className="text-gray-400" />
+                          : `${metrics.followUpsCount.completed} out of ${metrics.followUpsCount.total}`
                         }
                       </dd>
                     </dl>
@@ -819,6 +858,11 @@ function DashboardContent() {
               </CardContent>
             </Card>
           </div>
+        </div>
+
+        {/* Band: Briefing Density (bottom) */}
+        <div className="mt-6">
+          <BriefingDensityChart />
         </div>
 
         {/* Social Media Activity section temporarily disabled */}

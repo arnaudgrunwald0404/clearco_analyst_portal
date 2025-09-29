@@ -48,7 +48,9 @@ export function ResourcesList() {
         }
 
         // 2) If a dedicated portal resources API exists, use it
-        const resp = await fetch('/api/portal/resources')
+        const resourcesQs = new URLSearchParams()
+        if (vendorDomain) resourcesQs.set('vendorDomain', vendorDomain)
+        const resp = await fetch(`/api/portal/resources${resourcesQs.toString() ? `?${resourcesQs.toString()}` : ''}`)
         if (resp.ok) {
           const json = await resp.json().catch(() => ({} as any))
           const list: PortalResource[] = Array.isArray(json) ? json : (json.data || [])
@@ -102,7 +104,7 @@ export function ResourcesList() {
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Resources</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Content</h3>
         <div className="space-y-3 animate-pulse">
           {[1,2,3,4].map(i => (<div key={i} className="h-12 bg-gray-100 rounded" />))}
         </div>
@@ -113,7 +115,7 @@ export function ResourcesList() {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Resources</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Content</h3>
         <p className="text-sm text-red-600">{error}</p>
       </div>
     )

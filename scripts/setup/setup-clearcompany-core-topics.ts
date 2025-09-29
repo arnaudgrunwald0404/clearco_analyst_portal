@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-const CLEARCOMPANY_CORE_TOPICS = [
+const CORE_TOPICS = [
   'Sourcing',
   'CRM',
   'Candidate relationship management',
@@ -21,7 +21,7 @@ const CLEARCOMPANY_CORE_TOPICS = [
 
 async function setupCoreTopics() {
   try {
-    console.log('🔄 Setting up ClearCompany core topics...')
+    console.log('🔄 Setting up core topics...')
 
     // Delete existing core topics
     await prisma.predefinedTopic.deleteMany({
@@ -30,19 +30,19 @@ async function setupCoreTopics() {
 
     // Create new core topics
     const coreTopics = await Promise.all(
-      CLEARCOMPANY_CORE_TOPICS.map((topicName, index) =>
+      CORE_TOPICS.map((topicName, index) =>
         prisma.predefinedTopic.create({
           data: {
             name: topicName,
             category: 'CORE',
             order: index + 1,
-            description: `Core topic for ClearCompany's ${topicName} domain`
+            description: `Core topic for the ${topicName} domain`
           }
         })
       )
     )
 
-    console.log(`✅ Successfully created ${coreTopics.length} core topics for ClearCompany`)
+    console.log(`✅ Successfully created ${coreTopics.length} core topics`)
     
     // Display created topics
     console.log('\nCore Topics Created:')

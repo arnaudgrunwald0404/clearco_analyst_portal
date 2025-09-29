@@ -1,9 +1,8 @@
 import React from 'react'
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { BoulderEpic } from '@/hooks/useBoulders'
-import { Clock, Users, AlertTriangle, CheckCircle, Circle, PlayCircle, PauseCircle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Circle, PlayCircle, PauseCircle } from 'lucide-react'
 
 const formatDate = (dateString?: string) => {
   if (!dateString) return 'N/A'
@@ -41,36 +40,28 @@ const getModuleBorderColor = (hsl: string): string => {
   return `hsl(${hue}, ${newSat}%, ${newLight}%)`
 }
 
-// Priority color helpers
-const getPriorityColor = (priority?: string): string => {
-  switch (priority?.toLowerCase()) {
-    case 'critical': return 'bg-red-100 text-red-800 border-red-200'
-    case 'high': return 'bg-orange-100 text-orange-800 border-orange-200'
-    case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    case 'low': return 'bg-green-100 text-green-800 border-green-200'
-    default: return 'bg-gray-100 text-gray-800 border-gray-200'
-  }
-}
-
-// Status icon helpers
+// Status icon helpers (compact indicator)
 const getStatusIcon = (status?: string, statusComplete?: boolean) => {
-  if (statusComplete || status?.toLowerCase().includes('complete') || status?.toLowerCase().includes('done')) {
+  if (!status) return null
+  const s = status.toLowerCase()
+  if (statusComplete || s.includes('complete') || s.includes('done') || s.includes('ga')) {
     return <CheckCircle className="w-3 h-3 text-green-600" />
   }
-  
-  switch (status?.toLowerCase()) {
-    case 'in progress':
-      return <PlayCircle className="w-3 h-3 text-blue-600" />
-    case 'planning':
-      return <Circle className="w-3 h-3 text-yellow-600" />
-    case 'design':
-      return <PauseCircle className="w-3 h-3 text-purple-600" />
-    case 'research':
-      return <AlertTriangle className="w-3 h-3 text-orange-600" />
-    default:
-      return <Circle className="w-3 h-3 text-gray-400" />
+  if (s.includes('in progress') || s.includes('development') || s.includes('building')) {
+    return <PlayCircle className="w-3 h-3 text-blue-600" />
   }
+  if (s.includes('planning') || s.includes('planned')) {
+    return <Circle className="w-3 h-3 text-yellow-600" />
+  }
+  if (s.includes('design')) {
+    return <PauseCircle className="w-3 h-3 text-purple-600" />
+  }
+  if (s.includes('research') || s.includes('investigation') || s.includes('discovery')) {
+    return <AlertTriangle className="w-3 h-3 text-orange-600" />
+  }
+  return <Circle className="w-3 h-3 text-gray-400" />
 }
+
 
 interface SimpleBoulderCardProps {
   epic: BoulderEpic
@@ -87,12 +78,6 @@ export const SimpleBoulderCard: React.FC<SimpleBoulderCardProps> = ({ epic, onCl
     cardClasses += " min-h-[140px]"
   }
   
-  // Add priority border styling
-  if (epic.priority === 'Critical') {
-    cardClasses += " ring-2 ring-red-200 hover:ring-red-300"
-  } else if (epic.priority === 'High') {
-    cardClasses += " ring-1 ring-orange-200 hover:ring-orange-300"
-  }
 
   return (
     <Card
@@ -100,23 +85,6 @@ export const SimpleBoulderCard: React.FC<SimpleBoulderCardProps> = ({ epic, onCl
       onClick={() => onClick?.(epic)}
     >
       <CardHeader className="p-4">
-        {/* Priority and Status Row */}
-        <div className="flex items-center justify-between mb-2">
-          {epic.priority && (
-            <Badge className={`text-[0.6rem] px-2 py-0.5 rounded-full font-medium border ${getPriorityColor(epic.priority)}`}>
-              {epic.priority}
-            </Badge>
-          )}
-          {epic.status && (
-            <div className="flex items-center gap-1">
-              {getStatusIcon(epic.status, epic.statusComplete)}
-              <span className="text-[0.6rem] text-gray-600 font-medium">
-                {epic.status}
-              </span>
-            </div>
-          )}
-        </div>
-
         <CardTitle className="text-base font-semibold leading-tight line-clamp-2 min-h-[2.5rem] mb-2" title={epic.alternate_name || epic.name}>
           {epic.alternate_name || epic.name || 'Untitled Boulder'}
         </CardTitle>
@@ -127,8 +95,8 @@ export const SimpleBoulderCard: React.FC<SimpleBoulderCardProps> = ({ epic, onCl
           </CardDescription>
         )}
 
-        {/* Module and Release Info */}
-        <div className="flex flex-wrap gap-2 mb-2">
+        {/* Module Info */}
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           {epic.devRoadmap && (
             <span
               className="inline-block text-[0.6rem] font-semibold px-2 py-1 border rounded-md"
@@ -141,48 +109,10 @@ export const SimpleBoulderCard: React.FC<SimpleBoulderCardProps> = ({ epic, onCl
               {String(epic.devRoadmap)}
             </span>
           )}
-          {epic.release && (
-            <Badge variant="outline" className="text-[0.6rem] px-2 py-1">
-              {epic.release}
-            </Badge>
-          )}
-        </div>
-
-        {/* Metadata Row */}
-        <div className="flex items-center gap-4 text-[0.6rem] text-gray-500">
-          {epic.effort && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{epic.effort}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Estimated effort</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {epic.team_size && (
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    <span>{epic.team_size}</span>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  <p>Team size</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {epic.releaseDate && (
-            <span className="text-[0.6rem]">
-              {formatDate(epic.releaseDate)}
+          {epic.status && (
+            <span className="inline-flex items-center gap-1 text-[0.6rem] text-gray-600">
+              {getStatusIcon(epic.status, epic.statusComplete)}
+              <span>{epic.status}</span>
             </span>
           )}
         </div>
@@ -265,24 +195,6 @@ export const SimpleBoulderCard: React.FC<SimpleBoulderCardProps> = ({ epic, onCl
         </div>
       )}
 
-      {/* Dependencies Section - if available */}
-      {epic.dependencies && epic.dependencies.length > 0 && (
-        <div className="px-4 pb-3">
-          <div className="text-xs font-medium text-gray-600 mb-1">Dependencies</div>
-          <div className="flex flex-wrap gap-1">
-            {epic.dependencies.slice(0, 2).map((dep, index) => (
-              <Badge key={index} variant="outline" className="text-[0.55rem] px-1.5 py-0.5 bg-yellow-50 text-yellow-800 border-yellow-200">
-                {dep}
-              </Badge>
-            ))}
-            {epic.dependencies.length > 2 && (
-              <Badge variant="outline" className="text-[0.55rem] px-1.5 py-0.5 bg-gray-50 text-gray-600">
-                +{epic.dependencies.length - 2} more
-              </Badge>
-            )}
-          </div>
-        </div>
-      )}
     </Card>
   )
 }

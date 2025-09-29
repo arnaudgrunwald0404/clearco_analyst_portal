@@ -13,7 +13,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname()
 
   // Pages that should not show the sidebar
-  const publicPages = ['/login', '/auth', '/auth/callback', '/auth/auth-code-error', '/auth/forgot-password', '/auth/reset-password', '/signup', '/analyst-login']
+  const publicPages = ['/login', '/vendor_portal/login', '/auth/callback', '/auth/auth-code-error', '/auth/forgot-password', '/auth/reset-password', '/signup', '/analyst_portal/login']
   const isPublicPage = publicPages.some(page => pathname.startsWith(page))
   
   // 404 and error pages should also be public (no sidebar, no settings loading)

@@ -117,11 +117,56 @@ export default function PortalBriefingsPage() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [showSyncOptions, setShowSyncOptions] = useState(false)
+  
+  // Security: Get analyst context for impersonation
+  const [analystContext, setAnalystContext] = useState<{analystId: string | null, analystEmail: string | null}>({
+    analystId: null,
+    analystEmail: null
+  })
+
+  // Security: Detect analyst impersonation context
+  useEffect(() => {
+    const detectAnalystContext = async () => {
+      // Get analystId from URL parameters
+      const urlParams = new URLSearchParams(window.location.search)
+      const analystId = urlParams.get('analystId')
+      
+      if (analystId) {
+        try {
+          // Fetch analyst data to get email
+          const analystResp = await fetch(`/api/analysts/${analystId}`)
+          if (analystResp.ok) {
+            const analystData = await analystResp.json()
+            if (analystData.email) {
+              setAnalystContext({
+                analystId,
+                analystEmail: analystData.email
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Failed to fetch analyst data for impersonation:', error)
+        }
+      }
+    }
+    
+    detectAnalystContext()
+  }, [])
 
   // Fetch briefings on component mount and when filters change
   useEffect(() => {
+    // Don't fetch until we've attempted to detect analyst context
+    // This prevents race conditions where API calls happen before analyst headers are set
+    const urlParams = new URLSearchParams(window.location.search)
+    const hasAnalystId = urlParams.get('analystId')
+    
+    if (hasAnalystId && !analystContext.analystId) {
+      // Wait for analyst context to be detected
+      return
+    }
+    
     fetchBriefings()
-  }, [page, selectedStatus, searchTerm])
+  }, [page, selectedStatus, searchTerm, analystContext.analystId, analystContext.analystEmail])
 
   const fetchBriefings = async () => {
     try {
@@ -139,12 +184,27 @@ export default function PortalBriefingsPage() {
         params.append('search', searchTerm)
       }
       
-      const response = await fetch(`/api/briefings?${params}`)
+      // Security: Add analyst headers for impersonation
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      if (analystContext.analystId && analystContext.analystEmail) {
+        headers['x-analyst-email'] = analystContext.analystEmail
+        headers['x-analyst-id'] = analystContext.analystId
+      }
+      
+      const response = await fetch(`/api/briefings?${params}`, {
+        headers
+      })
       const data = await response.json()
       
       if (data.success) {
         setBriefings(data.data)
-        setTotalPages(data.pagination.pages)
+        // Handle pagination safely
+        setTotalPages(data.pagination?.pages || 1)
+      } else {
+        console.error('Failed to fetch briefings:', data.error)
       }
     } catch (error) {
       console.error('Error fetching briefings:', error)

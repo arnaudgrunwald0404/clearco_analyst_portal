@@ -10,7 +10,7 @@ const getBaseTabs = (companyName: string) => [
   { href: '/portal/company', value: 'company', label: 'Company' },
   { href: '/portal/roadmap', value: 'roadmap', label: 'Product Roadmap' },
   { href: '/portal/testimonials', value: 'testimonials', label: 'Analyst Testimonials' },
-  { href: '/portal/resources', value: 'resources', label: 'Resources' },
+  { href: '/portal/resources', value: 'resources', label: 'Content' },
 ]
 
 export function PortalTabs() {
@@ -46,10 +46,15 @@ export function PortalTabs() {
 
   return (
     <Tabs value={active}>
-      <TabsList className="w-full justify-start overflow-x-auto">
+      <TabsList className="w-full bg-white border border-gray-200 rounded-lg p-1 shadow-sm flex">
         {tabs.map(t => (
-          <TabsTrigger key={t.value} value={t.value} asChild>
-            <Link href={t.href}>{t.label}</Link>
+          <TabsTrigger
+            key={t.value}
+            value={t.value}
+            asChild
+            className="flex-1 basis-0 text-center data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=active]:shadow-sm text-gray-700 hover:text-gray-900"
+          >
+            <Link href={t.href} className="block w-full px-2 py-1">{t.label}</Link>
           </TabsTrigger>
         ))}
       </TabsList>

@@ -13,12 +13,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useSettings } from '@/contexts/SettingsContext'
 
 // Email templates with company branding
 const EMAIL_TEMPLATES = [
   {
     id: 'newsletter-template-1',
-    name: 'ClearCompany Newsletter',
+    name: 'Newsletter',
     html: `
       <!DOCTYPE html>
       <html>
@@ -44,7 +45,7 @@ const EMAIL_TEMPLATES = [
             {{content}}
           </div>
           <div class="footer">
-            <p>This email was sent by ClearCompany</p>
+            <p>This email was sent by {companyName || 'Company'}</p>
             <p>If you no longer wish to receive these emails, you can unsubscribe.</p>
           </div>
         </div>
@@ -69,6 +70,8 @@ export default function EditNewsletterPage() {
   const router = useRouter()
   const params = useParams()
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
+  const { settings } = useSettings()
+  const companyName = settings?.companyName || 'Company'
   
   // Step navigation
   const [currentStep, setCurrentStep] = useState<Step>(1)
@@ -176,7 +179,8 @@ export default function EditNewsletterPage() {
     .replace('{{content}}', content || 'Your email content will appear here...')
     .replace('{{analyst.firstName}}', previewAnalyst.firstName)
     .replace('{{analyst.lastName}}', previewAnalyst.lastName)
-    .replace('{{analyst.company}}', previewAnalyst.company) : ''
+    .replace('{{analyst.company}}', previewAnalyst.company)
+    .replace('{companyName || \'Company\'}', companyName) : ''
 
   // Function to insert merge tag at cursor position
   const insertMergeTag = (tag: string, field: 'content' | 'subject' = 'content') => {

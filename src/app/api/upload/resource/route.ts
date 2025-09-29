@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
-// Upload endpoint for general downloadable resources displayed in the portal's Resources tab.
+// Upload endpoint for general downloadable assets displayed in the portal's Content tab.
 // Stores into Supabase Storage bucket "resources" and returns a public URL.
 export async function POST(request: NextRequest) {
   try {

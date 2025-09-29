@@ -33,13 +33,15 @@ export default function RelationshipStatusCard() {
       let influence: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY_HIGH' = 'MEDIUM'
       let analystId: string | null = null
       let selectedVendorName: string = 'Vendor'
+      let vendorDomainId: string | undefined = undefined
 
       try {
-        // Fetch general settings for vendor name
+        // Fetch general settings for vendor context (name + domain id)
         const sRes = await fetch('/api/settings/general', { cache: 'no-store' })
         if (sRes.ok) {
           const sJson = await sRes.json().catch(() => null)
           selectedVendorName = sJson?.company_name || 'Vendor'
+          if (sJson?.id) vendorDomainId = sJson.id as string
         }
 
         // Fetch analyst data
@@ -64,6 +66,7 @@ export default function RelationshipStatusCard() {
         // Fetch briefings if we have an analyst ID
         if (analystId) {
           const params = new URLSearchParams({ limit: '1', analystId })
+          if (vendorDomainId) params.append('vendorDomainId', vendorDomainId)
           const headers: Record<string, string> = { 
             Accept: 'application/json',
             'x-analyst-email': user.email,
@@ -72,7 +75,7 @@ export default function RelationshipStatusCard() {
           
           const url = `/api/briefings?${params.toString()}`
           
-          console.log('🔍 [RelationshipStatus] Fetching briefings:', { url, headers, analystId, userEmail: user.email })
+          console.log('🔍 [RelationshipStatus] Fetching briefings:', { url, headers, analystId, userEmail: user.email, vendorDomainId })
           
           const resp = await fetch(url, {
             cache: 'no-store',
@@ -136,15 +139,15 @@ export default function RelationshipStatusCard() {
     const daysSinceLast = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
     if (daysSinceLast <= tierDays) {
       label = 'Sugar High ;)'
-      description = `I am up-to-date in terms of briefings.`
+      description = `Up-to-date in terms of briefings, as per the vendor's desired frequency of 1 briefing every ${tierDays} days.`
       color = 'text-green-700 bg-green-50 border-green-200'
     } else if (daysSinceLast <= 365) {
       label = 'Sweet!'
-      description = 'We had a briefing in the past 12 months, I have a decent understanding of what they do.'
+      description = 'There was a briefing in the past 12 months, you have a decent understanding of what they do. They\'d like to see you every ${tierDays} days though.'
       color = 'text-emerald-700 bg-emerald-50 border-emerald-200'
     } else {
       label = 'Bland?'
-      description = 'We had a briefing a while ago. What do they do again?'
+      description = 'A briefing... A distant while ago. What do they do again? ;) FYI, they\'d like to see you every ${tierDays} days.'
       color = 'text-amber-700 bg-amber-50 border-amber-200'
     }
   }

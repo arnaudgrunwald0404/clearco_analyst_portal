@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Calendar, MessageSquarePlus, FolderOpen, LifeBuoy, Settings } from 'lucide-react'
 import Drawer from '@/app/briefings/components/drawer/Drawer'
@@ -24,10 +24,23 @@ interface Briefing {
 
 export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [supportEmail, setSupportEmail] = useState<string | null>(null)
   const [mostRecentBriefing, setMostRecentBriefing] = useState<Briefing | null>(null)
   const [selectedBriefing, setSelectedBriefing] = useState<Briefing | null>(null)
   const [drawerTab, setDrawerTab] = useState<"overview" | "materials" | "transcript">("overview")
+  
+  // Get analyst context from URL for impersonation - try multiple sources
+  let analystId = searchParams.get('analystId')
+  
+  // If no analystId in search params, try to extract from current URL
+  if (!analystId && typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search)
+    analystId = urlParams.get('analystId')
+  }
+  
+  // Security: Detect analyst impersonation context for proper data isolation
 
   useEffect(() => {
     let cancelled = false
@@ -50,8 +63,39 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
           }
         }
 
-        // Fetch most recent briefing
-        const briefingsResp = await fetch('/api/briefings?limit=1&order=desc', { cache: 'no-store' })
+        // Fetch most recent briefing with analyst context if available
+        const headers: Record<string, string> = {}
+        
+        // Security: Add analyst context headers for impersonation
+        if (analystId) {
+          try {
+            // Fetch analyst data to get email for proper authentication headers
+            const analystResp = await fetch(`/api/analysts/${analystId}`)
+            
+            if (analystResp.ok) {
+              const analystData = await analystResp.json()
+              
+              if (analystData.email) {
+                // Add analyst impersonation headers for secure API calls
+                headers['x-analyst-email'] = analystData.email
+                headers['x-analyst-id'] = analystId
+              }
+            }
+          } catch (error) {
+            console.error('Failed to fetch analyst data for impersonation:', error)
+          }
+        }
+        
+        const finalHeaders = {
+          ...headers,
+          'Cache-Control': 'no-cache'
+        }
+        
+        // Security: Fetch briefings with analyst context for proper data isolation
+        
+        const briefingsResp = await fetch('/api/briefings?limit=1&order=desc', { 
+          headers: finalHeaders
+        })
         if (briefingsResp.ok) {
           const briefingsJson = await briefingsResp.json().catch(() => null as any)
           if (!cancelled && briefingsJson?.data?.length > 0) {
@@ -73,7 +117,15 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
       setSelectedBriefing(mostRecentBriefing)
     } else {
       // Fallback to briefings page if no recent briefing
-      router.push('/portal/briefings')
+      // Security: Preserve analyst context when redirecting
+      const currentUrl = new URL(window.location.href)
+      const analystId = currentUrl.searchParams.get('analystId')
+      
+      if (analystId) {
+        router.push(`/portal/briefings?analystId=${analystId}`)
+      } else {
+        router.push('/portal/briefings')
+      }
     }
   }
 
@@ -89,11 +141,11 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
         </Button>
         <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/scheduling-agent')}>
           <MessageSquarePlus className="w-4 h-4" />
-          Request a Conversation
+          Request a Briefing
         </Button>
         <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/portal/resources')}>
           <FolderOpen className="w-4 h-4" />
-          Access Recent Materials
+          Recent Materials
         </Button>
         <Button asChild variant="ghost" className="justify-start gap-2">
           <a href="mailto:support@cupcake.com">

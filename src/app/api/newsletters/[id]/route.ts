@@ -60,17 +60,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const supabase = await createClient()
 
     const updateData: any = {
-      updated_at: new Date().toISOString()
+      updatedAt: new Date().toISOString()
     }
 
     if (title !== undefined) updateData.title = title
     if (description !== undefined) updateData.description = description
     if (subject !== undefined) updateData.subject = subject
     if (content !== undefined) updateData.content = content
-    if (htmlContent !== undefined) updateData.html_content = htmlContent
+    if (htmlContent !== undefined) updateData.htmlContent = htmlContent
     if (status !== undefined) updateData.status = status
     if (scheduledAt !== undefined) {
-      updateData.scheduled_at = scheduledAt ? new Date(scheduledAt).toISOString() : null
+      updateData.scheduledAt = scheduledAt ? new Date(scheduledAt).toISOString() : null
     }
 
     const { data: newsletter, error } = await supabase

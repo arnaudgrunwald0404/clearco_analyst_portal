@@ -1,14 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 export async function GET() {
   try {
     const supabase = await createClient()
     
-    const { data: content, error } = await supabase
-      .from('portal_content')
-      .select('*')
-      .order('createdAt', { ascending: false })
+    // Debug: Check user session
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    console.log('🔍 [Portal Content] User session:', { 
+      hasUser: !!user, 
+      email: user?.email, 
+      userError: userError?.message 
+    })
+    
+    // Get vendor domain ID from current user
+    const vendorDomainId = await getCurrentVendorDomainId()
+    console.log('🔍 [Portal Content] Vendor domain ID:', vendorDomainId)
+    
+    // Check if user is from allowed domain (admin access)
+    const email = user?.email || ''
+    const domain = email.split('@')[1]?.toLowerCase()
+    const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
+    const isAdminUser = allowedDomains.includes(domain)
+    
+    console.log('🔍 [Portal Content] Admin check:', { email, domain, isAdminUser, allowedDomains })
+    
+    if (!vendorDomainId && !isAdminUser) {
+      return NextResponse.json({ error: 'Authentication required or invalid domain' }, { status: 401 })
+    }
+    
+    // Fetch content - for admin users, show all content; for vendor users, show only their content
+    let query = supabase
+      .from('vendor_portal_content')
+      .select(`
+        *,
+        vendor_domains!inner(company_name, protected_domain)
+      `)
+    
+    // If not an admin user, filter by vendor domain
+    if (!isAdminUser && vendorDomainId) {
+      query = query.eq('vendor_domain_id', vendorDomainId)
+    }
+    
+    const { data: content, error } = await query.order('createdAt', { ascending: false })
 
     if (error) {
       console.error('Error fetching portal content:', error)
@@ -31,11 +66,17 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const body = await request.json()
     
-    const { title, description, type, category, url, fileSize } = body
+    // Get vendor domain ID from current user
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Authentication required or invalid domain' }, { status: 401 })
+    }
+    
+    const { title, description, category, url } = body
 
-    if (!title || !type || !category || !url) {
+    if (!title || !category || !url) {
       return NextResponse.json({ 
-        error: 'Missing required fields: title, type, category, url' 
+        error: 'Missing required fields: title, category, url' 
       }, { status: 400 })
     }
 
@@ -44,20 +85,22 @@ export async function POST(request: NextRequest) {
 
     const contentData = {
       id,
+      vendor_domain_id: vendorDomainId,
       title,
       description: description || '',
-      type,
       category,
       url,
-      fileSize: fileSize || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
 
     const { data: content, error } = await supabase
-      .from('portal_content')
+      .from('vendor_portal_content')
       .insert([contentData])
-      .select()
+      .select(`
+        *,
+        vendor_domains!inner(company_name, protected_domain)
+      `)
       .single()
 
     if (error) {

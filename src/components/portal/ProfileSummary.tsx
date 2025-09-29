@@ -130,8 +130,8 @@ export default function ProfileSummary() {
     return `https://x.com/${clean}`
   }
 
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
       <div className="p-6 flex items-center gap-4">
         {/* Avatar */}
         <div className="relative">
@@ -151,12 +151,12 @@ export default function ProfileSummary() {
 
         {/* Textual info */}
         <div className="min-w-0 flex-1">
-          <div className="text-lg font-semibold text-gray-900 leading-tight break-words">{name}</div>
+          <div className="text-lg font-semibold text-gray-900 leading-tight truncate" title={name}>{name}</div>
           {profile?.title && (
-            <div className="text-sm text-gray-700">{profile.title}</div>
+            <div className="text-sm text-gray-700 truncate" title={profile.title}>{profile.title}</div>
           )}
           {profile?.company && (
-            <div className="text-sm text-gray-700">{profile.company}</div>
+            <div className="text-sm text-gray-700 truncate" title={profile.company}>{profile.company}</div>
           )}
         </div>
       </div>
@@ -164,7 +164,7 @@ export default function ProfileSummary() {
       {/* Contact and social below the picture */}
       <div className="px-6 pb-6 space-y-3">
         {email ? (
-          <div className="flex items-center gap-2 text-sm text-gray-900">
+          <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
             <Mail className="w-4 h-4 text-gray-400" />
             <a className="hover:text-blue-600 break-words" href={`mailto:${email}`}>{email}</a>
           </div>
@@ -177,28 +177,30 @@ export default function ProfileSummary() {
           </button>
         )}
 
-        <div className="flex items-center gap-2 text-sm text-gray-900">
+        <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
           <Linkedin className="w-4 h-4 text-gray-400" />
           {profile?.linkedinUrl ? (
-            <a className="hover:text-blue-600" href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a className="hover:text-blue-600 whitespace-nowrap overflow-hidden text-ellipsis" href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
           ) : (
             <button
               onClick={() => router.push('/portal/profile/edit')}
-              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+              className="text-blue-600 hover:text-blue-800 hover:underline text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+              title="Add LinkedIn profile"
             >
               Add LinkedIn profile
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-900">
+        <div className="flex items-center gap-2 text-sm text-gray-900 min-w-0">
           <Icons.twitter className="w-4 h-4 text-gray-400 fill-current" />
           {profile?.twitterHandle ? (
-            <a className="hover:text-blue-600" href={linkToX(profile.twitterHandle) || '#'} target="_blank" rel="noopener noreferrer">{profile.twitterHandle}</a>
+            <a className="hover:text-blue-600 whitespace-nowrap overflow-hidden text-ellipsis" href={linkToX(profile.twitterHandle) || '#'} target="_blank" rel="noopener noreferrer">{profile.twitterHandle}</a>
           ) : (
             <button
               onClick={() => router.push('/portal/profile/edit')}
-              className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
+              className="text-blue-600 hover:text-blue-800 hover:underline text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
+              title="Add X handle"
             >
               Add X handle
             </button>

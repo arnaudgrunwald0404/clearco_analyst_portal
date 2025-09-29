@@ -24,7 +24,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 const EMAIL_TEMPLATES = [
   {
     id: 'newsletter-template-1',
-    name: 'ClearCompany Newsletter',
+    name: 'Company Newsletter',
     html: `
       <!DOCTYPE html>
       <html>
@@ -43,15 +43,15 @@ const EMAIL_TEMPLATES = [
       </head>
       <body>
         <div class="header">
-          <img src="/clearco-logo.png" alt="ClearCompany" class="logo">
+          <img src="/logo.png" alt="Company" class="logo">
           <h1>{{title}}</h1>
         </div>
         <div class="content">
           {{content}}
         </div>
         <div class="footer">
-          <p>Best regards,<br>The ClearCompany Team</p>
-          <p>© 2024 ClearCompany. All rights reserved.</p>
+          <p>Best regards,<br>The Company Team</p>
+          <p>© 2024 Company. All rights reserved.</p>
         </div>
       </body>
       </html>
@@ -78,14 +78,14 @@ const EMAIL_TEMPLATES = [
       </head>
       <body>
         <div class="header">
-          <img src="/clearco-logo.png" alt="ClearCompany" class="logo">
+          <img src="/logo.png" alt="Company" class="logo">
           <h2>{{title}}</h2>
         </div>
         <div class="content">
           {{content}}
         </div>
         <div class="footer">
-          <p>Thank you for your continued partnership,<br>ClearCompany Team</p>
+          <p>Thank you for your continued partnership,<br>Company Team</p>
         </div>
       </body>
       </html>
@@ -1253,7 +1253,7 @@ export default function CreateNewsletterPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="font-medium text-gray-700">From:</span>
-                        <div className="text-gray-900">ClearCompany Team {'<'}scheduling@clearcompany.com{'>'}</div>
+                        <div className="text-gray-900">Company Team {'<'}scheduling@company.com{'>'}</div>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">To:</span>

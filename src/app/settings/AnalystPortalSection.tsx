@@ -30,9 +30,11 @@ interface AnalystPortalSectionProps {
   initialTab?: 'settings' | 'content' | 'access' | 'company'
   /** When false, hides the Access Management tab and content */
   showAccessTab?: boolean
+  /** When true, render ONLY the access management UI */
+  onlyAccess?: boolean
 }
 
-export default function AnalystPortalSection({ initialTab = 'settings', showAccessTab = true }: AnalystPortalSectionProps) {
+export default function AnalystPortalSection({ initialTab = 'settings', showAccessTab = true, onlyAccess = false }: AnalystPortalSectionProps) {
   const [analystAccess, setAnalystAccess] = useState<AnalystAccess[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -87,80 +89,41 @@ const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access' | '
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <Users className="w-7 h-7 text-blue-600" />
-          Analyst Portal
-        </h2>
-        <p className="text-gray-600 mt-2">
-          Configure the analyst portal experience and manage access credentials
-        </p>
-      </div>
+      
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'settings'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <Settings className="w-4 h-4 inline mr-2" />
-            Settings
-          </button>
-          <button
-            onClick={() => setActiveTab('content')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'content'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <FileText className="w-4 h-4 inline mr-2" />
-            Content
-          </button>
-          <button
-            onClick={() => setActiveTab('company')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'company'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <Building className="w-4 h-4 inline mr-2" />
-            Company
-          </button>
-          {showAccessTab && (
-            <button
-              onClick={() => setActiveTab('access')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'access'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Shield className="w-4 h-4 inline mr-2" />
-              Access Management
-              {analystAccess.length > 0 && (
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  {analystAccess.length}
-                </Badge>
-              )}
-            </button>
-          )}
-        </nav>
-      </div>
+      {!onlyAccess && (
+        <div className="border-b border-gray-200">
+          
+           
+            {showAccessTab && (
+              <button
+                onClick={() => setActiveTab('access')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'access'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Shield className="w-4 h-4 inline mr-2" />
+                Access Management
+                {analystAccess.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {analystAccess.length}
+                  </Badge>
+                )}
+              </button>
+            )}
+
+        </div>
+      )}
 
       {/* Portal Settings Tab */}
-      {activeTab === 'settings' && (
+      {!onlyAccess && activeTab === 'settings' && (
         <Card className="shadow-sm border border-gray-200">
           <CardHeader className="pb-6 px-8 pt-8">
             <CardTitle className="text-xl font-bold text-gray-900">
-              Vendor Contact
+              Vendor Contact to Analysts
             </CardTitle>
             <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
               Enter the contact details provided to analysts.
@@ -173,18 +136,18 @@ const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access' | '
       )}
 
       {/* Content Tab */}
-      {activeTab === 'content' && (
+      {!onlyAccess && activeTab === 'content' && (
         <div className="space-y-6">
           <ContentSection />
         </div>
       )}
 
       {/* Company Tab */}
-      {activeTab === 'company' && (
+      {!onlyAccess && activeTab === 'company' && (
         <Card className="shadow-sm border border-gray-200">
           <CardHeader className="pb-6 px-8 pt-8">
-            <CardTitle className="text-xl font-bold text-gray-900">
-              Company Profile
+          <CardTitle className="text-xl font-bold text-gray-900">
+              Profile                                                                                                                       
             </CardTitle>
             <CardDescription className="text-base mt-3 text-gray-600 leading-relaxed">
               Provide company details presented to analysts throughout the portal.
@@ -194,6 +157,13 @@ const [activeTab, setActiveTab] = useState<'settings' | 'content' | 'access' | '
             <CompanyProfileForm />
           </CardContent>
         </Card>
+      )}
+
+      {/* Access Management Only (when onlyAccess) */}
+      {onlyAccess && (
+        <div className="space-y-6">
+          {/* Reuse existing Access tab content by forcing activeTab to 'access' semantics */}
+        </div>
       )}
 
       {/* Access Management Tab */}

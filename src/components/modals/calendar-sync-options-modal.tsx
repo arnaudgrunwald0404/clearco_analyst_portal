@@ -154,7 +154,7 @@ export default function CalendarSyncOptionsModal({
                         Sync meetings from today forward. Fastest option, focuses on upcoming briefings.
                       </p>
                       <div className="mt-2 text-xs text-gray-500">
-                        <span className="font-medium">Range:</span> Today → 6 months ahead
+                        <span className="font-medium">Range:</span> Last 7 days → 6 months ahead
                       </div>
                     </div>
                   </div>
@@ -204,7 +204,7 @@ export default function CalendarSyncOptionsModal({
                         Sync meetings for the next 30 days only. Perfect for short-term planning.
                       </p>
                       <div className="mt-2 text-xs text-gray-500">
-                        <span className="font-medium">Range:</span> Today → 30 days ahead
+                        <span className="font-medium">Range:</span> Last 7 days → 30 days ahead
                       </div>
                     </div>
                   </div>

@@ -26,10 +26,10 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const createFallbackSettings = (preservedSettings?: Partial<CompanySettings>): CompanySettings => ({
   id: preservedSettings?.id || 'fallback',
-  companyName: preservedSettings?.companyName || 'ClearCompany',
-  protectedDomain: preservedSettings?.protectedDomain || 'clearcompany.com',
+  companyName: preservedSettings?.companyName || 'ACME Inc',
+  protectedDomain: preservedSettings?.protectedDomain || 'acme-inc.com',
   logoUrl: preservedSettings?.logoUrl || '', // No default logo
-  industryName: preservedSettings?.industryName || 'HR Technology',
+  industryName: preservedSettings?.industryName || 'Technology',
   createdAt: preservedSettings?.createdAt || new Date().toISOString(),
   updatedAt: preservedSettings?.updatedAt || new Date().toISOString()
 })

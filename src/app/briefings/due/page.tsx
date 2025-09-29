@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
+import { useSettings } from '@/contexts/SettingsContext'
 // Avoid next/image for external hosts; use native img with onError fallback
 
 interface AnalystDue {
@@ -482,7 +483,7 @@ export default function BriefingsDuePage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 analystId,
-                subject: `ClearCompany Briefing - ${analyst.firstName} ${analyst.lastName}`,
+                subject: `Briefing - ${analyst.firstName} ${analyst.lastName}`,
                 suggestedTimes
               })
             })
@@ -543,7 +544,7 @@ export default function BriefingsDuePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           analystId,
-          subject: `ClearCompany Briefing - ${firstName} ${lastName}`,
+          subject: `${companyName} Briefing - ${firstName} ${lastName}`,
           suggestedTimes: generateSuggestedTimes()
         })
       })

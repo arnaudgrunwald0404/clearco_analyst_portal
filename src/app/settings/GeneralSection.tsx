@@ -11,18 +11,20 @@ interface HelpText {
 interface GeneralSectionProps {
   showHelp?: (helpText: HelpText) => void;
   hideHelp?: () => void;
+  titleOverride?: string;
+  descriptionOverride?: string;
+  showIcon?: boolean;
 }
 
-export default function GeneralSection({ showHelp, hideHelp }: GeneralSectionProps) {
+export default function GeneralSection({ showHelp, hideHelp, titleOverride, descriptionOverride, showIcon = true }: GeneralSectionProps) {
   return (
     <Card className="shadow-sm border border-gray-200 p-6">
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">
-          <Settings className="w-7 h-7 text-blue-600" />
-          General Settings
+          {'Overview'}
         </CardTitle>
-        <CardDescription className="text-base ml-10 text-gray-600 leading-relaxed">
-          Configure your company information and platform settings
+        <CardDescription className="text-base  text-gray-600 leading-relaxed">
+          {'Name, protected domain, logo, and industry.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-2 pl-4 mr-10">

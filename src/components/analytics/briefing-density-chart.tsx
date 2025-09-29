@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 
 interface Contribution {
@@ -39,13 +39,14 @@ const BriefingDensityChart = () => {
     fetchData()
   }, [])
 
+  const NUM_WEEKS = 50 // show 2 fewer weeks than 52
   const today = new Date()
-  const oneYearAgo = new Date()
-  oneYearAgo.setFullYear(today.getFullYear() - 1)
+  const startDate = new Date(today)
+  startDate.setDate(today.getDate() - (NUM_WEEKS * 7) + 1)
 
-  const dates = Array.from({ length: 365 }, (_, i) => {
-    const date = new Date(oneYearAgo)
-    date.setDate(oneYearAgo.getDate() + i)
+  const dates = Array.from({ length: NUM_WEEKS * 7 }, (_, i) => {
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + i)
     return date
   })
 
@@ -77,7 +78,7 @@ const BriefingDensityChart = () => {
 
   const monthLabels = []
   let lastMonth = -1
-  for (let i = 0; i < 52; i++) {
+  for (let i = 0; i < NUM_WEEKS; i++) {
     const date = dates[i * 7]
     const month = date.getMonth()
     if (month !== lastMonth) {
@@ -92,17 +93,17 @@ const BriefingDensityChart = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Briefing Density</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 sm:p-6">
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <SpinningCupcake size="lg" />
           </div>
         ) : (
           <div className="flex flex-col">
-            <div className="grid grid-cols-52 gap-1 mb-2">
+            <div
+              className="grid gap-1 mb-2"
+              style={{ gridTemplateColumns: `repeat(${NUM_WEEKS}, minmax(0, 1fr))` }}
+            >
               {monthLabels}
             </div>
             <div className="grid grid-flow-col grid-rows-7 gap-1">
@@ -122,8 +123,8 @@ const BriefingDensityChart = () => {
                       </span>
                     )}
                   </div>
-                )
-              })}
+                )}
+              )}
             </div>
             <div className="flex justify-end items-center mt-4 text-xs text-gray-600 gap-2">
               <span>Influence:</span>
