@@ -11,7 +11,7 @@ interface PortalHeaderProps {
   selectedVendorName?: string
 }
 
-export function PortalHeader({ selectedVendorName }: PortalHeaderProps) {
+export function PortalHeader({ selectedVendorName = 'ClearCompany' }: PortalHeaderProps) {
   const { user, signOut } = useAuth()
   const { settings } = useSettings()
   const router = useRouter()
@@ -138,14 +138,22 @@ export function PortalHeader({ selectedVendorName }: PortalHeaderProps) {
       <div className="relative h-full flex flex-col justify-between pr-6">
         {/* Top row with logo, title, identity and logout */}
         <div className="flex justify-between items-center gap-4 h-full">
-          {/* Left: Cupcake logo + Company logo */}
+          {/* Left: Cupcake logo + MyHub tab */}
           <div className="flex items-center gap-4">
             <img 
               src="/cupcake_logo.png" 
               alt="Cupcake Logo" 
               className="h-32 md:h-32 lg:h-36 w-auto object-contain"
             />
-  
+            
+            {/* MyHub tab positioned to the right of cupcake logo */}
+            <button
+              onClick={() => router.push('/analyst_hub')}
+              className="px-4 py-2 bg-white/90 backdrop-blur border border-white/60 rounded-lg shadow-sm hover:bg-white hover:shadow-md transition-all duration-200 text-gray-800 font-medium text-sm"
+              title="Go to Analyst Hub"
+            >
+              MyHub
+            </button>
           </div>
 
           {/* Title centered-ish on large screens */}
