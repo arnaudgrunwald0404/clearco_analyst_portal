@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
       const { data: analyst, error: analystError } = await supabase
         .from('analysts')
         .select('id, firstName, lastName, company')
+        .eq('vendor_domain_id', vendorDomainId)
         .eq('id', analystId)
         .single()
       
