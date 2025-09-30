@@ -57,6 +57,7 @@ export async function GET(
         )
       `)
       .eq('briefingId', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
 
     if (analystsError) {
       console.error('Error fetching briefing analysts:', analystsError)
@@ -146,6 +147,7 @@ export async function PUT(
         .from('briefing_analysts')
         .delete()
         .eq('briefingId', id)
+        .eq('vendor_domain_id', ctxOrResp.id)
 
       // Add new associations
       if (analystIds.length > 0) {
@@ -153,6 +155,7 @@ export async function PUT(
           id: generateId(),
           briefingId: id,
           analystId,
+          vendor_domain_id: ctxOrResp.id,
           createdAt: new Date().toISOString()
         }))
 

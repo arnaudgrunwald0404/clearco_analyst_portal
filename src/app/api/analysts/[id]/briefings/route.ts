@@ -41,6 +41,7 @@ export async function GET(
         )
       `)
       .eq('analystId', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('briefings.vendor_domain_id', ctxOrResp.id)
       .order('briefings(scheduledAt)', { ascending: false })
       .limit(20)

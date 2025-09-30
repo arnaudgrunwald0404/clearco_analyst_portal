@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
           )
         `)
         .eq('briefingId', briefing.id)
+        .eq('vendor_domain_id', ctxOrResp.id)
 
       const primaryAnalyst = (briefingAnalysts?.[0] as any)?.analysts as { id: string; firstName: string; lastName: string } | undefined
       const analystName = primaryAnalyst 
