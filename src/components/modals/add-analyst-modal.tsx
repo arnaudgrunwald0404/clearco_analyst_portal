@@ -110,6 +110,13 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
     const file = event.target.files?.[0]
     if (!file) return
 
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+    const MAX_ROWS = 10000
+    if (file.size > MAX_SIZE_BYTES) {
+      alert(`File is too large (>${Math.round(MAX_SIZE_BYTES/1024/1024)}MB). Please upload a smaller file.`)
+      return
+    }
+
     setFileName(file.name)
     const fileExtension = file.name.split('.').pop()?.toLowerCase()
 
@@ -132,7 +139,11 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
         const workbook = XLSX.read(data, { type: 'array' })
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet)
+        let jsonData: any[] = XLSX.utils.sheet_to_json(worksheet)
+        if (jsonData.length > MAX_ROWS) {
+          alert(`Too many rows (${jsonData.length}). Only the first ${MAX_ROWS} rows will be processed.`)
+          jsonData = jsonData.slice(0, MAX_ROWS)
+        }
         setRawData(jsonData)
         processFileData(jsonData)
       }

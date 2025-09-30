@@ -74,6 +74,12 @@ export default function BulkUploadModal({
   }
 
   const processFile = (file: File) => {
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024 // 10MB
+    const MAX_ROWS = 10000
+    if (file.size > MAX_SIZE_BYTES) {
+      addToast({ type: 'error', message: `File is too large (>${Math.round(MAX_SIZE_BYTES/1024/1024)}MB). Please upload a smaller file.` })
+      return
+    }
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
@@ -93,6 +99,10 @@ export default function BulkUploadModal({
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
           parsedData = XLSX.utils.sheet_to_json(worksheet)
+          if (parsedData.length > MAX_ROWS) {
+            addToast({ type: 'error', message: `Too many rows (${parsedData.length}). Only the first ${MAX_ROWS} rows will be processed.` })
+            parsedData = parsedData.slice(0, MAX_ROWS)
+          }
         } else {
           throw new Error('Unsupported file format. Please use CSV or Excel files.')
         }
