@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     const authClient = await getAuthClient()
-    const sheets = google.sheets({ version: 'v4', auth: authClient })
+    const sheets = google.sheets({ version: 'v4', auth: authClient as any })
     let meta: any
     try {
       meta = await sheets.spreadsheets.get({ spreadsheetId })
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
     const sheetsList = meta.data.sheets || []
 
-    const titles = (sheetsList.map(s => s.properties?.title?.trim()).filter(Boolean) as string[])
+    const titles = (sheetsList.map((s: { properties?: { title?: string | null } }) => s.properties?.title?.trim()).filter(Boolean) as string[])
     const tabsToCheck = (selectedTabs && selectedTabs.length) ? titles.filter(t => selectedTabs!.map(x=>x.toLowerCase()).includes(t.toLowerCase())) : titles.slice(0, 1)
 
     const perTab: { tab: string, ready: boolean, reason?: string }[] = []

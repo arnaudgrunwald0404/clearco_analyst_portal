@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { columns, fieldMappings } = body
+    const { columns, fieldMappings } = body as { columns: string[]; fieldMappings: Record<string, string[]> }
 
     if (!Array.isArray(columns) || !fieldMappings) {
       return NextResponse.json(
@@ -51,28 +51,30 @@ Return only valid JSON.`
       const mapping: Record<string, string> = {}
       const unmappedColumns: string[] = []
 
+      const fm: Record<string, string[]> = fieldMappings || {}
+
       for (const column of columns) {
         const normalizedColumn = column.toLowerCase().trim()
         let mapped = false
 
         // Try exact and fuzzy matching
-        for (const [field, variants] of Object.entries(fieldMappings)) {
+        for (const [field, variants] of Object.entries(fm)) {
           // Check exact matches first
-          if (variants.includes(normalizedColumn)) {
+          if ((variants as string[]).includes(normalizedColumn)) {
             mapping[column] = field
             mapped = true
             break
           }
 
           // Check if column contains any variant
-          if (variants.some(variant => normalizedColumn.includes(variant))) {
+          if ((variants as string[]).some((variant: string) => normalizedColumn.includes(variant))) {
             mapping[column] = field
             mapped = true
             break
           }
 
           // Check if any variant contains the column (reverse check)
-          if (variants.some(variant => variant.includes(normalizedColumn))) {
+          if ((variants as string[]).some((variant: string) => variant.includes(normalizedColumn))) {
             mapping[column] = field
             mapped = true
             break
@@ -141,11 +143,13 @@ Return only valid JSON.`
       const mapping: Record<string, string> = {}
       const unmappedColumns: string[] = []
 
+      const fm: Record<string, string[]> = fieldMappings || {}
+
       for (const column of columns) {
         const normalizedColumn = column.toLowerCase().trim()
         let mapped = false
 
-        for (const [field, variants] of Object.entries(fieldMappings)) {
+        for (const [field, variants] of Object.entries(fm)) {
           if (variants.some(variant => normalizedColumn.includes(variant))) {
             mapping[column] = field
             mapped = true

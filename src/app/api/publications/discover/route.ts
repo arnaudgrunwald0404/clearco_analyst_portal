@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 interface AnalystSource {
   analyst: {
@@ -174,17 +175,20 @@ async function discoverPublications(source: AnalystSource): Promise<Publication[
   return publications
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof Response) return ctxOrResp
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
-    const supabase = adminSupabase || createClient()
+    const supabase = adminSupabase || await createClient()
     
     // Get all analysts
     const { data: analysts, error: analystsError } = await supabase
       .from('analysts')
       .select('id, firstName, lastName, company, email, personalWebsite')
+      .eq('vendor_domain_id', (ctxOrResp as any).id)
     
     if (analystsError) {
       throw analystsError
@@ -247,13 +251,13 @@ export async function GET() {
       for (const pub of publications) {
         try {
           const { count } = await supabase
-            .from('Publication')
+            .from('publications')
             .select('id', { count: 'exact', head: true })
             .eq('analystId', source.analyst.id)
             .eq('url', pub.url)
           if (!count || count === 0) {
             await supabase
-              .from('Publication')
+              .from('publications')
               .insert({
                 analystId: source.analyst.id,
                 title: pub.title,

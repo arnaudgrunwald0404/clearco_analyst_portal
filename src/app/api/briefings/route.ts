@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 type Briefing = Database['public']['Tables']['briefings']['Row']
 type BriefingInsert = Database['public']['Tables']['briefings']['Insert']
@@ -16,11 +17,15 @@ function generateId(): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+    const vendorDomainId = ctxOrResp.id
+
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const upcoming = searchParams.get('upcoming') === 'true'
     let analystId = searchParams.get('analystId')
-    const vendorDomainId = searchParams.get('vendorDomainId') // new canonical filter: vendor_domains.id
+    // Enforced vendor scope via middleware/context
     const search = searchParams.get('search')
     const limit = parseInt(searchParams.get('limit') || '1000', 10)
 
@@ -150,6 +155,7 @@ export async function GET(request: NextRequest) {
           briefings!inner(*)
         `)
         .eq('analystId', analystId)
+        .eq('briefings.vendor_domain_id', vendorDomainId)
         .order('briefings(scheduledAt)', { ascending: upcoming ? true : false })
         .limit(limit)
 
@@ -158,12 +164,8 @@ export async function GET(request: NextRequest) {
       }
 
       // Filter by vendor if provided (now using vendor_domains.id)
-      if (vendorDomainId && vendorDomainId.trim()) {
-        // Prefer explicit vendor match, but include legacy rows with NULL vendor_domain_id for backward compatibility
-        // This ensures older briefings (created before vendor association existed) still appear
-        const vId = vendorDomainId.trim()
-        baQuery = baQuery.or(`vendor_domain_id.eq.${vId},vendor_domain_id.is.null`)
-      }
+      // Enforce vendor strictly to avoid cross-tenant leakage
+      baQuery = baQuery.eq('briefings.vendor_domain_id', vendorDomainId)
 
       if (upcoming) {
         const now = new Date().toISOString()
@@ -188,6 +190,7 @@ export async function GET(request: NextRequest) {
         let emailQuery = supabase
           .from('briefings')
           .select('*')
+          .eq('vendor_domain_id', vendorDomainId)
           .contains('attendeeEmails', [userEmail])
           .order('scheduledAt', { ascending: upcoming ? true : false })
           .limit(limit - baseBriefings.length)
@@ -221,6 +224,7 @@ export async function GET(request: NextRequest) {
           let textQuery = supabase
             .from('briefings')
             .select('*')
+            .eq('vendor_domain_id', vendorDomainId)
             .textSearch('attendeeEmails', `"${userEmail}"`)
             .order('scheduledAt', { ascending: upcoming ? true : false })
             .limit(limit)
@@ -287,6 +291,7 @@ export async function GET(request: NextRequest) {
       let bq = supabase
         .from('briefings')
         .select('*')
+        .eq('vendor_domain_id', vendorDomainId)
         .order('scheduledAt', { ascending: upcoming ? true : false })
         .limit(limit)
 
@@ -411,7 +416,7 @@ export async function POST(request: NextRequest) {
       agenda,
       notes,
       analystIds = [],
-      vendorDomainId
+      vendorDomainId: _ignoredVendorDomainId
     } = body
 
     if (!title || !scheduledAt) {
@@ -421,17 +426,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Enforce vendor scope from context (path/subdomain/headers)
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+    const vendorDomainId = ctxOrResp.id
+
     const supabase = await createClient()
 
     // Create briefing
-    const briefingData: BriefingInsert = {
+    const briefingData: BriefingInsert & { vendor_domain_id?: string } = {
       id: generateId(),
       title,
       description,
       scheduledAt,
       status,
       agenda,
-      notes
+      notes,
+      vendor_domain_id: vendorDomainId
     }
 
     const { data: newBriefing, error: briefingError } = await supabase
@@ -455,7 +466,7 @@ export async function POST(request: NextRequest) {
         briefingId: newBriefing.id,
         analystId,
         // @ts-ignore - types updated to include vendor_domain_id
-        vendor_domain_id: vendorDomainId || null
+        vendor_domain_id: vendorDomainId
       }))
 
       const { error: associationError } = await supabase

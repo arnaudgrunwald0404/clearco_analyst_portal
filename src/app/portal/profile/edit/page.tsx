@@ -10,7 +10,7 @@ import { X } from 'lucide-react'
 export default function EditProfilePage() {
   const { user } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
+  const { addToast } = useToast()
   const [analyst, setAnalyst] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -47,19 +47,11 @@ export default function EditProfilePage() {
               topics: result.data.topics?.join(', ') || ''
             })
           } else {
-            toast({
-              title: 'Error',
-              description: 'Could not fetch your profile data.',
-              variant: 'destructive',
-            })
+            addToast({ type: 'error', message: 'Could not fetch your profile data.' })
           }
         } catch (error) {
           console.error('Failed to fetch analyst data', error)
-          toast({
-            title: 'Error',
-            description: 'An unexpected error occurred while fetching your profile.',
-            variant: 'destructive',
-          })
+          addToast({ type: 'error', message: 'An unexpected error occurred while fetching your profile.' })
         } finally {
           setLoading(false)
         }
@@ -67,7 +59,7 @@ export default function EditProfilePage() {
     }
 
     fetchAnalystData()
-  }, [user, router, toast])
+  }, [user, router, addToast])
 
   const handleClose = () => {
     setIsOpen(false)
@@ -90,25 +82,14 @@ export default function EditProfilePage() {
       const result = await response.json()
 
       if (result.success) {
-        toast({
-          title: 'Success',
-          description: 'Your profile has been updated successfully.',
-        })
+        addToast({ type: 'success', message: 'Your profile has been updated successfully.' })
         router.push('/portal')
       } else {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to update your profile.',
-          variant: 'destructive',
-        })
+        addToast({ type: 'error', message: result.error || 'Failed to update your profile.' })
       }
     } catch (error) {
       console.error('Failed to submit profile update', error)
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred.',
-        variant: 'destructive',
-      })
+      addToast({ type: 'error', message: 'An unexpected error occurred.' })
     } finally {
       setIsSubmitting(false)
     }

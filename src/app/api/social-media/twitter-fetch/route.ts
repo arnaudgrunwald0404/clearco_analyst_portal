@@ -2,6 +2,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { rapidApiTwitterService } from '@/lib/social-crawler/rapidapi-twitter'
+import { requireVendorScope } from '@/lib/vendor-context'
+
+// Internal type representing our normalized tweet structure
+type TransformedTweet = {
+  id: string
+  content: string
+  platform: string
+  url: string
+  published_at: string
+  analyst_id?: string | null | undefined
+  engagement_metrics: {
+    likes: number
+    retweets: number
+    replies: number
+    quotes: number
+  }
+  user_data?: any
+}
 
 /**
  * Extract tweets from complex Twitter API response structure
@@ -98,11 +116,14 @@ function extractTweetsFromResponse(responseData: any): any[] {
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
     const count = parseInt(searchParams.get('count') || '20')
     const store = searchParams.get('store') === 'true'
     const analystId = searchParams.get('analystId')
+    const analystIdParam: string | undefined = analystId ?? undefined
 
     // Validate required parameters
     if (!userId) {
@@ -142,17 +163,17 @@ export async function GET(request: NextRequest) {
     console.log('🔍 First few characters of tweets:', JSON.stringify(tweets).substring(0, 200))
 
     // Transform to internal format - handle the complex Twitter API response
-    let transformedTweets = []
+    let transformedTweets: TransformedTweet[] = []
     if (tweets && typeof tweets === 'object') {
       // Handle different possible response structures
       if (Array.isArray(tweets)) {
-        transformedTweets = rapidApiTwitterService.transformToInternalFormat(tweets, analystId)
-      } else if (tweets.data && Array.isArray(tweets.data)) {
-        transformedTweets = rapidApiTwitterService.transformToInternalFormat(tweets.data, analystId)
+        transformedTweets = rapidApiTwitterService.transformToInternalFormat(tweets, analystIdParam)
+      } else if ((tweets as any).data && Array.isArray((tweets as any).data)) {
+        transformedTweets = rapidApiTwitterService.transformToInternalFormat((tweets as any).data, analystIdParam)
       } else {
         // Try to extract tweets from the complex nested structure
-        const extractedTweets = extractTweetsFromResponse(tweets)
-        transformedTweets = rapidApiTwitterService.transformToInternalFormat(extractedTweets, analystId)
+        const extractedTweets = extractTweetsFromResponse(tweets as any)
+        transformedTweets = rapidApiTwitterService.transformToInternalFormat(extractedTweets, analystIdParam)
       }
     }
 
@@ -173,7 +194,8 @@ export async function GET(request: NextRequest) {
           engagements: tweet.engagement_metrics.likes + tweet.engagement_metrics.retweets + tweet.engagement_metrics.replies + tweet.engagement_metrics.quotes,
           likes: tweet.engagement_metrics.likes,
           shares: tweet.engagement_metrics.retweets,
-          comments: tweet.engagement_metrics.replies
+          comments: tweet.engagement_metrics.replies,
+          vendor_domain_id: ctxOrResp.id
         }))
 
         // Insert posts (using upsert to handle duplicates)

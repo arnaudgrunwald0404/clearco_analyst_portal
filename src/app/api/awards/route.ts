@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -7,15 +8,19 @@ function generateId(): string {
   return `cl${timestamp}${randomPart}`
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('🏆 [Awards API] Fetching awards...')
     
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+    const vendorDomainId = ctxOrResp.id
 
     const { data: rows, error } = await supabase
       .from('awards')
       .select('*')
+      .eq('vendor_domain_id', vendorDomainId)
       .order('processStartDate', { ascending: false })
 
     if (error) {
@@ -85,6 +90,9 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+    const vendorDomainId = ctxOrResp.id
 
     // Create the award
     const awardData = {
@@ -96,7 +104,8 @@ export async function POST(request: NextRequest) {
       processStartDate: new Date(submissionDate).toISOString(),
       publicationDate: new Date(publicationDate).toISOString(),
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      vendor_domain_id: vendorDomainId
     }
 
     const { data: award, error } = await supabase

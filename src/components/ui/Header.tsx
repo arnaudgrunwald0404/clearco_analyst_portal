@@ -147,7 +147,7 @@ const Header: React.FC<HeaderProps> = ({
                   Sign Out
                 </button>
               ) : (
-                <a href="/auth" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign In</a>
+                <a href="/vendor_portal/login" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Sign In</a>
               )}
             </div>
           </div>

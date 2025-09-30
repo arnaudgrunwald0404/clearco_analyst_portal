@@ -32,7 +32,8 @@ export class TwitterIntegrationService {
    */
   async fetchPostsForAllAnalysts(
     maxAnalysts: number = 10,
-    tweetsPerAnalyst: number = 20
+    tweetsPerAnalyst: number = 20,
+    vendorDomainId?: string
   ): Promise<{
     success: boolean
     jobs: TwitterFetchJob[]
@@ -46,11 +47,16 @@ export class TwitterIntegrationService {
     const supabase = await createClient()
     
     // Get analysts with Twitter handles or user IDs
-    const { data: analysts, error: analystsError } = await supabase
+    let analystsQuery = supabase
       .from('analysts')
       .select('id, firstName, lastName, company, twitterHandle, twitterUserId, profileImageUrl')
       .or('twitterHandle.neq.,twitterUserId.neq.')
-      .limit(maxAnalysts)
+
+    if (vendorDomainId) {
+      analystsQuery = analystsQuery.eq('vendor_domain_id', vendorDomainId)
+    }
+
+    const { data: analysts, error: analystsError } = await analystsQuery.limit(maxAnalysts)
 
     if (analystsError) {
       throw new Error(`Failed to fetch analysts: ${analystsError.message}`)
@@ -109,7 +115,8 @@ export class TwitterIntegrationService {
               published_at: new Date(tweet.published_at).toISOString(),
               created_at: new Date().toISOString(),
               analyst_id: analyst.id,
-              user_data: tweet.user_data
+              user_data: tweet.user_data,
+              vendor_domain_id: vendorDomainId || null
             }))
 
             const { data: insertedPosts, error: insertError } = await supabase
@@ -186,7 +193,7 @@ export class TwitterIntegrationService {
   /**
    * Get Twitter engagement summary for an analyst
    */
-  async getAnalystTwitterSummary(analystId: string, days: number = 30): Promise<{
+  async getAnalystTwitterSummary(analystId: string, days: number = 30, vendorDomainId?: string): Promise<{
     totalPosts: number
     totalEngagements: number
     averageEngagements: number
@@ -201,13 +208,18 @@ export class TwitterIntegrationService {
     const since = new Date()
     since.setDate(since.getDate() - days)
 
-    const { data: posts, error } = await supabase
+    let postsQuery = supabase
       .from('social_media_posts')
       .select('content, engagement_metrics, url')
       .eq('analyst_id', analystId)
       .eq('platform', 'TWITTER')
       .gte('published_at', since.toISOString())
-      .order('published_at', { ascending: false })
+
+    if (vendorDomainId) {
+      postsQuery = postsQuery.eq('vendor_domain_id', vendorDomainId)
+    }
+
+    const { data: posts, error } = await postsQuery.order('published_at', { ascending: false })
 
     if (error || !posts) {
       return {

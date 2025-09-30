@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 import type { Database } from '@/types/supabase'
 
 type InfluenceTier = Database['public']['Tables']['influence_tiers']['Row']
@@ -23,10 +24,15 @@ function generateId(): string {
 export async function GET() {
   try {
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
     
     const { data: tiers, error } = await supabase
       .from('influence_tiers')
       .select('*')
+      .eq('vendor_domain_id', vendorDomainId)
       .order('order', { ascending: true })
 
     if (error) {
@@ -93,12 +99,16 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
-    // Delete all existing tiers first
+    // Delete existing tiers for this vendor
     const { error: deleteError } = await supabase
       .from('influence_tiers')
       .delete()
-      .neq('id', 'impossible-id') // This deletes all rows
+      .eq('vendor_domain_id', vendorDomainId)
 
     if (deleteError) {
       console.error('Error deleting existing tiers:', deleteError)
@@ -116,7 +126,8 @@ export async function POST(request: NextRequest) {
       briefingFrequency: tier.briefingFrequency === -1 ? null : tier.briefingFrequency,
       touchpointFrequency: tier.touchpointFrequency === -1 ? null : tier.touchpointFrequency,
       order: index + 1,
-      isActive: tier.isActive
+      isActive: tier.isActive,
+      vendor_domain_id: vendorDomainId
       // DON'T include createdAt/updatedAt - let database defaults handle them
     }))
 

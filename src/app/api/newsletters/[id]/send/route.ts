@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendHtmlEmailWithGmail, tokensFromCalendarConnection } from '@/lib/google/gmail'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 interface RouteParams { params: Promise<{ id: string }> }
 
@@ -22,12 +23,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     // Load newsletter
     const { data: newsletter, error: nErr } = await supabase
       .from('newsletters')
       .select('*')
       .eq('id', id)
+      .eq('vendor_domain_id', vendorDomainId)
       .single()
 
     if (nErr || !newsletter) {
@@ -73,7 +79,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             html,
           }
         )
-        results.push({ to, status: 'sent', id: res.id })
+        const messageId = (res as any)?.id || undefined
+        results.push({ to, status: 'sent', id: messageId })
       } catch (e: any) {
         console.error('Failed to send to', to, e)
         results.push({ to, status: 'failed', error: e?.message || 'send_failed' })
@@ -88,6 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .from('newsletters')
         .update({ sentAt: new Date().toISOString(), status: 'SENT' })
         .eq('id', id)
+        .eq('vendor_domain_id', vendorDomainId)
     }
 
     return NextResponse.json({ success: true, results, sentCount })

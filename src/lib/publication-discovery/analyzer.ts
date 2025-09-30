@@ -282,7 +282,7 @@ export class PublicationAnalyzer {
       [PublicationType.OTHER]: 20
     }
 
-    score += typeScores[type] || 20
+score += typeScores[type as keyof typeof typeScores] || 20
 
     // Significance multiplier
     const significanceMultipliers = {

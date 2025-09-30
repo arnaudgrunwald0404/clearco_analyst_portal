@@ -36,7 +36,7 @@ async function getAuthenticatedClient() {
 export async function POST() {
   try {
     const authClient = await getAuthenticatedClient()
-    const sheets = google.sheets({ version: 'v4', auth: authClient })
+    const sheets = google.sheets({ version: 'v4', auth: authClient as any })
 
     // Fetch active event source URLs from settings (Supabase)
     const service = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)

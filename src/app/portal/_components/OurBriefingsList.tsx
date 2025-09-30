@@ -114,9 +114,9 @@ export default function OurBriefingsList({ briefings }: { briefings: Briefing[] 
 
       {selected && (
         <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white shadow-xl border-l border-gray-200 z-50">
-          <Drawer
+            <Drawer
             key={`portal-briefing-drawer-${selected.id}-${selected.updatedAt}`}
-            briefing={selected}
+            briefing={selected as any}
             activeTab={activeTab}
             onTabChange={setActiveTab}
             onClose={() => setSelected(null)}

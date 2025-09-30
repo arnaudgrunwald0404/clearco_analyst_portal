@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 // Ensure this API runs in the Node.js runtime where server env vars are available
 export const runtime = 'nodejs'
@@ -28,6 +29,9 @@ interface FollowUp {
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     // Soft guard for missing service env vars in local dev: degrade gracefully
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.warn('⚠️ [Follow-ups API] Missing Supabase service env vars. Returning empty result.')
@@ -91,6 +95,7 @@ export async function GET(request: NextRequest) {
     const { data: briefings, error } = await supabase
       .from('briefings')
       .select('*')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('status', 'COMPLETED')
       .not('ai_summary', 'is', null)
       .order('scheduledAt', { ascending: false })
@@ -111,8 +116,7 @@ export async function GET(request: NextRequest) {
       const { data: briefingAnalysts } = await supabase
         .from('briefing_analysts')
         .select(`
-          analystId,
-          analysts!inner(
+          analysts:analysts!inner(
             id,
             firstName,
             lastName
@@ -120,7 +124,7 @@ export async function GET(request: NextRequest) {
         `)
         .eq('briefingId', briefing.id)
 
-      const primaryAnalyst = briefingAnalysts?.[0]?.analysts
+      const primaryAnalyst = (briefingAnalysts?.[0] as any)?.analysts as { id: string; firstName: string; lastName: string } | undefined
       const analystName = primaryAnalyst 
         ? `${primaryAnalyst.firstName} ${primaryAnalyst.lastName}`
         : 'Unknown Analyst'
@@ -190,7 +194,7 @@ export async function GET(request: NextRequest) {
             analystId: primaryAnalyst?.id || '',
             description,
             assignedTo: assignedTo || undefined,
-            assignedUser: matchedUser,
+            assignedUser: matchedUser || undefined,
             comment: '',
             isCompleted: false,
             createdAt: briefing.createdAt

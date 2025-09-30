@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -12,11 +13,14 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     const { data: award, error } = await supabase
       .from('awards')
       .select('*')
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .single()
 
     if (error || !award) {
@@ -47,6 +51,8 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
     const {
       name,
       link,
@@ -90,6 +96,7 @@ export async function PUT(
       .from('awards')
       .update(updateData)
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .select()
       .single()
 
@@ -124,11 +131,14 @@ export async function DELETE(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     const { error } = await supabase
       .from('awards')
       .delete()
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
 
     if (error) {
       console.error('Error deleting award:', error)

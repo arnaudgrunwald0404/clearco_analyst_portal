@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 // Enhanced tier-specific caching for better performance
 interface TierCacheEntry {
@@ -17,6 +18,9 @@ let cachedDueResults: { data: any[]; updatedAt: number; counts: Record<string, n
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const tierFilter = searchParams.get('tier') || ''
@@ -35,6 +39,7 @@ export async function GET(request: NextRequest) {
     const { data: influenceTiers, error: tiersError } = await supabase
       .from('influence_tiers')
       .select('*')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('isActive', true)
       .order('order', { ascending: true })
 
@@ -55,6 +60,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('analysts')
       .select('*')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('status', 'ACTIVE')
 
     // Note: No vendor domain filtering for briefings due - we want to see all analysts who need briefings
@@ -142,6 +148,7 @@ export async function GET(request: NextRequest) {
         const { data: briefingsById } = await supabase
           .from('briefings')
           .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .in('id', briefingIds)
         allBriefings = briefingsById || []
       }
@@ -151,6 +158,7 @@ export async function GET(request: NextRequest) {
         const { data: briefingsByEmail } = await supabase
           .from('briefings')
           .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .in('status', ['COMPLETED', 'SCHEDULED', 'RESCHEDULED'])
           .order('scheduledAt', { ascending: false })
           .limit(1000) // Reasonable limit to prevent huge queries
@@ -175,6 +183,7 @@ export async function GET(request: NextRequest) {
         const { data: meetingsById } = await supabase
           .from('calendar_meetings')
           .select('analyst_id, start_time, end_time, attendees, is_analyst_meeting')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .in('analyst_id', analystIds)
           .lte('start_time', now.toISOString())
           .order('start_time', { ascending: false })
@@ -187,6 +196,7 @@ export async function GET(request: NextRequest) {
         const { data: meetingsByEmail } = await supabase
           .from('calendar_meetings')
           .select('analyst_id, start_time, end_time, attendees, is_analyst_meeting')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .lte('start_time', now.toISOString())
           .order('start_time', { ascending: false })
           .limit(500) // Reasonable limit

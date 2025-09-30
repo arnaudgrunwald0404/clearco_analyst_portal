@@ -1,25 +1,13 @@
 'use client'
 
-import { Dispatch, SetStateAction } from 'react'
 import { X } from 'lucide-react'
 import { cn, formatDateTime, getPriorityColor } from '@/lib/utils'
+import type { Award } from '@/app/awards/types'
 
 interface AwardDrawerProps {
   isOpen: boolean
   onClose: () => void
   award: Award | null
-}
-
-interface Award {
-  id: string
-  awardName: string
-  publicationDate: string
-  processStartDate: string
-  contactInfo: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  topics: string
-  createdAt: string
-  updatedAt: string
 }
 
 export default function AwardDrawer({ isOpen, onClose, award }: AwardDrawerProps) {
@@ -33,7 +21,7 @@ export default function AwardDrawer({ isOpen, onClose, award }: AwardDrawerProps
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">{award.awardName}</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{award.name || 'Award'}</h2>
           <button
             onClick={closeDrawer}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -45,15 +33,15 @@ export default function AwardDrawer({ isOpen, onClose, award }: AwardDrawerProps
         <div className="p-6 space-y-4">
           <div>
             <p className="text-sm font-medium text-gray-700">Publication Date:</p>
-            <p className="text-sm text-gray-900">{formatDateTime(award.publicationDate)}</p>
+            <p className="text-sm text-gray-900">{award.publicationDate ? formatDateTime(award.publicationDate) : 'N/A'}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-700">Process Start Date:</p>
-            <p className="text-sm text-gray-900">{formatDateTime(award.processStartDate)}</p>
+            <p className="text-sm font-medium text-gray-700">Submission Date:</p>
+            <p className="text-sm text-gray-900">{award.submissionDate ? formatDateTime(award.submissionDate) : 'N/A'}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-700">Contact Information:</p>
-            <p className="text-sm text-gray-900">{award.contactInfo}</p>
+            <p className="text-sm font-medium text-gray-700">Organization:</p>
+            <p className="text-sm text-gray-900">{award.organization || 'N/A'}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-700">Priority:</p>
@@ -61,7 +49,7 @@ export default function AwardDrawer({ isOpen, onClose, award }: AwardDrawerProps
           </div>
           <div>
             <p className="text-sm font-medium text-gray-700">Topics:</p>
-            <p className="text-sm text-gray-900">{award.topics}</p>
+            <p className="text-sm text-gray-900">{Array.isArray(award.productTopics) ? award.productTopics.join(', ') : (award.productTopics || 'N/A')}</p>
           </div>
         </div>
       </div>

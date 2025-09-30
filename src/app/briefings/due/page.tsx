@@ -537,6 +537,8 @@ export default function BriefingsDuePage() {
     }
   }
 
+  const companyName = 'Company'
+
   const handleStartScheduling = async (analystId: string, firstName: string, lastName: string) => {
     try {
       const response = await fetch('/api/scheduling-agent', {

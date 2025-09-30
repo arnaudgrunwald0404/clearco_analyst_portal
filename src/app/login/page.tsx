@@ -18,8 +18,8 @@ export default function LoginPage() {
   const router = useRouter()
   
   useEffect(() => {
-    // Redirect to new auth page
-    router.replace('/auth')
+    // Redirect to vendor portal login
+    router.replace('/vendor_portal/login')
   }, [router])
   
   // Show loading while redirecting

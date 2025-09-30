@@ -321,10 +321,10 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
             if (value) {
               if (targetField === 'coveredTopics') {
                 // Handle comma-separated topics
-                analyst[targetField] = value.split(/[,;]/).map(topic => topic.trim()).filter(topic => topic)
+analyst[targetField] = value.split(/[,;]/).map((topic: string) => topic.trim()).filter((topic: string) => topic)
               } else if (targetField === 'eligibleNewsletters') {
                 // Handle comma-separated newsletters
-                analyst[targetField] = value.split(/[,;]/).map(nl => nl.trim()).filter(nl => nl)
+analyst[targetField] = value.split(/[,;]/).map((nl: string) => nl.trim()).filter((nl: string) => nl)
               } else if (targetField === 'type') {
                 // Map type values to database enum values
                 const typeMapping: Record<string, string> = {

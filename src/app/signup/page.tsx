@@ -40,7 +40,7 @@ export default function SignUpPage() {
 
       alert('Sign up successful! Please check your email to confirm your account.')
       setIsLoading(false)
-      router.push('/auth')
+      router.push('/vendor_portal/login')
     } catch (err) {
       setError('An unexpected error occurred. Please try again.')
       setIsLoading(false)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { twitterIntegrationService } from '@/lib/social-crawler/twitter-integration'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 /**
  * API endpoint to sync Twitter posts for all analysts
@@ -8,6 +9,9 @@ import { twitterIntegrationService } from '@/lib/social-crawler/twitter-integrat
 
 export async function POST(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const body = await request.json()
     const { 
       maxAnalysts = 10, 
@@ -23,7 +27,8 @@ export async function POST(request: NextRequest) {
 
     const result = await twitterIntegrationService.fetchPostsForAllAnalysts(
       maxAnalysts,
-      tweetsPerAnalyst
+      tweetsPerAnalyst,
+      ctxOrResp.id
     )
 
     return NextResponse.json({
@@ -46,13 +51,16 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const { searchParams } = new URL(request.url)
     const analystId = searchParams.get('analystId')
     const days = parseInt(searchParams.get('days') || '30')
 
     if (analystId) {
       // Get summary for specific analyst
-      const summary = await twitterIntegrationService.getAnalystTwitterSummary(analystId, days)
+      const summary = await twitterIntegrationService.getAnalystTwitterSummary(analystId, days, ctxOrResp.id)
       
       return NextResponse.json({
         success: true,

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const authClient = await getAuthClient()
-    const sheets = google.sheets({ version: 'v4', auth: authClient })
+    const sheets = google.sheets({ version: 'v4', auth: authClient as any })
 
     let meta: any
     try {

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       console.error('Supabase env vars missing for briefings/last route')
       return NextResponse.json({ success: false, error: 'Server not configured' }, { status: 500 })
@@ -17,6 +21,7 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase
       .from('briefings')
       .select('*')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('status', 'COMPLETED')
       .order('completedAt', { ascending: false })
       .limit(1)

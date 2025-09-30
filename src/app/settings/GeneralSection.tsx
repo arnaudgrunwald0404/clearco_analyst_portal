@@ -28,7 +28,7 @@ export default function GeneralSection({ showHelp, hideHelp, titleOverride, desc
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-2 pl-4 mr-10">
-        <GeneralSettingsForm showHelp={showHelp} hideHelp={hideHelp} />
+<GeneralSettingsForm showHelp={showHelp ? ((helpText: any, _el: any) => showHelp({ title: helpText?.title ?? '', content: helpText?.content ?? '' })) : undefined} hideHelp={hideHelp} />
       </CardContent>
     </Card>
   );

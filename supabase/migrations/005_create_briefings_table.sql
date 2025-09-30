@@ -45,15 +45,29 @@ COMMENT ON TABLE public.briefing_analysts IS 'Many-to-many relationship between 
 ALTER TABLE public.briefings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.briefing_analysts ENABLE ROW LEVEL SECURITY;
 
--- Create RLS policies for briefings
-CREATE POLICY IF NOT EXISTS "Authenticated users can manage briefings" ON public.briefings
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+-- Create RLS policies for briefings (guard creation to avoid redefinition errors)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname='public' AND tablename='briefings' AND policyname='Authenticated users can manage briefings'
+  ) THEN
+    CREATE POLICY "Authenticated users can manage briefings" ON public.briefings
+      FOR ALL USING (auth.role() = 'authenticated')
+      WITH CHECK (auth.role() = 'authenticated');
+  END IF;
+END $$;
 
--- Create RLS policies for briefing_analysts
-CREATE POLICY IF NOT EXISTS "Authenticated users can manage briefing analysts" ON public.briefing_analysts
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+-- Create RLS policies for briefing_analysts (guarded)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE schemaname='public' AND tablename='briefing_analysts' AND policyname='Authenticated users can manage briefing analysts'
+  ) THEN
+    CREATE POLICY "Authenticated users can manage briefing analysts" ON public.briefing_analysts
+      FOR ALL USING (auth.role() = 'authenticated')
+      WITH CHECK (auth.role() = 'authenticated');
+  END IF;
+END $$;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_briefings_status ON public.briefings(status);

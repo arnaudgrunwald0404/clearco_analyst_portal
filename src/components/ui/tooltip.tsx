@@ -23,7 +23,7 @@ interface TooltipTriggerProps {
 const TooltipContext = React.createContext<{
   isOpen: boolean
   setIsOpen: (open: boolean) => void
-  triggerRef: React.RefObject<HTMLDivElement>
+  triggerRef: React.RefObject<HTMLDivElement | null>
 } | null>(null)
 
 export function TooltipProvider({ 
@@ -39,7 +39,7 @@ export function TooltipProvider({
 export function Tooltip({ children, delayDuration = 200 }: TooltipProps) {
   const [isOpen, setIsOpen] = useState(false)
   const triggerRef = useRef<HTMLDivElement>(null)
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const showTooltip = () => {
     if (timeoutRef.current) {

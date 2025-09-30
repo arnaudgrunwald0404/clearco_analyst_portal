@@ -282,7 +282,7 @@ async function startCalendarSync(
     const events: any[] = []
     let pageToken: string | undefined = undefined
     do {
-      const resp = await calendar.events.list({
+      const resp: any = await calendar.events.list({
         calendarId: 'primary',
         timeMin: timeMin.toISOString(),
         timeMax: timeMaxDate.toISOString(),
@@ -449,9 +449,7 @@ async function startCalendarSync(
               scheduledAt: start_time.toISOString(),
               status: start_time > now ? 'SCHEDULED' : 'COMPLETED',
               agenda: event.location ? `Location: ${event.location}` : null,
-              duration: durationMinutes as any,
               notes: null,
-              // @ts-expect-error: column typed as string[][] | null in Database types
               attendees: attendeeTriples.length ? attendeeTriples : null
             }
 

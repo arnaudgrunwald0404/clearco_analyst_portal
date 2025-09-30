@@ -59,11 +59,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Log magic link URL for development testing
-    if (magicLinkData?.user?.email_confirmation_token) {
-      const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin}/auth/callback?token=${magicLinkData.user.email_confirmation_token}&type=magiclink`
-      console.log(`🔗 [VENDOR LOGIN ${reqId}] Magic link URL for ${email}:`)
-      console.log(magicLinkUrl)
-      console.log(`📧 [VENDOR LOGIN ${reqId}] Email sent to: ${email}`)
+    if ((magicLinkData as any)?.user?.email_confirmation_token) {
+      const token = (magicLinkData as any)?.user?.email_confirmation_token
+      if (token) {
+        const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin}/auth/callback?token=${token}&type=magiclink`
+        console.log(`🔗 [VENDOR LOGIN ${reqId}] Magic link URL for ${email}:`)
+        console.log(magicLinkUrl)
+        console.log(`📧 [VENDOR LOGIN ${reqId}] Email sent to: ${email}`)
+      }
     }
 
     const resp = NextResponse.json({ success: true, message: 'Magic link sent' })

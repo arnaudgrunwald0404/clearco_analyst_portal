@@ -68,7 +68,7 @@ export default function PortalContentPage() {
   const [content, setContent] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
+  const { addToast } = useToast()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedType, setSelectedType] = useState('ALL')
@@ -89,18 +89,14 @@ export default function PortalContentPage() {
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.'
         setError(errorMessage)
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-        })
+        addToast({ type: 'error', message: errorMessage })
       } finally {
         setLoading(false)
       }
     }
 
     fetchContent()
-  }, [toast])
+  }, [addToast])
 
   // Get all unique tags from the fetched content
   const allTags = Array.from(new Set(content.flatMap(item => item.tags || [])))

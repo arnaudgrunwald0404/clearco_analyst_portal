@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const showAll = searchParams.get('all') === 'true'
     
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
+
     let query = supabase
       .from('testimonials')
       .select(`
@@ -35,6 +41,7 @@ export async function GET(request: NextRequest) {
           profileImageUrl
         )
       `)
+      .eq('vendor_domain_id', vendorDomainId)
       .order('created_at', { ascending: false })
     
     // Only filter by published if not showing all
@@ -95,6 +102,10 @@ export async function POST(request: NextRequest) {
   try {
     console.log('📝 Testimonials POST request received')
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
     
     // Parse request body with better error handling
     let body: any = {}
@@ -159,6 +170,7 @@ export async function POST(request: NextRequest) {
         created_at,
         is_published: typeof body.isPublished === 'boolean' ? body.isPublished : false,
         analyst_id: analystId,
+        vendor_domain_id: vendorDomainId
       })
       .select('id, text, author, company, rating, created_at, is_published, analyst_id')
       .single()

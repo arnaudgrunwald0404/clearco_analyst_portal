@@ -1,9 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { requireVendorScope } from '@/lib/vendor-context'
+
+// Types to improve type safety in this route
+type AnalystSummary = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  company: string | null
+  title: string | null
+  influence: string | null
+  profileImageUrl: string | null
+  twitterHandle: string | null
+}
+
+type NormalizedPost = {
+  id: string
+  content: string | null
+  url: string | null
+  postedAt: string
+  engagements?: number
+  likes?: number
+  shares?: number
+  comments?: number
+  sentiment?: any
+  themes?: any[] | any
+  isRelevant?: boolean
+  analystId: string
+  analysts: AnalystSummary
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
     const { searchParams } = new URL(request.url)
     const days = parseInt(searchParams.get('days') || '3', 10)
     const limit = parseInt(searchParams.get('limit') || '50', 10)
@@ -17,8 +48,7 @@ export async function GET(request: NextRequest) {
     console.log(`🐦 [Twitter Activity API] Fetching posts from last ${days} days for VERY_HIGH influence analysts...`)
     
     // First, let's try to get recent posts from social_posts table
-    let posts = null
-    let error = null
+    let posts: NormalizedPost[] = []
     
     // Try the social_posts table first (newer schema)
     // Use separate queries to avoid relationship ambiguity
@@ -27,6 +57,7 @@ export async function GET(request: NextRequest) {
       const { data: highInfluenceAnalysts, error: analystsError } = await supabase
         .from('analysts')
         .select('id, firstName, lastName, company, title, influence, profileImageUrl, twitterHandle')
+        .eq('vendor_domain_id', ctxOrResp.id)
         .in('influence', ['HIGH', 'VERY_HIGH'])
       
       if (analystsError) throw analystsError
@@ -34,7 +65,6 @@ export async function GET(request: NextRequest) {
       if (!highInfluenceAnalysts || highInfluenceAnalysts.length === 0) {
         console.log('📝 [Twitter Activity API] No HIGH or VERY_HIGH influence analysts found')
         posts = []
-        error = null
       } else {
         const analystIds = highInfluenceAnalysts.map(a => a.id)
         
@@ -53,6 +83,7 @@ export async function GET(request: NextRequest) {
             analystId
           `)
           .eq('platform', 'TWITTER')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .in('analystId', analystIds)
           .gte('postedAt', dateThreshold.toISOString())
           .order('postedAt', { ascending: false })
@@ -62,12 +93,11 @@ export async function GET(request: NextRequest) {
         
         // Combine posts with analyst data
         const analystMap = new Map(highInfluenceAnalysts.map(a => [a.id, a]))
-        posts = (socialPosts || []).map(post => ({
+        const tmpPosts = (socialPosts || []).map((post: any) => ({
           ...post,
-          analysts: analystMap.get(post.analystId)
-        })).filter(post => post.analysts) // Only include posts with valid analyst data
-        
-        error = null
+          analysts: analystMap.get(post.analystId) as AnalystSummary | undefined
+        })) as Array<Omit<NormalizedPost, 'analysts'> & { analysts?: AnalystSummary }>
+        posts = tmpPosts.filter((p): p is NormalizedPost => Boolean(p.analysts)) // Only include posts with valid analyst data
       }
     } catch (socialPostsError) {
       console.log('📝 [Twitter Activity API] social_posts table not available, trying social_media_posts...')
@@ -78,6 +108,7 @@ export async function GET(request: NextRequest) {
         const { data: highInfluenceAnalysts, error: analystsError } = await supabase
           .from('analysts')
           .select('id, firstName, lastName, company, title, influence, profileImageUrl, twitterHandle')
+          .eq('vendor_domain_id', ctxOrResp.id)
           .in('influence', ['HIGH', 'VERY_HIGH'])
         
         if (analystsError) throw analystsError
@@ -85,7 +116,6 @@ export async function GET(request: NextRequest) {
         if (!highInfluenceAnalysts || highInfluenceAnalysts.length === 0) {
           console.log('📝 [Twitter Activity API] No HIGH or VERY_HIGH influence analysts found')
           posts = []
-          error = null
         } else {
           const analystIds = highInfluenceAnalysts.map(a => a.id)
           
@@ -101,6 +131,7 @@ export async function GET(request: NextRequest) {
               analyst_id
             `)
             .eq('platform', 'TWITTER')
+            .eq('vendor_domain_id', ctxOrResp.id)
             .in('analyst_id', analystIds)
             .gte('published_at', dateThreshold.toISOString())
             .order('published_at', { ascending: false })
@@ -110,7 +141,7 @@ export async function GET(request: NextRequest) {
           
           // Combine posts with analyst data and transform to consistent format
           const analystMap = new Map(highInfluenceAnalysts.map(a => [a.id, a]))
-          posts = (socialMediaPosts || []).map(post => ({
+          const tmpPosts = (socialMediaPosts || []).map((post: any) => ({
             id: post.id,
             content: post.content,
             url: post.url,
@@ -123,29 +154,20 @@ export async function GET(request: NextRequest) {
             themes: [], // Not available in this schema
             isRelevant: true, // Assume relevant
             analystId: post.analyst_id,
-            analysts: analystMap.get(post.analyst_id)
-          })).filter(post => post.analysts) // Only include posts with valid analyst data
-          
-          error = null
+            analysts: analystMap.get(post.analyst_id) as AnalystSummary | undefined
+          })) as Array<Omit<NormalizedPost, 'analysts'> & { analysts?: AnalystSummary }>
+          posts = tmpPosts.filter((p): p is NormalizedPost => Boolean(p.analysts)) // Only include posts with valid analyst data
         }
       } catch (socialMediaPostsError) {
         console.error('❌ [Twitter Activity API] Neither social_posts nor social_media_posts table available:', socialMediaPostsError)
         // Return empty data instead of error for better UX
         posts = []
-        error = null
       }
     }
 
-    if (error) {
-      console.error('❌ [Twitter Activity API] Error fetching posts:', error)
-      return NextResponse.json(
-        { success: false, error: `Failed to fetch Twitter activity: ${error.message || 'Unknown error'}` },
-        { status: 500 }
-      )
-    }
 
     // Transform data for frontend consumption
-    const transformedPosts = (posts || []).map((post: any) => ({
+    const transformedPosts = posts.map((post) => ({
       id: post.id,
       content: post.content,
       url: post.url,
@@ -155,7 +177,7 @@ export async function GET(request: NextRequest) {
       shares: post.shares || 0,
       comments: post.comments || 0,
       sentiment: post.sentiment,
-      themes: Array.isArray(post.themes) ? post.themes : (post.themes ? [post.themes] : []),
+      themes: Array.isArray(post.themes as any[]) ? (post.themes as any[]) : (post.themes ? [post.themes] : []),
       isRelevant: post.isRelevant !== false, // Default to true if not specified
       analyst: {
         id: post.analysts.id,
@@ -180,6 +202,7 @@ export async function GET(request: NextRequest) {
     const { count: totalAnalystsWithHandles, error: handlesError } = await serviceSupabase
       .from('analysts')
       .select('*', { count: 'exact', head: true })
+      .eq('vendor_domain_id', ctxOrResp.id)
       .not('twitterHandle', 'is', null)
       .neq('twitterHandle', '')
       .like('twitterHandle', '@%')

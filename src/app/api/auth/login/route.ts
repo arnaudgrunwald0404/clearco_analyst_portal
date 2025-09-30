@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     )
     
     // Check if email exists in auth.users table
-    const { data: authUser, error: authUserError } = await supabaseServiceRole.auth.admin.getUserByEmail(email.toLowerCase())
+    const { data: authUser, error: authUserError } = await (supabaseServiceRole.auth.admin as any).getUserByEmail(email.toLowerCase())
     const isExistingAuthUser = !authUserError && !!authUser?.user
     
     // Check if email exists in analysts table
@@ -135,11 +135,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Log magic link URL for development testing
-    if (magicLinkData?.user?.email_confirmation_token) {
-      const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback?token=${magicLinkData.user.email_confirmation_token}&type=magiclink`
-      console.log(`🔗 [LOGIN ${reqId}] Magic link URL for ${email}:`)
-      console.log(magicLinkUrl)
-      console.log(`📧 [LOGIN ${reqId}] Email sent to: ${email}`)
+    if ((magicLinkData as any)?.user?.email_confirmation_token) {
+      const token = (magicLinkData as any)?.user?.email_confirmation_token
+      if (token) {
+        const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback?token=${token}&type=magiclink`
+        console.log(`🔗 [LOGIN ${reqId}] Magic link URL for ${email}:`)
+        console.log(magicLinkUrl)
+        console.log(`📧 [LOGIN ${reqId}] Email sent to: ${email}`)
+      }
     }
 
     console.log(`[LOGIN ${reqId}] ✅ Magic link sent successfully to: ${email}`)

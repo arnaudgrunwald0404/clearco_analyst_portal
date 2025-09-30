@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 import type { Database } from '@/types/supabase'
 
 export async function POST(request: NextRequest) {
@@ -17,6 +18,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     // Validate each analyst
     const validAnalysts: Array<{
@@ -42,6 +47,7 @@ export async function POST(request: NextRequest) {
     const { data: existingAnalysts, error: existingError } = await supabase
       .from('analysts')
       .select('email')
+      .eq('vendor_domain_id', vendorDomainId)
       .in('email', analysts.map(a => a.email).filter(Boolean))
 
     if (existingError) {
@@ -98,15 +104,16 @@ export async function POST(request: NextRequest) {
           company: analystData.company || null,
           title: analystData.title || null,
           phone: analystData.phone || null,
-          linkedIn: analystData.linkedIn || null,
-          twitter: analystData.twitter || null,
-          website: analystData.website || null,
+          linkedinUrl: analystData.linkedIn || null,
+          twitterHandle: analystData.twitter || null,
+          personalWebsite: analystData.website || null,
           bio: analystData.bio || null,
           type: analystData.type || 'Analyst',
           influence: analystData.influence || 'MEDIUM',
           status: analystData.status || 'ACTIVE',
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
+          vendor_domain_id: vendorDomainId
         })
         .select()
         .single()
@@ -181,6 +188,14 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = await createClient()
 
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Unauthorized: missing vendor scope'
+      }, { status: 403 })
+    }
+
     if (action === 'archive') {
       // Soft delete by setting status to ARCHIVED
       const { count, error } = await supabase
@@ -190,6 +205,7 @@ export async function DELETE(request: NextRequest) {
           updatedAt: new Date().toISOString()
         })
         .in('id', analystIds)
+        .eq('vendor_domain_id', vendorDomainId)
         .neq('status', 'ARCHIVED')
 
       if (error) {
@@ -214,6 +230,7 @@ export async function DELETE(request: NextRequest) {
           updatedAt: new Date().toISOString()
         })
         .in('id', analystIds)
+        .eq('vendor_domain_id', vendorDomainId)
         .eq('status', 'ARCHIVED')
 
       if (error) {

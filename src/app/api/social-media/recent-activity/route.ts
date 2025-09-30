@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 // In-memory cache
 let cache: {
@@ -14,6 +15,9 @@ let cache: {
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     console.log('🔍 Social media activity API called')
 
     const { searchParams } = new URL(request.url)
@@ -50,6 +54,7 @@ export async function GET(request: NextRequest) {
         created_at,
         analyst_id
       `)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .order('published_at', { ascending: false })
       .limit(limit)
 
@@ -97,6 +102,7 @@ export async function GET(request: NextRequest) {
       const { count } = await supabase
         .from('social_media_posts')
         .select('*', { count: 'exact', head: true })
+        .eq('vendor_domain_id', ctxOrResp.id)
         .gte('published_at', today.toISOString())
       todayCount = count || 0
     } catch (error) {
@@ -109,6 +115,7 @@ export async function GET(request: NextRequest) {
       const { count } = await supabase
         .from('social_media_posts')
         .select('*', { count: 'exact', head: true })
+        .eq('vendor_domain_id', ctxOrResp.id)
         .gte('published_at', weekAgo.toISOString())
       weekCount = count || 0
     } catch (error) {

@@ -153,9 +153,9 @@ const mockBriefings = [
 export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawerProps) {
   const [activeTab, setActiveTab] = useState('overview')
   const [refreshTick, setRefreshTick] = useState(0)
-  const [publications, setPublications] = useState([])
-  const [socialPosts, setSocialPosts] = useState([])
-  const [briefings, setBriefings] = useState([])
+  const [publications, setPublications] = useState<any[]>([])
+  const [socialPosts, setSocialPosts] = useState<any[]>([])
+  const [briefings, setBriefings] = useState<any[]>([])
   const [loading, setLoading] = useState({
     publications: false,
     socialPosts: false,
@@ -1497,7 +1497,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                         <div className="mb-3">
                           <h5 className="text-sm font-medium text-gray-900 mb-2">Key Outcomes:</h5>
                           <ul className="text-sm text-gray-600 space-y-1">
-                            {briefing.outcomes.map((outcome, index) => (
+{briefing.outcomes.map((outcome: any, index: number) => (
                               <li key={index} className="flex items-start space-x-2">
                                 <span className="text-gray-400 mt-1">•</span>
                                 <span>{outcome}</span>
@@ -1511,7 +1511,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                         <div>
                           <h5 className="text-sm font-medium text-gray-900 mb-2">Follow-up Actions:</h5>
                           <ul className="text-sm text-gray-600 space-y-1">
-                            {briefing.followUpActions.map((action, index) => (
+{briefing.followUpActions.map((action: any, index: number) => (
                               <li key={index} className="flex items-start space-x-2">
                                 <span className="text-blue-400 mt-1">→</span>
                                 <span>{action}</span>

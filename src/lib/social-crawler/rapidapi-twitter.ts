@@ -34,7 +34,9 @@ export interface TwitterPost {
 
 export interface TwitterAPIResponse {
   success: boolean
-  data?: TwitterPost[]
+  // Note: RapidAPI endpoints often return nested structures, not a flat array.
+  // Callers must normalize/transform as needed.
+  data?: any
   error?: string
   message?: string
 }

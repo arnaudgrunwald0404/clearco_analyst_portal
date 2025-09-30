@@ -87,7 +87,7 @@ export class SchedulingAgentManager {
           email: conversation.analyst.email,
           influence: conversation.analyst.influence
         },
-        conversationHistory: conversation.emails.map(e => ({
+        conversationHistory: conversation.emails.map((e: any) => ({
           direction: e.direction,
           content: e.content,
           sentAt: e.sentAt
@@ -244,7 +244,7 @@ export class SchedulingAgentManager {
         }
       })
 
-      return analysts.filter(analyst => {
+      return analysts.filter((analyst: any) => {
         // Add logic to determine if analyst needs scheduling
         // Based on their tier frequency and last briefing
         return true // Placeholder

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth } from '@/lib/auth-utils'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest) {
     if (authResult instanceof NextResponse) {
       return authResult
     }
-    const { user } = authResult
+    const authUser = authResult as any
 
     const body = await request.json()
     const {
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest) {
     const { data: analyst, error: findError } = await supabase
       .from('analysts')
       .select('id')
-      .eq('email', user.email)
+      .eq('email', authUser.email)
       .single()
 
     if (findError || !analyst) {

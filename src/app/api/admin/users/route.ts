@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
 
         // Extract first name and last name from user metadata or email
         const userMetadata = authUser.user_metadata || {}
-        const rawMetadata = authUser.raw_user_meta_data || {}
+        const rawMetadata = (authUser as any)?.user_metadata || {}
         
         // Try to get names from profile first, then metadata, then fallback to parsing email
         // Note: user_profiles table uses 'name' field, not separate first_name/last_name

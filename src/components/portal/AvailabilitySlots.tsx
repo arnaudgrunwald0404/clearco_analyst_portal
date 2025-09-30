@@ -17,7 +17,7 @@ export function AvailabilitySlots() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isBooking, setIsBooking] = useState<string | null>(null)
-  const { toast } = useToast()
+  const { addToast } = useToast()
 
   useEffect(() => {
     const fetchSlots = async () => {
@@ -49,10 +49,7 @@ export function AvailabilitySlots() {
       })
       const result = await response.json()
       if (result.success) {
-        toast({
-          title: 'Success',
-          description: 'Your briefing request has been submitted.',
-        })
+        addToast({ type: 'success', message: 'Your briefing request has been submitted.' })
         // Optimistically remove the booked slot from the list
         setSlots(prevSlots => prevSlots.filter(s => s.id !== slotId))
       } else {
@@ -60,11 +57,7 @@ export function AvailabilitySlots() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.'
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      })
+      addToast({ type: 'error', message: errorMessage })
     } finally {
       setIsBooking(null)
     }

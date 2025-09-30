@@ -65,14 +65,14 @@ export async function POST(request: NextRequest) {
       const authClient = await getAuthClient()
       
       // Get file metadata from Drive API
-      const drive = google.drive({ version: 'v3', auth: authClient })
+      const drive = google.drive({ version: 'v3', auth: authClient as any })
       const fileResponse = await drive.files.get({
         fileId: spreadsheetId,
         fields: 'name,owners,webViewLink'
       })
 
       const file = fileResponse.data
-      const title = file.name || null
+      const title = (file as any).name || null
       const owner = file.owners?.[0]?.displayName || file.owners?.[0]?.emailAddress || null
       const webViewLink = file.webViewLink || url
 

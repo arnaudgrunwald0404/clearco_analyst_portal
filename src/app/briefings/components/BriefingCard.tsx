@@ -1,6 +1,6 @@
 'use client'
 
-import { Briefing } from '../../types'
+import { Briefing } from '@/app/briefings/types'
 import { cn } from '@/lib/utils'
 import { Calendar as CalendarIcon, Clock, Users, Calendar, FileText, Mic, CheckSquare } from 'lucide-react'
 
@@ -50,7 +50,7 @@ export default function BriefingCard({
 
   const followUpActions = briefing.followUpActions || []
   const totalFollowUps = followUpActions.length
-  const completedFollowUps = followUpActions.filter((_, index) => 
+const completedFollowUps = followUpActions.filter((_: any, index: number) =>
     getFollowUpState(`${briefing.id}-${index}`).isCompleted
   ).length
 
@@ -60,8 +60,8 @@ export default function BriefingCard({
   // Prepare attendees breakdown
   const attendeeRows = Array.isArray(briefing.attendees) ? briefing.attendees : []
   const attendees = attendeeRows
-    .filter((row) => Array.isArray(row) && row.length >= 1)
-    .map((row) => {
+    .filter((row: any) => Array.isArray(row) && row.length >= 1)
+    .map((row: any) => {
       const email = (row[0] || '').toString()
       const name = (row[1] || '').toString()
       const status = (row[2] || '').toString().toLowerCase()
@@ -69,14 +69,14 @@ export default function BriefingCard({
     })
 
   const invitedCount = attendees.length
-  const attendingCount = attendees.filter(a => ['accepted', 'yes'].includes(a.status)).length
+const attendingCount = attendees.filter((a: any) => ['accepted', 'yes'].includes(a.status)).length
 
   const analystEmails = new Set(
     Array.isArray(briefing.analysts)
       ? briefing.analysts.map((a: any) => (a?.email || '').toLowerCase()).filter(Boolean)
       : []
   )
-  const analystAttendees = attendees.filter(a => analystEmails.has(a.email.toLowerCase()))
+const analystAttendees = attendees.filter((a: any) => analystEmails.has(a.email.toLowerCase()))
   const analystsCount = analystAttendees.length || briefing.analysts.length || 0
 
   const toNamesList = (list: { email: string; name: string }[]) =>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { requireVendorScope } from '@/lib/vendor-context'
 import * as cheerio from 'cheerio'
 import { isAbortLike } from '@/lib/utils/abort-error-handler'
 
@@ -263,11 +264,14 @@ async function discoverPublications(source: AnalystSource, sendProgress: (update
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     // Prefer service role for write operations to bypass RLS if configured
     const adminSupabase = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NEXT_PUBLIC_SUPABASE_URL)
       ? createServiceClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
       : null
-    const supabase = adminSupabase || createClient()
+    const supabase = adminSupabase || await createClient()
 
     // Set up SSE headers
     const responseStream = new TransformStream()
@@ -306,6 +310,7 @@ export async function GET(request: NextRequest) {
         const { data: analysts, error } = await supabase
           .from('analysts')
           .select('*')
+          .eq('vendor_domain_id', ctxOrResp.id)
 
         if (error) {
           sendProgress({
@@ -433,14 +438,14 @@ export async function GET(request: NextRequest) {
             try {
               // Check existence by count to avoid data roundtrip
               const { count } = await supabase
-                .from('Publication')
+                .from('publications')
                 .select('id', { count: 'exact', head: true })
                 .eq('analystId', source.analyst.id)
                 .eq('url', pub.url)
 
               if (!count || count === 0) {
                 const { error: insertError } = await supabase
-                  .from('Publication')
+                  .from('publications')
                   .insert({
                     analystId: source.analyst.id,
                     title: pub.title,

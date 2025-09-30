@@ -520,7 +520,8 @@ export default function ClientBriefingsPage() {
               >
                 <BriefingCard
                   briefing={briefing}
-                  onClick={() => setSelectedBriefing(briefing)}
+                  onSelect={(b) => setSelectedBriefing(b)}
+                  isUpcoming={briefing?.status === 'SCHEDULED'}
                 />
               </div>
             ))}
@@ -542,7 +543,7 @@ export default function ClientBriefingsPage() {
             key={`client-briefing-drawer-${selectedBriefing.id}-${selectedBriefing.updatedAt}`}
             briefing={selectedBriefing}
             activeTab={drawerTab}
-            onTabChange={setDrawerTab}
+onTabChange={(tab) => setDrawerTab(tab as any)}
             onClose={() => setSelectedBriefing(null)}
             onUpdate={() => fetchBriefings(true)}
           />

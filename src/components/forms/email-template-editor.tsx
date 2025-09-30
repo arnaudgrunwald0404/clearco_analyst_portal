@@ -254,7 +254,7 @@ export default function EmailTemplateEditor({
       <div className="p-4 border-t border-gray-200">
         <Group justify="space-between">
           <Text size="xs" className="text-gray-500 font-public-sans">
-            Use merge tags like {{first_name}}, {{company}} for personalization
+Use merge tags like {'{{first_name}}'}, {'{{company}}'} for personalization
           </Text>
           <Group gap="sm">
             <Button variant="subtle" onClick={onClose}>

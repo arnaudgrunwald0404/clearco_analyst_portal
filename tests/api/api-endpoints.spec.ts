@@ -81,7 +81,7 @@ test.describe('Settings API Endpoints', () => {
     
     const data = await response.json()
     expect(data).toHaveProperty('error', 'Authentication required')
-    expect(data).toHaveProperty('redirectTo', '/auth')
+    expect(data).toHaveProperty('redirectTo', '/vendor_portal/login')
   })
 
   test('GET /api/settings/general - authenticated request', async ({ request }) => {

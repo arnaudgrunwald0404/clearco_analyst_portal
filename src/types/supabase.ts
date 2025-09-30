@@ -64,6 +64,7 @@ export interface Database {
           isActive: boolean
           createdAt: string
           updatedAt: string
+          vendor_domain_id: string | null
         }
         Insert: {
           id?: string
@@ -75,6 +76,7 @@ export interface Database {
           isActive?: boolean
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
         Update: {
           id?: string
@@ -86,6 +88,7 @@ export interface Database {
           isActive?: boolean
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
       }
       vendor_domains: {
@@ -155,9 +158,9 @@ export interface Database {
           company: string | null
           title: string | null
           phone: string | null
-          linkedIn: string | null
-          twitter: string | null
-          website: string | null
+          linkedinUrl: string | null
+          twitterHandle: string | null
+          personalWebsite: string | null
           bio: string | null
           profileImageUrl: string | null
           type: string
@@ -179,6 +182,7 @@ export interface Database {
           notes: string | null
           createdAt: string
           updatedAt: string
+          vendor_domain_id: string | null
         }
         Insert: {
           id?: string
@@ -188,9 +192,9 @@ export interface Database {
           company?: string | null
           title?: string | null
           phone?: string | null
-          linkedIn?: string | null
-          twitter?: string | null
-          website?: string | null
+          linkedinUrl?: string | null
+          twitterHandle?: string | null
+          personalWebsite?: string | null
           bio?: string | null
           profileImageUrl?: string | null
           type?: string
@@ -212,6 +216,7 @@ export interface Database {
           notes?: string | null
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
         Update: {
           id?: string
@@ -221,9 +226,9 @@ export interface Database {
           company?: string | null
           title?: string | null
           phone?: string | null
-          linkedIn?: string | null
-          twitter?: string | null
-          website?: string | null
+          linkedinUrl?: string | null
+          twitterHandle?: string | null
+          personalWebsite?: string | null
           bio?: string | null
           profileImageUrl?: string | null
           type?: string
@@ -245,6 +250,7 @@ export interface Database {
           notes?: string | null
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
       }
       briefings: {
@@ -265,6 +271,7 @@ export interface Database {
           attendees: string[][] | null
           createdAt: string
           updatedAt: string
+          vendor_domain_id: string | null
         }
         Insert: {
           id?: string
@@ -283,6 +290,7 @@ export interface Database {
           attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
         Update: {
           id?: string
@@ -301,6 +309,7 @@ export interface Database {
           attendees?: string[][] | null
           createdAt?: string
           updatedAt?: string
+          vendor_domain_id?: string | null
         }
       }
       briefing_analysts: {
@@ -496,6 +505,206 @@ export interface Database {
           updated_at?: string
         }
       }
+      testimonials: {
+        Row: {
+          id: string
+          text: string
+          author: string
+          company: string | null
+          rating: number | null
+          created_at: string
+          updated_at: string
+          is_published: boolean | null
+          display_order: number | null
+          analyst_id: string | null
+          vendor_domain_id: string | null
+        }
+        Insert: {
+          id?: string
+          text: string
+          author: string
+          company?: string | null
+          rating?: number | null
+          created_at?: string
+          updated_at?: string
+          is_published?: boolean | null
+          display_order?: number | null
+          analyst_id?: string | null
+          vendor_domain_id?: string | null
+        }
+        Update: {
+          id?: string
+          text?: string
+          author?: string
+          company?: string | null
+          rating?: number | null
+          created_at?: string
+          updated_at?: string
+          is_published?: boolean | null
+          display_order?: number | null
+          analyst_id?: string | null
+          vendor_domain_id?: string | null
+        }
+      }
+      awards: {
+        Row: {
+          id: string
+          name: string | null
+          link: string | null
+          organization: string | null
+          product_topics: string | null
+          priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null
+          submission_date: string
+          publication_date: string
+          owner: string | null
+          status: 'EVALUATING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'WINNER' | 'FINALIST' | 'NOT_SELECTED' | 'WITHDRAWN' | null
+          cost: string | null
+          notes: string | null
+          created_at: string | null
+          updated_at: string | null
+          vendor_domain_id: string | null
+        }
+        Insert: {
+          id?: string
+          name?: string | null
+          link?: string | null
+          organization?: string | null
+          product_topics?: string | null
+          priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null
+          submission_date: string
+          publication_date: string
+          owner?: string | null
+          status?: 'EVALUATING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'WINNER' | 'FINALIST' | 'NOT_SELECTED' | 'WITHDRAWN' | null
+          cost?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          vendor_domain_id?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          link?: string | null
+          organization?: string | null
+          product_topics?: string | null
+          priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | null
+          submission_date?: string
+          publication_date?: string
+          owner?: string | null
+          status?: 'EVALUATING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'WINNER' | 'FINALIST' | 'NOT_SELECTED' | 'WITHDRAWN' | null
+          cost?: string | null
+          notes?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+          vendor_domain_id?: string | null
+        }
+      }
+      newsletters: {
+        Row: {
+          id: string
+          title: string
+          subject: string | null
+          content: string | null
+          htmlContent: string | null
+          status: string | null
+          templateId: string | null
+          recipientCount: number | null
+          openCount: number | null
+          clickCount: number | null
+          scheduledAt: string | null
+          sentAt: string | null
+          createdAt: string | null
+          updatedAt: string | null
+          createdBy: string | null
+          tags: string[] | null
+          description: string | null
+          vendor_domain_id: string | null
+        }
+        Insert: {
+          id?: string
+          title: string
+          subject?: string | null
+          content?: string | null
+          htmlContent?: string | null
+          status?: string | null
+          templateId?: string | null
+          recipientCount?: number | null
+          openCount?: number | null
+          clickCount?: number | null
+          scheduledAt?: string | null
+          sentAt?: string | null
+          createdAt?: string | null
+          updatedAt?: string | null
+          createdBy?: string | null
+          tags?: string[] | null
+          description?: string | null
+          vendor_domain_id?: string | null
+        }
+        Update: {
+          id?: string
+          title?: string
+          subject?: string | null
+          content?: string | null
+          htmlContent?: string | null
+          status?: string | null
+          templateId?: string | null
+          recipientCount?: number | null
+          openCount?: number | null
+          clickCount?: number | null
+          scheduledAt?: string | null
+          sentAt?: string | null
+          createdAt?: string | null
+          updatedAt?: string | null
+          createdBy?: string | null
+          tags?: string[] | null
+          description?: string | null
+          vendor_domain_id?: string | null
+        }
+      }
+      newsletter_subscriptions: {
+        Row: {
+          id: string
+          newsletterId: string
+          analystId: string
+          email: string | null
+          subscribedAt: string | null
+          unsubscribedAt: string | null
+          opened: boolean | null
+          openedAt: string | null
+          clicked: boolean | null
+          clickedAt: string | null
+          createdAt: string | null
+          vendor_domain_id: string | null
+        }
+        Insert: {
+          id?: string
+          newsletterId: string
+          analystId: string
+          email?: string | null
+          subscribedAt?: string | null
+          unsubscribedAt?: string | null
+          opened?: boolean | null
+          openedAt?: string | null
+          clicked?: boolean | null
+          clickedAt?: string | null
+          createdAt?: string | null
+          vendor_domain_id?: string | null
+        }
+        Update: {
+          id?: string
+          newsletterId?: string
+          analystId?: string
+          email?: string | null
+          subscribedAt?: string | null
+          unsubscribedAt?: string | null
+          opened?: boolean | null
+          openedAt?: string | null
+          clicked?: boolean | null
+          clickedAt?: string | null
+          createdAt?: string | null
+          vendor_domain_id?: string | null
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -517,4 +726,4 @@ export interface Database {
       [_ in never]: never
     }
   }
-} 
+}

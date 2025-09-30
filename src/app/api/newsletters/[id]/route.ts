@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 interface RouteParams {
   params: {
@@ -11,11 +12,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const { data: newsletter, error } = await supabase
       .from('newsletters')
       .select('*')
       .eq('id', id)
+      .eq('vendor_domain_id', vendorDomainId)
       .single()
 
     if (error || !newsletter) {
@@ -58,6 +64,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     } = body
 
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const updateData: any = {
       updatedAt: new Date().toISOString()
@@ -77,6 +87,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       .from('newsletters')
       .update(updateData)
       .eq('id', id)
+      .eq('vendor_domain_id', vendorDomainId)
       .select()
       .single()
 
@@ -93,6 +104,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         .from('newsletter_subscriptions')
         .delete()
         .eq('newsletter_id', id)
+        .eq('vendor_domain_id', vendorDomainId)
 
       if (deleteError) {
         console.error('Error deleting existing subscriptions:', deleteError)
@@ -103,7 +115,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       if (recipientAnalystIds.length > 0) {
         const subscriptions = recipientAnalystIds.map((analystId: string) => ({
           newsletter_id: id,
-          analyst_id: analystId
+          analyst_id: analystId,
+          vendor_domain_id: vendorDomainId
         }))
 
         const { error: insertError } = await supabase
@@ -135,11 +148,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = params
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const { error } = await supabase
       .from('newsletters')
       .delete()
       .eq('id', id)
+      .eq('vendor_domain_id', vendorDomainId)
 
     if (error) {
       console.error('Error deleting newsletter:', error)

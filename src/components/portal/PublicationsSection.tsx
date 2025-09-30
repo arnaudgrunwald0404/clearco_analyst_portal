@@ -80,7 +80,9 @@ export function PublicationsSection({ analystId: analystIdProp }: { analystId?: 
       await fetch(`/api/publications/${id}/validate`, {
         method: 'POST'
       })
-      await fetchPublications()
+      if (analystIdProp || analystId) {
+        await fetchPublications(analystIdProp || (analystId as string))
+      }
     } catch (error) {
       console.error('Error validating publication:', error)
     }
@@ -105,7 +107,9 @@ export function PublicationsSection({ analystId: analystIdProp }: { analystId?: 
       setEditingId(null)
       setIsAddingNew(false)
       setEditForm({})
-      await fetchPublications()
+      if (analystIdProp || analystId) {
+        await fetchPublications(analystIdProp || (analystId as string))
+      }
     } catch (error) {
       console.error('Error saving publication:', error)
     }

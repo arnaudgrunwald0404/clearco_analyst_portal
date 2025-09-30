@@ -145,7 +145,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Action Items</h4>
                 <ul className="space-y-2">
-                  {latestBriefing.followUpActions.map((action, index) => (
+                  {latestBriefing.followUpActions.map((action: string, index: number) => (
                     <li key={index} className="flex items-start text-sm text-gray-700">
                       <span className="w-4 h-4 mt-0.5 mr-2 text-gray-400">•</span>
                       {action}
@@ -190,7 +190,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-gray-900 mb-2">Agenda</h4>
                 <ul className="space-y-2">
-                  {nextBriefing.agenda.map((item, index) => (
+                  {nextBriefing.agenda.map((item: string, index: number) => (
                     <li key={index} className="flex items-start text-sm text-gray-700">
                       <span className="w-4 h-4 mt-0.5 mr-2 text-gray-400">•</span>
                       {item}
@@ -204,7 +204,7 @@ const [nextBriefing, setNextBriefing] = useState<any | null>(null)
             <div className="mt-4">
               <h4 className="text-sm font-medium text-gray-900 mb-2">Participating Analysts</h4>
               <div className="flex flex-wrap gap-2">
-                {nextBriefing.analysts.map((analyst) => (
+                {nextBriefing.analysts.map((analyst: any) => (
                   <div key={analyst.id} className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-xs">
                     <span className="font-medium">
                       {analyst.firstName} {analyst.lastName}

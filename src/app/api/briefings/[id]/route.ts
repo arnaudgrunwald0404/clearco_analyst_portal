@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth-utils'
+import { requireVendorScope } from '@/lib/vendor-context'
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
@@ -20,12 +21,15 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     // Get briefing with associated analysts
     const { data: briefing, error: briefingError } = await supabase
       .from('briefings')
       .select('*')
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .single()
 
     if (briefingError || !briefing) {
@@ -104,6 +108,8 @@ export async function PUT(
     } = body
 
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     // Update briefing
     const { data: updatedBriefing, error: updateError } = await supabase
@@ -121,6 +127,7 @@ export async function PUT(
         updatedAt: new Date().toISOString()
       })
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .select()
       .single()
 
@@ -205,6 +212,8 @@ export async function PATCH(
     }
 
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     // Build update object with only defined keys
     const allowedKeys = [
@@ -245,6 +254,7 @@ export async function PATCH(
       .from('briefings')
       .update(updateData)
       .eq('id', id)
+      .eq('vendor_domain_id', ctxOrResp.id)
       .select()
       .single()
 

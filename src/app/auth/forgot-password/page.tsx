@@ -15,8 +15,8 @@ export default function ForgotPasswordPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Redirect to main auth page since password authentication is disabled
-    router.push('/auth')
+    // Redirect to vendor portal login since password authentication is disabled
+    router.push('/vendor_portal/login')
   }, [router])
 
   return (
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
 
           {/* Redirect Button */}
           <Link
-            href="/auth"
+            href="/vendor_portal/login"
             className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             Go to Sign In

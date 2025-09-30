@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rapidApiTwitterService } from '@/lib/social-crawler/rapidapi-twitter'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 /**
  * API endpoint to look up Twitter user information by username
@@ -7,6 +8,8 @@ import { rapidApiTwitterService } from '@/lib/social-crawler/rapidapi-twitter'
  */
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
     const { searchParams } = new URL(request.url)
     const username = searchParams.get('username')
 
@@ -24,7 +27,8 @@ export async function GET(request: NextRequest) {
 
     if (result.success && result.data) {
       // Extract user information from the complex nested response
-      const userData = result.data.result?.data?.user?.result
+      const raw: any = result.data as any
+      const userData = raw.result?.data?.user?.result
       
       if (userData) {
         const userInfo = {

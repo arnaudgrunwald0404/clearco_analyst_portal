@@ -508,7 +508,7 @@ export default function PortalSettingsPage() {
                         </div>
                         <p className="text-sm text-gray-600 mb-1">{connection.email}</p>
                         <p className="text-xs text-gray-500">
-                          Last sync: {formatLastSync(connection.last_sync_at)}
+Last sync: {formatLastSync(connection.last_sync_at ?? null)}
                         </p>
                         
                         {/* Progress indicator */}

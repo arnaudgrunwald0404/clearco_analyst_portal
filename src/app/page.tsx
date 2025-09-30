@@ -136,7 +136,7 @@ function NumberStat({
   value?: number | null
   isLoading: boolean
   format?: (n: number) => string
-  placeholder?: JSX.Element
+placeholder?: any
 }) {
   if (isLoading) {
     return <>{placeholder}</>
@@ -200,10 +200,10 @@ function DashboardContent() {
     return { total: 0, completed: 0 }
   }
 
-  // Redirect unauthenticated users to /auth after auth resolves
+  // Redirect unauthenticated users to vendor portal login after auth resolves
   useEffect(() => {
     if (!authLoading && !user) {
-      router.push('/auth')
+      router.push('/vendor_portal/login')
     }
   }, [authLoading, user, router])
 

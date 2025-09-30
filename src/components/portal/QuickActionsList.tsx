@@ -5,22 +5,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Calendar, MessageSquarePlus, FolderOpen, LifeBuoy, Settings } from 'lucide-react'
 import Drawer from '@/app/briefings/components/drawer/Drawer'
-
-interface Briefing {
-  id: string
-  title: string
-  scheduledAt: string
-  completedAt?: string
-  transcript?: string
-  notes?: string
-  updatedAt: string
-  analysts: Array<{
-    id: string
-    firstName: string
-    lastName: string
-    email: string
-  }>
-}
+import type { Briefing } from '@/app/briefings/types'
 
 export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
   const router = useRouter()
@@ -99,7 +84,8 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
         if (briefingsResp.ok) {
           const briefingsJson = await briefingsResp.json().catch(() => null as any)
           if (!cancelled && briefingsJson?.data?.length > 0) {
-            setMostRecentBriefing(briefingsJson.data[0])
+            const { normalizeBriefing } = await import('@/lib/normalizers/briefings')
+            setMostRecentBriefing(normalizeBriefing(briefingsJson.data[0]))
           }
         }
       } catch {

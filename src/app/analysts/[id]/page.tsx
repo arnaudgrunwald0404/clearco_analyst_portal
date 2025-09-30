@@ -684,13 +684,13 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Speaking Engagements</h3>
               <div className="space-y-3">
-                {mockAnalyst.speakingEngagements.map((engagement, index) => (
-                  <div key={index} className="p-3 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm font-medium text-green-900">{engagement.event}</p>
-                    <p className="text-sm text-green-700">{engagement.topic}</p>
-                    <p className="text-xs text-green-600">{formatDate(engagement.date)}</p>
+                {analyst?.speakingEngagements ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-700">{analyst.speakingEngagements}</p>
                   </div>
-                ))}
+                ) : (
+                  <p className="text-sm text-gray-500">No speaking engagements available.</p>
+                )}
               </div>
             </div>
           </div>

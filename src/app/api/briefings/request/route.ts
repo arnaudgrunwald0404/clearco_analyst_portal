@@ -1,21 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth-utils'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 export async function POST(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const authResult = await requireAuth()
     if (authResult instanceof NextResponse) {
       return authResult
     }
     const authUser = authResult
 
-    const supabase = createClient()
+    const supabase = await createClient()
 
     // 1. Get the analyst's ID from their authenticated email
     const { data: analyst, error: analystError } = await supabase
       .from('analysts')
       .select('id')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('email', authUser.email)
       .single()
 

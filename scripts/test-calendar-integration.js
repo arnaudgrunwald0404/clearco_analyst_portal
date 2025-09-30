@@ -38,7 +38,7 @@ async function testCalendarIntegration() {
   const endpoints = [
     { name: 'Calendar Connections API', url: 'http://localhost:3000/api/settings/calendar-connections' },
     { name: 'Calendar Callback API', url: 'http://localhost:3000/api/auth/google-calendar/callback' },
-    { name: 'Auth Page', url: 'http://localhost:3000/auth' },
+    { name: 'Vendor Portal Login Page', url: 'http://localhost:3000/vendor_portal/login' },
     { name: 'Settings Page', url: 'http://localhost:3000/settings' }
   ]
   

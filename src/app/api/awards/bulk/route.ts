@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { parseDate } from '@/lib/date-utils'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -11,6 +12,10 @@ function generateId(): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+    const vendorDomainId = ctxOrResp.id
+
     const body = await request.json()
     const { awards } = body
 
@@ -38,6 +43,7 @@ export async function POST(request: NextRequest) {
       const { data: existingAwards, error: existingError } = await supabaseService
         .from('awards')
         .select('awardName') // Database column is 'awardName' based on debug results
+        .eq('vendor_domain_id', vendorDomainId)
         .in('awardName', namesToCheck) // Database column is 'awardName' based on debug results
 
       if (existingError) {
@@ -122,7 +128,8 @@ export async function POST(request: NextRequest) {
         topics: awardData.topics ? (Array.isArray(awardData.topics) ? awardData.topics.join(', ') : String(awardData.topics)) : 'General', // Required field
         priority: (awardData.priority || 'MEDIUM').toUpperCase(),
         createdAt: now, // Required field
-        updatedAt: now // Required field
+        updatedAt: now, // Required field
+        vendor_domain_id: vendorDomainId,
         // Note: Removed optional fields (link, owner, cost, notes) as they don't exist in the table schema
       }
     })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -12,6 +13,8 @@ export async function GET(
   try {
     const { id } = await params
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     // Fetch briefing history via briefing_analysts table
     const { data: briefingAnalysts, error } = await supabase
@@ -38,6 +41,7 @@ export async function GET(
         )
       `)
       .eq('analystId', id)
+      .eq('briefings.vendor_domain_id', ctxOrResp.id)
       .order('briefings(scheduledAt)', { ascending: false })
       .limit(20)
 

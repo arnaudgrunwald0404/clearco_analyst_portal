@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 import type { Database } from '@/types/supabase'
 import { syncAnalystSocialHandlesOnUpdate } from '@/lib/social-sync'
 
@@ -43,7 +45,14 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type')
     const influence = searchParams.get('influence')
 
-    // Use service role to bypass RLS for admin dashboard APIs
+    // Determine vendor for scoping
+    const ssr = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
+
+    // Use service role to bypass RLS for admin dashboard APIs, but manually scope by vendor
     const supabase = createServiceClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -65,6 +74,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('analysts')
       .select('*')
+      .eq('vendor_domain_id', vendorDomainId)
       .order('lastName', { ascending: true })
 
     // Apply filters
@@ -154,16 +164,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const ssr = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
     const supabase = createServiceClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Check for existing analyst with same email
+    // Check for existing analyst with same email (within vendor)
     const { data: existingAnalyst } = await supabase
       .from('analysts')
       .select('id')
       .eq('email', email)
+      .eq('vendor_domain_id', vendorDomainId)
       .single()
 
     if (existingAnalyst) {
@@ -173,7 +189,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const analystData: AnalystInsert = {
+    const analystData: AnalystInsert & { vendor_domain_id?: string } = {
       id: generateId(),
       firstName,
       lastName,
@@ -192,7 +208,8 @@ export async function POST(request: NextRequest) {
       influence,
       status,
       relationshipHealth,
-      notes
+      notes,
+      vendor_domain_id: vendorDomainId
     }
 
     const { data: newAnalyst, error: insertError } = await supabase

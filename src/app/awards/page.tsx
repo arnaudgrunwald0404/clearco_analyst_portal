@@ -9,23 +9,7 @@ import AddAwardModal from '@/components/modals/add-award-modal'
 import AwardActionsMenu from '@/components/actions/award-actions-menu'
 import BulkUploadModal from '@/components/modals/bulk-upload-modal'
 import { useToast } from '@/components/ui/toast'
-
-interface Award {
-  id: string
-  name: string
-  link?: string
-  organization: string
-  productTopics?: string[] | string  // JSON array or string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  submissionDate: string
-  publicationDate: string
-  owner?: string
-  status: 'EVALUATING' | 'SUBMITTED' | 'UNDER_REVIEW' | 'WINNER' | 'FINALIST' | 'NOT_SELECTED' | 'WITHDRAWN'
-  cost?: string
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
+import type { Award } from '@/app/awards/types'
 
 export default function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -140,12 +124,12 @@ export default function AwardsPage() {
             bValue = (b.name || '').toLowerCase()
             break
           case 'publicationDate':
-            aValue = new Date(a.publicationDate).getTime()
-            bValue = new Date(b.publicationDate).getTime()
+            aValue = a.publicationDate ? new Date(a.publicationDate).getTime() : 0
+            bValue = b.publicationDate ? new Date(b.publicationDate).getTime() : 0
             break
           case 'submissionDate':
-            aValue = new Date(a.submissionDate).getTime()
-            bValue = new Date(b.submissionDate).getTime()
+            aValue = a.submissionDate ? new Date(a.submissionDate).getTime() : 0
+            bValue = b.submissionDate ? new Date(b.submissionDate).getTime() : 0
             break
           case 'priority':
             const priorityOrder = { 'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -12,11 +13,16 @@ export async function GET() {
     console.log('📧 [Newsletters API] Fetching newsletters...')
     
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     // Get newsletters from Supabase
     const { data: newsletters, error } = await supabase
       .from('newsletters')
       .select('*')
+      .eq('vendor_domain_id', vendorDomainId)
       .order('createdAt', { ascending: false })
 
     if (error) {
@@ -70,6 +76,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const newsletterData: any = {
       id: generateId(),
@@ -81,7 +91,8 @@ export async function POST(request: NextRequest) {
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
       createdBy: createdBy || null,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      vendor_domain_id: vendorDomainId
     }
     
     // Add description if provided (only if column exists)
@@ -109,7 +120,8 @@ export async function POST(request: NextRequest) {
       
       const subscriptions = recipientAnalystIds.map((analystId: string) => ({
         newsletter_id: newsletter.id,
-        analyst_id: analystId
+        analyst_id: analystId,
+        vendor_domain_id: vendorDomainId
       }))
 
       const { error: subscriptionError } = await supabase

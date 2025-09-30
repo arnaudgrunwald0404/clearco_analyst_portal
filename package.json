@@ -31,7 +31,8 @@
     "test:google-oauth": "node scripts/test-google-oauth-config.js",
     "test:profile-pictures": "tsx scripts/test-profile-picture-search.ts",
     "test:apis": "jest tests/api/supabase-apis.test.ts",
-    "check:db": "tsx src/scripts/check-db.ts"
+    "check:db": "tsx src/scripts/check-db.ts",
+    "company:profile:build": "tsx src/scripts/build-company-profile.ts"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",

@@ -17,7 +17,6 @@ interface EventItem {
   type?: string | null
   audienceGroups?: string | null
   startDate: string
-  participationStatus?: string | null
   owner?: string | null
   location?: string | null
   status?: string | null

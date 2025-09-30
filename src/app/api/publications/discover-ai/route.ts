@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { OpenAIPublicationDiscovery } from '@/lib/publication-discovery/openai-discovery'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 export async function GET(request: NextRequest) {
   try {
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
     console.log('🤖 Starting AI-powered publication discovery...')
 
     const { searchParams } = new URL(request.url)
@@ -16,6 +19,7 @@ export async function GET(request: NextRequest) {
     let analystsQuery = supabase
       .from('analysts')
       .select('id, firstName, lastName, company, email, personalWebsite, linkedinUrl, twitterHandle')
+      .eq('vendor_domain_id', ctxOrResp.id)
 
     if (analystId) {
       analystsQuery = analystsQuery.eq('id', analystId)
@@ -122,6 +126,8 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
 
     // Save discovered publications to database
     const publicationsToSave = publications.map(pub => ({

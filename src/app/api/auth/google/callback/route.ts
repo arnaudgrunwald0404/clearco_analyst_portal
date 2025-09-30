@@ -98,13 +98,13 @@ export async function GET(request: NextRequest) {
         console.log('📋 [GOOGLE OAUTH] Found calendars:', calendarList.data.items?.length || 0)
 
         // Store tokens and calendar info in database
-        const supabase = createClient()
+        const supabase = await createClient()
         
         console.log('💾 [GOOGLE OAUTH] Storing calendar connection...')
         const { data: connection, error: connectionError } = await supabase
           .from('calendar_connections')
           .insert({
-            user_id: state.userId,
+            user_id: (state as any).userId,
             provider: 'google',
             email: userInfo.data.email,
             access_token: tokens.access_token,
@@ -129,9 +129,9 @@ export async function GET(request: NextRequest) {
         // Redirect to calendar naming step
         const params = new URLSearchParams({
           step: 'name_calendar',
-          connection_id: connection.id,
-          email: userInfo.data.email
-        })
+          connection_id: String(connection.id),
+          email: userInfo.data.email || ''
+        } as Record<string, string>)
         return NextResponse.redirect(
           new URL(`/settings/calendar?${params.toString()}`, request.url)
         )
@@ -145,19 +145,21 @@ export async function GET(request: NextRequest) {
 
     // If not a calendar integration, proceed with normal auth flow
     console.log('🔐 [GOOGLE OAUTH] Proceeding with normal auth flow')
-    const supabase = createClient()
+    const supabase = await createClient()
     
-    const { data: { user }, error: signInError } = await supabase.auth.signInWithOAuth({
+    const signInRes: any = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         queryParams: {
-          access_token: tokens.access_token,
-          expires_in: tokens.expiry_date ? Math.floor((tokens.expiry_date - Date.now()) / 1000) : 3600,
-          refresh_token: tokens.refresh_token,
+          access_token: tokens.access_token || '',
+          expires_in: String(tokens.expiry_date ? Math.floor((tokens.expiry_date - Date.now()) / 1000) : 3600),
+          refresh_token: tokens.refresh_token || '',
         },
       },
     })
 
+    const signInError = (signInRes as any)?.error
+    const user = (signInRes as any)?.data?.user
     if (signInError) {
       console.error('❌ [GOOGLE OAUTH] Supabase auth error:', signInError)
       return NextResponse.redirect(
