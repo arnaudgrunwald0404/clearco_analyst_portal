@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireAuth } from '@/lib/auth-utils'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 export async function PUT(request: NextRequest) {
   try {
@@ -31,10 +32,14 @@ export async function PUT(request: NextRequest) {
 
     const supabase = await createClient()
 
-    // Find the analyst by their current email (from auth)
+    // Enforce vendor scope and find the analyst by their current email (from auth)
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const { data: analyst, error: findError } = await supabase
       .from('analysts')
       .select('id')
+      .eq('vendor_domain_id', ctxOrResp.id)
       .eq('email', authUser.email)
       .single()
 
@@ -59,6 +64,7 @@ export async function PUT(request: NextRequest) {
         updatedAt: new Date().toISOString()
       })
       .eq('id', analyst.id)
+      .eq('vendor_domain_id', ctxOrResp.id)
 
     if (updateError) {
       console.error('Error updating analyst profile:', updateError)
