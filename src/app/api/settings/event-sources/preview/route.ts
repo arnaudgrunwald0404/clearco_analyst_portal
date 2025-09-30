@@ -3,6 +3,7 @@ import { google } from 'googleapis'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { detectHeaderRow, heuristicMapHeaders, headerSignature, type HeaderMap } from '@/lib/events/mapping'
 import { requireAuth } from '@/lib/auth-utils'
+import { requireVendorScope } from '@/lib/vendor-context'
 
 function normalizePrivateKey(raw?: string): string | undefined {
   if (!raw) return undefined
@@ -39,6 +40,10 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth()
     if (authResult instanceof NextResponse) return authResult
+
+    const ctxOrResp = await requireVendorScope(request)
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp
+
     const { url } = await request.json()
     if (!url || typeof url !== 'string') {
       return NextResponse.json({ success: false, error: 'url is required' }, { status: 400 })
@@ -102,6 +107,7 @@ export async function POST(request: NextRequest) {
           .eq('source_url', url)
           .eq('sheet_title', title)
           .eq('header_signature', sig)
+          .eq('vendor_domain_id', ctxOrResp.id)
           .limit(1)
           .single()
         if (cached?.mapping) mapping = cached.mapping as HeaderMap
