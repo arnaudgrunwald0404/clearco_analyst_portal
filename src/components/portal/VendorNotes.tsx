@@ -245,7 +245,7 @@ export default function VendorNotes() {
       <div
         id="vendor-notes-panel"
         className={
-          `bg-white rounded-lg border border-gray-200 shadow-sm flex flex-col h-full ` +
+          `bg-white rounded-lg border border-pink-200 shadow-sm flex flex-col h-full ` +
           (expanded
             ? 'fixed inset-y-0 right-0 w-[50vw] max-w-[50vw] z-50 shadow-xl'
             : '')
@@ -254,11 +254,11 @@ export default function VendorNotes() {
         aria-label="Notepad"
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 pr-10 pl-6 relative">
+        <div className="p-6 border-b border-pink-200 pr-10 pl-6 relative">
           {/* Toggle button sits over the left outline of the header */}
           <button
             type="button"
-            className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-full p-1 shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 z-10"
+            className="absolute -left-3 top-1/2 -translate-y-1/2 bg-white border border-pink-200 rounded-full p-1 shadow hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 z-10"
             aria-label={expanded ? 'Collapse notepad' : 'Expand notepad'}
             aria-pressed={expanded}
             aria-controls="vendor-notes-panel"
@@ -278,13 +278,13 @@ export default function VendorNotes() {
           {loading ? (
             <div className="text-sm text-gray-500">Loading notes...</div>
           ) : notes.length === 0 ? (
-            <div className="h-full min-h-[320px] flex items-center justify-center">
+            <div className="h-full min-h-[170px] max-h-[120px] flex items-center justify-center">
               <div className="text-center text-gray-500">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/cupcake_dripping.png"
                   alt="No notes yet"
-                  className="mx-auto mb-4 w-24 h-24 object-contain"
+                  className="mx-auto mb-4 w-16 h-16 object-contain"
                 />
                 <div className="text-sm">No notes yet. Add your first note below.</div>
               </div>
@@ -297,7 +297,7 @@ export default function VendorNotes() {
                 return (
                   <div
                     key={n.id}
-                    className={`rounded-lg p-4 border ${n.starred ? 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-200' : 'border-gray-200'}`}
+                    className={`rounded-lg p-4 border ${n.starred ? 'bg-gradient-to-r from-pink-50 to-purple-50 border-pink-300' : 'border-gray-200'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -367,21 +367,23 @@ export default function VendorNotes() {
 
         {/* Composer at bottom (ChatGPT-style) */}
         <div className="bg-white pr-10 pl-4">
-          <div className="pt-3 ">
-            <Input
-              placeholder="Title (optional)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
-          <div className=" pb-4">
-          <div>
+        <div className="pt-3 ">
+          <div className="rte-notes-group overflow-hidden rounded-lg">
+            <div className="rte-title ">
+              <Input
+                placeholder="Title (optional)"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
             <RichNoteEditor
               placeholder="Write a note..."
               value={content}
               onChange={setContent}
             />
           </div>
+        </div>
+        <div className=" pb-4">
           {/* Toolbar under the box */}
           <div className="mt-2 flex items-center justify-between text-sm">
               <label className="inline-flex items-center gap-2 text-gray-700 cursor-pointer">
@@ -395,8 +397,8 @@ export default function VendorNotes() {
               </label>
               <div className="flex items-center gap-3">
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                <Button size="sm" onClick={onAddNote} disabled={saving || isHtmlEmpty(content)}>
-                  <Send className="w-4 h-4 mr-1" />
+                <Button size="sm" className="bg-pink-600 text-white" onClick={onAddNote} disabled={saving || isHtmlEmpty(content)}>
+                  <Send className="w-4 h-4 mr-1 bg-pink-600 text-white" />
                   Send
                 </Button>
               </div>

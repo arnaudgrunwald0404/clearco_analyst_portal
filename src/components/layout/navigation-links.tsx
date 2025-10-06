@@ -4,14 +4,17 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { mainNavigation, analystPortalItem, type NavigationItem } from './navigation-config'
+import { mainNavigation, adminNavigationItem, analystPortalItem, type NavigationItem } from './navigation-config'
 import { AnalystImpersonationModal } from '../modals/analyst-impersonation-modal'
 import { useAuth } from '@/contexts/AuthContext'
+import { useSettings } from '@/contexts/SettingsContext'
+import { isSuperAdmin } from '@/lib/auth-utils-client'
 
 export function NavigationLinks() {
   const pathname = usePathname()
   const router = useRouter()
-  const { signInAnalyst } = useAuth()
+  const { user, signInAnalyst } = useAuth()
+  const { settings } = useSettings()
   const [isImpersonationModalOpen, setIsImpersonationModalOpen] = useState(false)
 
   const handleAnalystPortalClick = (e: React.MouseEvent) => {
@@ -28,7 +31,7 @@ export function NavigationLinks() {
     const res = await signInAnalyst(analyst.email, password)
     if (res.success) {
       // Include analystId in URL so server components know the context
-      router.push(`/portal?analystId=${encodeURIComponent(analyst.id)}`)
+      router.push(`/analyst_portal/analyst_hub?analystId=${encodeURIComponent(analyst.id)}`)
     } else {
       alert(res.error || 'Failed to open portal as analyst')
     }
@@ -48,7 +51,7 @@ export function NavigationLinks() {
               ? 'px-4 py-2 ml-8' // Indented sub-item styling
               : 'px-4 py-3', // Regular item styling
             isActive
-              ? 'bg-blue-100 text-blue-700'
+              ? 'bg-pink-100 text-pink-700'
               : isSubItem 
               ? 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' // Lighter text for sub-item
               : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -72,28 +75,34 @@ export function NavigationLinks() {
           })}
         </ul>
 
-        {/* Separator */}
-        <div className="my-4">
-          <hr className="border-gray-200" />
-        </div>
+        {/* Separator - only show if there are items below */}
+        {isSuperAdmin(user) && (
+          <div className="my-4">
+            <hr className="border-gray-200" />
+          </div>
+        )}
 
-        {/* Analyst Portal (with impersonation) */}
-        <ul className="space-y-2">
-          <li>
-            <button
-              onClick={handleAnalystPortalClick}
-              className={cn(
-                'flex items-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors text-left',
-                pathname.startsWith('/portal')
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-              )}
-            >
-              <analystPortalItem.icon className="w-5 h-5 mr-3" />
-              {analystPortalItem.name}
-            </button>
-          </li>
-        </ul>
+        {/* Items under separator */}
+        {isSuperAdmin(user) && (
+          <ul className="space-y-2">
+            {/* Admin - only show for Super Admins */}
+            <li>
+              <Link
+                href={adminNavigationItem.href}
+                className={cn(
+                  'flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors',
+                  pathname?.startsWith('/admin')
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                )}
+              >
+                <adminNavigationItem.icon className="w-5 h-5 mr-3" />
+                {adminNavigationItem.name}
+              </Link>
+            </li>
+            {/* Analyst Portal removed from vendor navigation - only accessible via direct URL or admin impersonation */}
+          </ul>
+        )}
       </nav>
 
       {/* Analyst Impersonation Modal */}

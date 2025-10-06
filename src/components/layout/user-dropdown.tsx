@@ -84,7 +84,7 @@ export function UserDropdown({ isOpen, onToggle, onClose }: UserDropdownProps) {
       >
         <div className="flex items-center space-x-3">
           <div className="flex-shrink-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-pink-600 rounded-full flex items-center justify-center">
               <span className="text-sm font-medium text-white">
                 {getUserInitials()}
               </span>

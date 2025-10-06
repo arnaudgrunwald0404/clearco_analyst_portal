@@ -33,9 +33,17 @@ This document summarizes the main data model for the Analyst Portal, based on th
 - `relationshipHealth` (RelationshipHealth, enum) — e.g., "GOOD", "EXCELLENT"
 - `influence` (Influence, enum) — e.g., "VERY_HIGH", "MEDIUM"
 - `status` (Status, enum) — e.g., "ACTIVE", "INACTIVE"
+- `analyst_domain_id` (String, FK to AnalystDomain)
 - `createdAt` (DateTime) — e.g., "2024-07-23T12:00:00Z"
 - `updatedAt` (DateTime)
 - ... (other fields, see schema)
+
+### AnalystDomain
+- `id` (String, PK)
+- `name` (String) — e.g., "Gartner"
+- `protected_domain` (String, unique) — e.g., "gartner.com"
+- `created_at` (DateTime)
+- `updated_at` (DateTime)
 
 ### Newsletter
 - `id` (String, PK)
@@ -164,6 +172,8 @@ This document summarizes the main data model for the Analyst Portal, based on th
 ---
 
 ## Relationships
+- **AnalystDomain** has many **Analyst**
+- **Analyst** belongs to **AnalystDomain**
 - **Analyst** has many **BriefingAnalyst**, **NewsletterSubscription**, **SchedulingConversation**, etc.
 - **Briefing** has many **BriefingAnalyst** (many-to-many with Analyst)
 - **Newsletter** has many **NewsletterSubscription**

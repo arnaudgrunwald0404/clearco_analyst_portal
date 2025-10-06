@@ -410,7 +410,7 @@ export default function SendNewsletterModal({ isOpen, onClose, newsletterId, onS
                         type="button"
                         onClick={handleSend}
                         disabled={sending || loading || !connectionId || parsedRecipients.length === 0}
-                        className={`inline-flex items-center px-4 py-2 rounded-md text-white ${sending || loading || !connectionId || parsedRecipients.length === 0 ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
+                        className={`inline-flex items-center px-4 py-2 rounded-md text-white ${sending || loading || !connectionId || parsedRecipients.length === 0 ? 'bg-blue-400' : 'bg-pink-600 hover:bg-pink-700'}`}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         {sending ? 'Sending…' : 'Send'}

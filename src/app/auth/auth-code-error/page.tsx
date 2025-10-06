@@ -6,7 +6,7 @@ import { AlertTriangle, Shield } from 'lucide-react'
 
 export default function AuthCodeError() {
   const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+  const error = searchParams?.get('error')
   
   const getErrorContent = () => {
     switch (error) {
@@ -49,7 +49,7 @@ export default function AuthCodeError() {
           <div className="space-y-3">
             <Link
               href="/vendor_portal/login"
-              className="w-full inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="w-full inline-flex justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Try logging in again
             </Link>

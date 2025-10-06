@@ -57,7 +57,7 @@ export async function PATCH(
       .eq('id', authUser.id)
       .single()
 
-    if (!userProfile || (userProfile.role !== 'ADMIN' && userProfile.role !== 'EDITOR')) {
+    if (!userProfile || (userProfile.role !== 'SUPER_ADMIN' && userProfile.role !== 'VENDOR_ADMIN' && userProfile.role !== 'VENDOR_USER')) {
       return NextResponse.json({ success: false, error: 'Permission denied.' }, { status: 403 })
     }
 
@@ -133,7 +133,7 @@ export async function DELETE(
       .eq('id', authUser.id)
       .single()
 
-    if (!userProfile || (userProfile.role !== 'ADMIN' && userProfile.role !== 'EDITOR')) {
+    if (!userProfile || (userProfile.role !== 'SUPER_ADMIN' && userProfile.role !== 'VENDOR_ADMIN' && userProfile.role !== 'VENDOR_USER')) {
       return NextResponse.json({ success: false, error: 'Permission denied.' }, { status: 403 })
     }
 

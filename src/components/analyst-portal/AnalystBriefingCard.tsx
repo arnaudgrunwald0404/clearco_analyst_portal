@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import { Calendar, Video, FileText, FileSearch, MessageSquareText, AlertCircle } from 'lucide-react'
+import { Calendar, Video, FileText, FileSearch, MessageSquareText, AlertCircle, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AnalystBriefing } from '@/types/analyst-portal'
+import { BriefingRatingModal } from '@/components/ratings/BriefingRatingModal'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface AnalystBriefingCardProps {
   type: 'last' | 'next'
@@ -15,6 +17,39 @@ interface AnalystBriefingCardProps {
 
 export function AnalystBriefingCard({ type, briefing, className }: AnalystBriefingCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [hasMyRating, setHasMyRating] = useState<boolean>(false)
+  const [showModal, setShowModal] = useState(false)
+  const { user } = useAuth()
+
+  useEffect(() => {
+    let cancelled = false
+    async function checkMyRating() {
+      try {
+        if (!briefing?.id) return
+        let analystId: string | null = null
+        if (user?.email) {
+          const r = await fetch(`/api/analysts/by-email/${encodeURIComponent(user.email)}`)
+          if (r.ok) {
+            const j = await r.json()
+            analystId = j?.data?.id || null
+          }
+        }
+        const params = new URLSearchParams()
+        if (analystId) params.set('analystId', analystId)
+        const headers: Record<string, string> = {}
+        if (user?.email && analystId) {
+          headers['x-analyst-email'] = user.email
+          headers['x-analyst-id'] = analystId
+        }
+        const resp = await fetch(`/api/briefings/${encodeURIComponent(briefing.id)}/ratings?${params.toString()}`, { headers })
+        if (!resp.ok) return
+        const json = await resp.json().catch(() => null as any)
+        if (!cancelled) setHasMyRating((json?.data || []).length > 0)
+      } catch {}
+    }
+    checkMyRating()
+    return () => { cancelled = true }
+  }, [briefing?.id, user?.email])
 
   const formatDate = (date: string) => {
     try {
@@ -35,6 +70,20 @@ export function AnalystBriefingCard({ type, briefing, className }: AnalystBriefi
           
           {isExpanded && (
             <div className="space-y-4 mt-4 border-t pt-4">
+              {/* Rating action for last briefing */}
+              <div className="flex items-center justify-between">
+                {!hasMyRating ? (
+                  <Button variant="outline" onClick={() => setShowModal(true)} className="inline-flex items-center gap-2">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    Rate this briefing
+                  </Button>
+                ) : (
+                  <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1 inline-flex items-center gap-1">
+                    <Star className="w-3 h-3 text-green-600" />
+                    You rated this briefing
+                  </div>
+                )}
+              </div>
               {/* Recording */}
               {briefing.recordingUrl && (
                 <a
@@ -151,6 +200,10 @@ export function AnalystBriefingCard({ type, briefing, className }: AnalystBriefi
           >
             {isExpanded ? 'Show Less' : 'Show More'}
           </Button>
+          {/* Rating modal */}
+          {briefing?.id && (
+            <BriefingRatingModal isOpen={showModal} onClose={() => setShowModal(false)} briefingId={briefing.id} />
+          )}
         </>
       ) : (
         <p className="text-gray-500 italic">

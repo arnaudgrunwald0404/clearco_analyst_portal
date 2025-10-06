@@ -98,7 +98,7 @@ export default function ResearchSections({ analystId }: ResearchSectionsProps) {
         {type === 'recent' ? 'No Recent Publications Logged' : 'No Upcoming Research Logged'}
       </p>
       <a
-        href={`/portal/publications/add?type=${type === 'recent' ? 'published' : 'upcoming'}`}
+        href={`/analyst_portal/vendor_profile/publications/add?type=${type === 'recent' ? 'published' : 'upcoming'}`}
         className="inline-flex items-center gap-1 px-3 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
       >
         <Plus className="w-3 h-3" />

@@ -47,9 +47,15 @@ export async function POST(request: NextRequest) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
     
-    // Check if email exists in auth.users table
-    const { data: authUser, error: authUserError } = await (supabaseServiceRole.auth.admin as any).getUserByEmail(email.toLowerCase())
-    const isExistingAuthUser = !authUserError && !!authUser?.user
+// Check if email exists in auth.users table (scan first page)
+    let isExistingAuthUser = false
+    try {
+      const list = await supabaseServiceRole.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      const found = list?.data?.users?.find?.((u: any) => (u.email || '').toLowerCase() === email.toLowerCase())
+      isExistingAuthUser = !!found
+    } catch (e) {
+      console.warn(`[LOGIN ${reqId}] Could not list auth users:`, e)
+    }
     
     // Check if email exists in analysts table
     const { data: analyst, error: analystError } = await supabaseServiceRole
@@ -134,16 +140,8 @@ export async function POST(request: NextRequest) {
       return resp
     }
 
-    // Log magic link URL for development testing
-    if ((magicLinkData as any)?.user?.email_confirmation_token) {
-      const token = (magicLinkData as any)?.user?.email_confirmation_token
-      if (token) {
-        const magicLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || origin}/auth/callback?token=${token}&type=magiclink`
-        console.log(`🔗 [LOGIN ${reqId}] Magic link URL for ${email}:`)
-        console.log(magicLinkUrl)
-        console.log(`📧 [LOGIN ${reqId}] Email sent to: ${email}`)
-      }
-    }
+// Note: Supabase v2 no longer exposes an email_confirmation_token here in types; rely on email delivery.
+    console.log(`📧 [LOGIN ${reqId}] Magic link requested for: ${email}`)
 
     console.log(`[LOGIN ${reqId}] ✅ Magic link sent successfully to: ${email}`)
     const resp = NextResponse.json({
@@ -185,36 +183,24 @@ export async function POST(request: NextRequest) {
     console.log(`[LOGIN ${reqId}] ✅ Authentication successful for: ${authData.user.email}`)
 
     // Determine role based on validated authorization
-    let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
+    let role: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST' = 'VENDOR_USER'
     
     if (isRegisteredAnalyst) {
       // Registered analysts get ANALYST role
       role = 'ANALYST'
     } else if (isExistingAuthUser) {
-      // Existing auth users get ADMIN role by default
-      role = 'ADMIN'
+      // Existing auth users get VENDOR_ADMIN role by default
+      role = 'VENDOR_ADMIN'
     }
 
-    // Return user data without profile check
-    const userData = {
-      id: authData.user.id,
-      email: authData.user.email,
-      name: authData.user.user_metadata?.first_name || 
-            authData.user.user_metadata?.name || 
-            authData.user.email?.split('@')[0] || 'User',
-      role: role,
-      company: authData.user.user_metadata?.company || (isAuthorizedDomain ? 'ClearCompany' : 'Analyst') || null,
-      profileImageUrl: authData.user.user_metadata?.avatar_url || null,
-      createdAt: authData.user.created_at,
-      updatedAt: new Date().toISOString()
-    }
+   
 
     console.log(`[LOGIN ${reqId}] Returning user data:`, { id: userData.id, email: userData.email, role: userData.role })
 
     const resp = NextResponse.json({
       success: true,
       user: userData,
-      redirectTo: role === 'ANALYST' ? '/portal' : '/'
+      redirectTo: role === 'ANALYST' ? '/analyst_portal/analyst_hub' : '/'
     })
     resp.headers.set('X-Request-Id', reqId)
     return resp

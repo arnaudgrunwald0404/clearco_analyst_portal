@@ -681,7 +681,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
             >
               {loading && (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
@@ -714,7 +714,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
                     />
                     <label
                       htmlFor="file-upload"
-                      className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
+                      className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
                     >
                       <Upload className="w-4 h-4 mr-2" />
                       Choose File
@@ -824,7 +824,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
                         const mappedFields = Object.values(bulkData?.mapping || {})
                         return !mappedFields.includes('awardName') || !mappedFields.includes('publicationDate') || !mappedFields.includes('processStartDate') || !mappedFields.includes('contactInfo')
                       })()}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                     >
                       Preview Data
                     </button>
@@ -843,7 +843,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
 
                   <div className="max-h-60 overflow-y-auto border rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-pink-200 rounded-t-lg">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Award Name</th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Publication Date</th>
@@ -992,7 +992,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
                           setLoading(false)
                         }
                       }}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                       disabled={loading}
                     >
                       {loading ? 'Analyzing...' : 'Analyze'}
@@ -1011,7 +1011,7 @@ function AddAwardModal({ isOpen, onClose, onAwardAdded }: AddAwardModalProps) {
 
                   <div className="max-h-64 overflow-y-auto border rounded-lg">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-pink-200 rounded-t-lg">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Award Name</th>
                           <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Publication Date</th>

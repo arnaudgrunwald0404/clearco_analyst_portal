@@ -59,7 +59,7 @@ export const BouldersView: React.FC = () => {
         <p>Error loading Boulders: {error.message}</p>
         <button 
           onClick={() => refetch()} 
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700"
         >
           Try Again
         </button>
@@ -69,12 +69,9 @@ export const BouldersView: React.FC = () => {
 
   return (
     <div className="py-4">
-      <h2 className="text-2xl font-bold text-gray-900 mb-4">
-        Boulders - Significant Roadmap Items
-      </h2>
       
       <div className="text-sm text-gray-900 mb-4 hidden md:block">
-        This view shows the most significant roadmap items ("boulders") organized by quarters. 
+        This view shows the most significant roadmap items ("boulders") organized by quarter. 
         These are items of particular significance for customer delight and strategic direction.
       </div>
 
@@ -163,5 +160,12 @@ export const BouldersView: React.FC = () => {
     </div>
   )
 }
+
+
+
+
+
+
+
 
 

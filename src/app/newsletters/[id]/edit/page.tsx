@@ -485,7 +485,7 @@ export default function EditNewsletterPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Edit Newsletter: {title}</h1>
           </div>
-          <Button onClick={() => setSendModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={() => setSendModalOpen(true)} className="bg-pink-600 hover:bg-pink-700">
             <Send className="h-4 w-4 mr-2" /> Send via Gmail
         </Button>
         </div>

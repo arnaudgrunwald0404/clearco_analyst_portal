@@ -453,7 +453,7 @@ export default function CreateNewsletterPage() {
                   <div className="flex flex-col items-center">
                     <div className={`
                       w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all font-semibold text-lg
-                      ${isActive ? 'bg-blue-600 border-blue-600 text-white' : ''}
+                      ${isActive ? 'bg-pink-600 border-blue-600 text-white' : ''}
                       ${isCompleted ? 'bg-green-600 border-green-600 text-white' : ''}
                       ${!isActive && !isCompleted ? 'bg-white border-gray-300 text-gray-500' : ''}
                     `}>

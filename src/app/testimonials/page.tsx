@@ -310,7 +310,7 @@ export default function TestimonialsPage() {
               Manage and display analyst testimonials
             </p>
           </div>
-          <button onClick={() => setShowForm(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button onClick={() => setShowForm(true)} className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700">
             <Plus className="w-4 h-4 mr-2" />
             Add Testimonial
           </button>
@@ -332,7 +332,7 @@ export default function TestimonialsPage() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
           <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -358,7 +358,7 @@ export default function TestimonialsPage() {
                   id="analyst"
                   value={formData.analystId}
                   onChange={(e) => setFormData({ ...formData, analystId: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
                   required
                 >
                   <option value="">Select an analyst...</option>
@@ -376,7 +376,7 @@ export default function TestimonialsPage() {
                   id="quote"
                   value={formData.quote}
                   onChange={(e) => setFormData({ ...formData, quote: e.target.value })}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
                   rows={4}
                   placeholder="Enter the testimonial quote..."
                   required

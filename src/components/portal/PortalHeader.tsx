@@ -148,7 +148,7 @@ export function PortalHeader({ selectedVendorName = 'ClearCompany' }: PortalHead
             
             {/* MyHub tab positioned to the right of cupcake logo */}
             <button
-              onClick={() => router.push('/analyst_hub')}
+              onClick={() => router.push('/analyst_portal/analyst_hub')}
               className="px-4 py-2 bg-white/90 backdrop-blur border border-white/60 rounded-lg shadow-sm hover:bg-white hover:shadow-md transition-all duration-200 text-gray-800 font-medium text-sm"
               title="Go to Analyst Hub"
             >
@@ -172,7 +172,7 @@ export function PortalHeader({ selectedVendorName = 'ClearCompany' }: PortalHead
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-pink-600 text-white flex items-center justify-center text-sm font-bold">
                   {analystImage ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={analystImage} alt={analystName || 'Analyst'} className="w-full h-full object-cover" />
@@ -198,7 +198,7 @@ export function PortalHeader({ selectedVendorName = 'ClearCompany' }: PortalHead
                     <button
                       onClick={() => {
                         setMenuOpen(false)
-                        router.push('/portal/settings')
+                        router.push('/analyst_portal/settings')
                       }}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >

@@ -140,3 +140,58 @@
 .animate-spin-slow-to-medium {
   animation: spin-slow-to-medium 3s infinite;
 }
+
+/* Rich Note Editor toolbar customizations */
+.rte-notes-group {
+  border: 1px solid #fbcfe8; /* pink-200 */
+  background: #fff;
+  border-radius: 0.5rem; /* matches rounded-lg */
+}
+.rte-notes-group .rte-title input {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  border-radius: 0 !important;
+}
+.rte-notes .mantine-RichTextEditor-root {
+  /* Remove internal border; outer group draws the outline */
+  border: 0 !important;
+}
+.rte-notes .mantine-RichTextEditor-toolbar {
+  border-bottom: 0 !important;
+  background: linear-gradient(180deg, #fce7f3 0%, rgba(252, 231, 243, 0) 100%);
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.rte-notes .mantine-RichTextEditor-content {
+  /* Remove any internal borders to keep a single continuous outline */
+  border: 0 !important;
+  /* Make writing area taller */
+  min-height: 280px;
+}
+.rte-notes .mantine-RichTextEditor-content .ProseMirror {
+  min-height: 280px;
+}
+
+.rte-notes .mantine-RichTextEditor-content:focus-within {
+  /* Emphasize the root border color on focus without inner outlines */
+  box-shadow: inset 0 0 0 1px #f9a8d4;
+}
+.rte-notes .mantine-RichTextEditor-controlsGroup {
+  column-gap: 2px;
+  row-gap: 2px;
+}
+.rte-notes .mantine-RichTextEditor-control {
+  background: #ffffff;
+  border: 0;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+.rte-notes .mantine-RichTextEditor-control:hover {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+}
+.rte-notes .mantine-RichTextEditor-control:focus-visible {
+  outline: none;
+  box-shadow: none;
+}

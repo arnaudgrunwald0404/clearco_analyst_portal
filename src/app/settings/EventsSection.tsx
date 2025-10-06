@@ -399,7 +399,7 @@ export default function EventsSection() {
                       <div className="text-sm text-gray-600 mb-1">Sample rows</div>
                       <div className="overflow-auto">
                         <table className="min-w-full text-xs border">
-                          <thead className="bg-gray-50">
+                          <thead className="bg-pink-200 rounded-t-lg">
                             <tr>
                               {p.headers.map((h: string, i: number) => (
                                 <th key={i} className="px-2 py-1 border text-left">[{i}] {h}</th>
@@ -629,7 +629,7 @@ export default function EventsSection() {
       <div className="flex justify-end mt-6">
         <Button 
           onClick={() => window.location.href = '/events'}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
+          className="bg-pink-600 hover:bg-pink-700 text-white"
         >
           Go to Events Page
         </Button>

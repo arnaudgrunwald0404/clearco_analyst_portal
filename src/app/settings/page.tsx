@@ -16,6 +16,9 @@ import CompanySection from './CompanySection'
 import { FloatingHelpText } from '@/components/ui/floating-help-text'
 import { useHelpText } from '@/hooks/useHelpText'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
+import { useAuth } from '@/contexts/AuthContext'
+import UsersSection from './UsersSection'
+import { useRouter } from 'next/navigation'
 
 interface CalendarConnection {
   id: string
@@ -37,12 +40,9 @@ interface SyncProgress {
   completed?: boolean
 }
 
-import { useAuth } from '@/contexts/AuthContext'
-import AnalystPortalSection from './AnalystPortalSection'
-import AdminUsersSection from './AdminUsersSection'
-
 function SettingsPageContent() {
   const { user, refreshUser } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [activeSection, setActiveSection] = useState('company')
   const [calendarConnections, setCalendarConnections] = useState<CalendarConnection[]>([])
@@ -56,6 +56,27 @@ function SettingsPageContent() {
   const [newConnectionTitle, setNewConnectionTitle] = useState('')
   const { currentHelp, targetElement, showHelp, hideHelp } = useHelpText()
 
+  // SECURITY: Block analysts from accessing vendor portal settings
+  useEffect(() => {
+    if (user && user.role === 'ANALYST') {
+      console.warn('🚨 SECURITY: Analyst attempted to access vendor portal settings. Redirecting to analyst portal.')
+      router.replace('/analyst_portal/settings')
+      return
+    }
+  }, [user, router])
+
+  // Show loading/redirecting state for analysts
+  if (user && user.role === 'ANALYST') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to Analyst Portal...</p>
+        </div>
+      </div>
+    )
+  }
+
   // Auto-dismiss notifications after a short delay
   useEffect(() => {
     if (!notification) return
@@ -67,9 +88,9 @@ function SettingsPageContent() {
     fetchCalendarConnections()
     
     // Handle URL parameters for success/error messages and section/tab navigation
-    const success = searchParams.get('success')
-    const error = searchParams.get('error')
-    const section = searchParams.get('section')
+    const success = searchParams?.get('success')
+    const error = searchParams?.get('error')
+    const section = searchParams?.get('section')
     
     // Set active section and tab based on URL parameters
     if (section) {
@@ -78,10 +99,10 @@ function SettingsPageContent() {
     
     if (success === 'calendar_connected') {
       // Get connection details from URL parameters for naming
-      const connectionId = searchParams.get('connectionId')
-      const email = searchParams.get('email')
-      const calendarName = searchParams.get('calendarName')
-      const nonce = searchParams.get('nonce')
+      const connectionId = searchParams?.get('connectionId')
+      const email = searchParams?.get('email')
+      const calendarName = searchParams?.get('calendarName')
+      const nonce = searchParams?.get('nonce')
 
       try {
         const stored = sessionStorage.getItem('oauthNonce')
@@ -591,7 +612,7 @@ function SettingsPageContent() {
   const menuSections = [
     // System Settings Group
     { id: 'company', label: 'Company', icon: Settings },
-    { id: 'admin-users', label: 'Admin Users', icon: Users },
+    { id: 'admin-users', label: 'Users', icon: Users },
     { id: 'calendar', label: 'Calendar Sync', icon: Calendar },
     { id: 'events', label: 'Event Sources', icon: LinkIcon },
     // Separator
@@ -601,8 +622,6 @@ function SettingsPageContent() {
     { id: 'topics', label: 'Analyst Topics', icon: Tags },
     // Separator
     { id: 'separator-2', label: '---', icon: null, isSeparator: true },
-    // Portal Configuration Group
-    { id: 'analyst-portal', label: 'Analyst Portal', icon: Users },
   ]
 
   return (
@@ -629,7 +648,7 @@ function SettingsPageContent() {
 
       <div className="flex gap-12">
         <SidebarNav activeSection={activeSection} setActiveSection={setActiveSection} menuSections={menuSections} />
-        <div className="w-6/12">
+        <div className="w-6/10">
           {activeSection === 'company' && <CompanySection showHelp={showHelp} hideHelp={hideHelp} />}
           {activeSection === 'topics' && <TopicsSection />}
           {activeSection === 'calendar' && (
@@ -646,10 +665,7 @@ function SettingsPageContent() {
           )}
           {activeSection === 'influence-tiers' && <InfluenceTiersSection />}
           {activeSection === 'events' && <EventsSection />}
-          {activeSection === 'analyst-portal' && (
-            <AnalystPortalSection initialTab={'access'} onlyAccess />
-          )}
-          {activeSection === 'admin-users' && <AdminUsersSection />}
+          {activeSection === 'admin-users' && <UsersSection />}
         </div>
       </div>
 

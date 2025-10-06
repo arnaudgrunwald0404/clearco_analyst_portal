@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
+import { createClient } from '@/lib/supabase/server'
 
 export type VendorContext = {
   id: string
@@ -10,7 +11,7 @@ export type VendorContext = {
   companyName?: string
   logoUrl?: string
   industryName?: string
-  from: 'header' | 'path' | 'subdomain' | 'lookup' | 'unknown'
+  from: 'header' | 'path' | 'subdomain' | 'lookup' | 'super_admin_bypass' | 'unknown'
 }
 
 function inferSlugFromUrl(req: NextRequest | Request): string | null {
@@ -133,6 +134,79 @@ export async function getVendorContext(req: NextRequest | Request): Promise<Vend
 export async function requireVendorScope(req: NextRequest | Request): Promise<VendorContext | NextResponse> {
   const ctx = await getVendorContext(req)
   if (ctx && ctx.id) return ctx
+
+  // Try to detect vendor from authenticated user's email domain
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (user?.email) {
+      const emailDomain = user.email.split('@')[1]?.toLowerCase()
+      console.log(`🔍 Attempting to detect vendor from email domain: ${emailDomain}`)
+      
+      if (emailDomain) {
+        const serviceClient = createServiceClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        
+        // Look up vendor by protected domain
+        const { data: vendor } = await serviceClient
+          .from('vendor_domains')
+          .select('*')
+          .eq('protected_domain', emailDomain)
+          .single()
+        
+        if (vendor) {
+          console.log(`✅ Found vendor context from email domain: ${vendor.company_name}`)
+          return {
+            id: vendor.id,
+            protectedDomain: vendor.protected_domain,
+            companyName: vendor.company_name,
+            logoUrl: vendor.logo_url,
+            industryName: vendor.industry_name,
+            from: 'email_domain_detection'
+          }
+        }
+      }
+      
+      // Check if user is SUPER_ADMIN and allow bypass
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+      
+      if (profile?.role === 'SUPER_ADMIN') {
+        console.log('🔑 SUPER_ADMIN bypass activated for vendor scope')
+        
+        // Return a default vendor context for SUPER_ADMIN
+        const serviceClient = createServiceClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+        
+        const { data: defaultVendor } = await serviceClient
+          .from('vendor_domains')
+          .select('*')
+          .limit(1)
+          .single()
+        
+        if (defaultVendor) {
+          return {
+            id: defaultVendor.id,
+            protectedDomain: defaultVendor.protected_domain,
+            companyName: defaultVendor.company_name,
+            logoUrl: defaultVendor.logo_url,
+            industryName: defaultVendor.industry_name,
+            from: 'super_admin_bypass'
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to detect vendor from user email or check SUPER_ADMIN bypass:', e)
+  }
 
   const hint = ctx?.slug
     ? `Unrecognized vendor slug: ${ctx.slug}. Ensure the vendor exists and is correctly configured.`

@@ -158,7 +158,7 @@ function BulkActionModal({ isOpen, onClose, selectedAnalysts, onAction }: BulkAc
             <button
               onClick={handleAction}
               disabled={!action || isProcessing}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50"
             >
               {isProcessing ? 'Processing...' : 'Apply Action'}
             </button>
@@ -637,7 +637,7 @@ export default function BriefingsDuePage() {
           aria-haspopup="listbox"
           aria-expanded={open}
           onClick={() => setOpen(o => !o)}
-          className="w-full h-9 flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full h-9 flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-pink-500"
         >
           <div className="flex gap-1 flex-wrap items-center text-gray-700">
             {display.length === 0 ? (
@@ -730,7 +730,7 @@ export default function BriefingsDuePage() {
           {selectedAnalysts.length > 0 && (
             <button
               onClick={() => setShowBulkModal(true)}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
             >
               <CheckCircle2 className="w-4 h-4 mr-2" />
               Actions ({selectedAnalysts.length})
@@ -748,7 +748,7 @@ export default function BriefingsDuePage() {
             placeholder="Search analysts..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white bg-white"
           />
         </div>
         <div className="flex items-center gap-2 min-w-[260px]">

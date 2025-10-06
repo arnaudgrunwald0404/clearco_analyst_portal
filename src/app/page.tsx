@@ -200,12 +200,7 @@ function DashboardContent() {
     return { total: 0, completed: 0 }
   }
 
-  // Redirect unauthenticated users to vendor portal login after auth resolves
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/vendor_portal/login')
-    }
-  }, [authLoading, user, router])
+  // Authentication is now handled by AuthGuard component
 
   // Track ongoing request controller/timeout across renders so we can cancel safely
   const controllerRef = useRef<AbortController | null>(null)
@@ -417,8 +412,8 @@ function DashboardContent() {
     }
 
     // Check for URL parameters for newsletters
-    const success = searchParams.get('success')
-    const error = searchParams.get('error')
+    const success = searchParams?.get('success')
+    const error = searchParams?.get('error')
     
     if (success === 'google_auth') {
       console.log('✅ Google authentication successful!')
@@ -619,7 +614,7 @@ function DashboardContent() {
         {/* Band 1: Analysts */}
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 pt-4 flex items-center">
-            <Users className="h-5 w-5 text-blue-600 mr-2" />
+
             Analysts
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
@@ -630,19 +625,18 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center mb-0">
                   <div className="flex-shrink-0">
-                    <Users className="h-6 w-6 text-blue-400" />
+                    <Users className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <div className="flex items-start justify-between">
                       <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
+                        <dt className="text-sm font-medium text-pink-600 truncate">
                           Total Analysts
                         </dt>
 <dd className="text-2xl font-semibold text-gray-900">
                           <NumberStat value={metrics?.totalAnalysts} isLoading={!metrics} />
                         </dd>
                       </dl>
-                      <TotalAnalystsNewlyAdded newAnalysts={metrics?.newAnalysts || []} router={router} />
                     </div>
                   </div>
                 </div>
@@ -658,7 +652,7 @@ function DashboardContent() {
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 pb-2 truncate">
+                      <dt className="text-sm font-medium text-pink-600 pb-2 truncate">
                         Trailing 12m coverage by influence
                       </dt>
                       <dd>
@@ -702,7 +696,7 @@ function DashboardContent() {
         {/* Band 2: Briefings */}
         <div className="mb-0">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center ">
-            <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+      
             Briefings
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -711,11 +705,11 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-purple-400" />
+                    <Calendar className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
+                      <dt className="text-sm font-medium text-pink-600 truncate">
                         Briefings (YTD)
                       </dt>
                         <dd className="text-2xl font-semibold text-gray-900">
@@ -735,12 +729,12 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <MessageSquare className="h-6 w-6 text-green-400" />
+                    <MessageSquare className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Follow Ups Completed
+                      <dt className="text-sm font-medium text-pink-600 truncate">
+                        Briefing Follow Ups Completed
                       </dt>
 <dd className="text-2xl font-semibold text-gray-900">
                         {!metrics || !metrics.followUpsCount
@@ -759,12 +753,12 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Mail className="h-6 w-6 text-indigo-400" />
+                    <Mail className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Newsletters (YTD)
+                      <dt className="text-sm font-medium text-pink-600 truncate">
+                        Newsletters Sent (YTD)
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
                         {metrics?.newslettersYTD || 0}
@@ -780,11 +774,11 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Calendar className="h-6 w-6 text-blue-400" />
+                    <Calendar className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
+                      <dt className="text-sm font-medium text-pink-600 truncate">
                         Briefings Scheduled
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
@@ -804,12 +798,12 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <Clock className="h-6 w-6 text-orange-400" />
+                    <Clock className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <div className="flex items-start justify-between">
                       <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate flex items-center gap-2">
+                        <dt className="text-sm font-medium text-pink-600 truncate flex items-center gap-2">
                           Briefings Due
                           
                           
@@ -821,7 +815,7 @@ function DashboardContent() {
                         </dd>
                       </dl>
                       <div className="text-right">
-                        <div className="text-xs text-gray-400">Very High / High</div>
+                        <div className="text-xs text-pink-600">Very High / High</div>
                         <div className="text-lg font-semibold text-gray-900 mt-1">
                           {metrics?.briefingsDueDetailed
                             ? (metrics.briefingsDueDetailed.isLoading
@@ -842,12 +836,12 @@ function DashboardContent() {
               <CardContent className="p-5">
                 <div className="flex items-center">
                   <div className="flex-shrink-0">
-                    <BookOpen className="h-6 w-6 text-purple-400" />
+                    <BookOpen className="h-6 w-6 text-pink-600" />
                   </div>
                   <div className="ml-5 w-0 flex-1">
                     <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">
-                        Publications Tracked
+                      <dt className="text-sm font-medium text-pink-600 truncate">
+                        Analyst Publications Tracked
                       </dt>
                       <dd className="text-2xl font-semibold text-gray-900">
                         {metrics?.upcomingPublications || 0}
@@ -884,13 +878,60 @@ function LoadingDashboard() {
   )
 }
 
-// Main component with Suspense boundary
+// Main component with Suspense boundary and auth guard
 export default function Dashboard() {
   return (
     <Suspense fallback={<LoadingDashboard />}>
-      <DashboardContent />
+      <AuthGuard>
+        <DashboardContent />
+      </AuthGuard>
     </Suspense>
   )
+}
+
+// Authentication guard component
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/vendor_portal/login')
+      return
+    }
+    
+    // SECURITY: Redirect analysts to their portal
+    if (user && user.role === 'ANALYST') {
+      console.warn('🚨 SECURITY: Analyst attempted to access vendor dashboard. Redirecting to analyst portal.')
+      router.replace('/analyst_portal/analyst_hub')
+      return
+    }
+  }, [user, loading, router])
+
+  // Show loading while checking auth
+  if (loading) {
+    return <LoadingDashboard />
+  }
+
+  // Show loading for analysts being redirected
+  if (user && user.role === 'ANALYST') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to Analyst Portal...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show nothing while redirecting
+  if (!user) {
+    return null
+  }
+
+  // Render protected content
+  return <>{children}</>
 }
 
 // CoverageSparkline Component
@@ -947,76 +988,8 @@ function CoverageSparkline() {
   )
 }
 
-// TotalAnalystsNewlyAdded Component  
-function TotalAnalystsNewlyAdded({ newAnalysts, router }: { newAnalysts: NewAnalyst[]; router: any }) {
-  
-  const handleClick = () => {
-    // Navigate to analysts page with filter for recently added
-    router.push('/analysts?filter=recent')
-  }
-
-  if (newAnalysts.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="text-right">
-      <button
-        onClick={handleClick}
-        className="text-right transition-colors cursor-pointer hover:opacity-80"
-        title="View analysts added in the past 30 days"
-      >
-        <div className="text-xs text-gray-400">
-          Newly Added (30 days)
-        </div>
-        <div className="text-lg font-semibold text-gray-900 mt-1">
-          {newAnalysts.length}
-        </div>
-      </button>
-    </div>
-  )
-}
 
 
-// NewAnalystsWidget Component
-function NewAnalystsWidget({ newAnalysts }: { newAnalysts: NewAnalyst[] }) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
-  // Create tooltip content
-  const tooltipContent = newAnalysts.length === 0 
-    ? "No new analysts added in the last 90 days"
-    : `Recent additions (last 90 days):\n${newAnalysts.slice(0, 8).map(analyst => 
-        `${analyst.firstName} ${analyst.lastName}${analyst.company ? ` • ${analyst.company}` : ''} (${formatDate(analyst.createdAt)})`
-      ).join('\n')}${newAnalysts.length > 8 ? `\n+${newAnalysts.length - 8} more` : ''}`
-
-  return (
-    <div 
-      className="cursor-help hover:shadow-md transition-shadow"
-      title={tooltipContent}
-      tabIndex={0}
-      role="button"
-      aria-label="Show newly added analysts"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <div className="flex-shrink-0">
-            <UserCheck className="h-6 w-6 text-green-400" />
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-gray-500">Newly Added Analysts</h3>
-            <p className="text-2xl font-semibold text-gray-900">{newAnalysts.length}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ContentItemsWidget Component
 function ContentItemsWidget({ contentItems, title = "Content Items Added" }: { contentItems: ContentItem[], title?: string }) {

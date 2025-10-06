@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireVendorScope } from '@/lib/vendor-context'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
     console.log('🏆 [Awards API] Fetching awards...')
     
     const supabase = await createClient()
-    const ctxOrResp = await requireVendorScope(request)
-    if (ctxOrResp instanceof NextResponse) return ctxOrResp
-    const vendorDomainId = ctxOrResp.id
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const { data: rows, error } = await supabase
       .from('awards')
@@ -90,9 +91,10 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = await createClient()
-    const ctxOrResp = await requireVendorScope(request)
-    if (ctxOrResp instanceof NextResponse) return ctxOrResp
-    const vendorDomainId = ctxOrResp.id
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     // Create the award
     const awardData = {

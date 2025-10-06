@@ -13,19 +13,19 @@ interface RichNoteEditorProps {
   onChange: (html: string) => void
   placeholder?: string
   className?: string
+  minHeight?: number
+  maxHeight?: number
 }
 
 export default function RichNoteEditor({ value, onChange, placeholder = 'Write a note...', className }: RichNoteEditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({
-        bulletList: true,
-        orderedList: true,
-      }),
+      StarterKit.configure({}),
       Underline,
       Link.configure({ openOnClick: true, autolink: true, protocols: ['http', 'https', 'mailto'] }),
     ],
     content: value || '',
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
       onChange(html)
@@ -42,12 +42,12 @@ export default function RichNoteEditor({ value, onChange, placeholder = 'Write a
     if (!editor) return
     const current = editor.getHTML()
     if (value !== current) {
-      editor.commands.setContent(value || '', false)
+      editor.commands.setContent(value || '', { emitUpdate: false })
     }
   }, [value, editor])
 
   return (
-    <div className={className}>
+    <div className={(className ? className + ' ' : '') + 'rte-notes'}>
       <MantineRTE editor={editor}>
         <MantineRTE.Toolbar sticky stickyOffset={0}>
           <MantineRTE.ControlsGroup>
@@ -67,7 +67,7 @@ export default function RichNoteEditor({ value, onChange, placeholder = 'Write a
         <MantineRTE.Content>
           <EditorContent editor={editor} />
           {!value && (
-            <div className="pointer-events-none text-gray-400 text-sm mt-2">{placeholder}</div>
+            <div className="pointer-events-none text-gray-600 text-sm mt-2 p-4 ">{placeholder}</div>
           )}
         </MantineRTE.Content>
       </MantineRTE>

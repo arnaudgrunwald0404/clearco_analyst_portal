@@ -14,7 +14,6 @@ interface AnalystProfile {
   email?: string | null
   company?: string | null
   title?: string | null
-  phone?: string | null
   profileImageUrl?: string | null
   linkedinUrl?: string | null
   twitterHandle?: string | null
@@ -58,9 +57,8 @@ export default function ProfileSummary() {
               firstName: user?.name?.split(' ')[0] || 'Admin',
               lastName: user?.name?.split(' ').slice(1).join(' ') || 'User',
               email: user?.email || '',
-              company: user?.company || 'ClearCompany',
+              company: user?.company,
               title: user?.role || 'Administrator',
-              phone: null,
               profileImageUrl: user?.profileImageUrl || null,
               linkedinUrl: null,
               twitterHandle: null,
@@ -79,7 +77,6 @@ export default function ProfileSummary() {
             email: d.email || user.email,
             company: d.company,
             title: d.title,
-            phone: d.phone,
             profileImageUrl: d.profileImageUrl,
             linkedinUrl: d.linkedinUrl || d.linkedIn,
             twitterHandle: d.twitterHandle || d.twitter,
@@ -143,7 +140,7 @@ return (
               className="w-16 h-16 rounded-full object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
+            <div className="w-16 h-16 rounded-full bg-pink-600 text-white flex items-center justify-center font-semibold">
               {initials}
             </div>
           )}
@@ -170,7 +167,7 @@ return (
           </div>
         ) : (
           <button
-            onClick={() => router.push('/portal/profile/edit')}
+            onClick={() => router.push('/analyst_portal/vendor_profile/profile/edit')}
             className="text-blue-600 hover:text-blue-800 hover:underline text-sm"
           >
             Add email address
@@ -183,7 +180,7 @@ return (
             <a className="hover:text-blue-600 whitespace-nowrap overflow-hidden text-ellipsis" href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer">LinkedIn</a>
           ) : (
             <button
-              onClick={() => router.push('/portal/profile/edit')}
+              onClick={() => router.push('/analyst_portal/vendor_profile/profile/edit')}
               className="text-blue-600 hover:text-blue-800 hover:underline text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
               title="Add LinkedIn profile"
             >
@@ -198,7 +195,7 @@ return (
             <a className="hover:text-blue-600 whitespace-nowrap overflow-hidden text-ellipsis" href={linkToX(profile.twitterHandle) || '#'} target="_blank" rel="noopener noreferrer">{profile.twitterHandle}</a>
           ) : (
             <button
-              onClick={() => router.push('/portal/profile/edit')}
+              onClick={() => router.push('/analyst_portal/vendor_profile/profile/edit')}
               className="text-blue-600 hover:text-blue-800 hover:underline text-sm whitespace-nowrap overflow-hidden text-ellipsis max-w-full"
               title="Add X handle"
             >

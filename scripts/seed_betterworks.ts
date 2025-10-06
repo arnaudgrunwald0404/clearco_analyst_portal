@@ -57,7 +57,7 @@ async function seedVendorAdmin() {
     id: 'bw-admin-1',
     email: 'alex.morgan@betterworks.com',
     name: 'Alex Morgan',
-    role: 'ADMIN',
+    role: 'VENDOR_ADMIN',
     domain: 'betterworks.com',
     updated_at: new Date().toISOString(),
   } as any

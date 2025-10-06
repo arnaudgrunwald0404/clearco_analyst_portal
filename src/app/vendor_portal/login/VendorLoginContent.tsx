@@ -14,6 +14,7 @@ export default function VendorLoginContent() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [email, setEmail] = useState('')
+  const [hasRedirected, setHasRedirected] = useState(false)
   const gsiContainerRef = useRef<HTMLDivElement | null>(null)
 
   const router = useRouter()
@@ -21,17 +22,28 @@ export default function VendorLoginContent() {
   const supabase = createClient()
 
   useEffect(() => {
-    console.log('🔍 Auth page - User state:', { user, loading })
+    console.log('🔍 Auth page - User state:', { user, loading, hasRedirected })
     
-    // Check if user is already logged in and redirect
-    if (!loading && user) {
-      const redirectTo = user.role === 'ANALYST' ? '/portal' : '/'
+    // Check if user is already logged in and redirect (only once)
+    if (!loading && user && !hasRedirected) {
+      const redirectTo = user.role === 'ANALYST' ? '/analyst_portal/analyst_hub' : '/'
       console.log('🔄 User is logged in, redirecting to:', redirectTo)
-      router.push(redirectTo)
+      console.log('🔄 User role:', user.role)
+      
+      setHasRedirected(true) // Prevent multiple redirects
+      
+      // Use replace instead of push to avoid back button issues
+      router.replace(redirectTo)
+      
+      // Fallback redirect after 3 seconds in case router.replace fails
+      setTimeout(() => {
+        console.log('🔄 Fallback redirect triggered')
+        window.location.href = redirectTo
+      }, 3000)
     } else if (!loading && !user) {
       console.log('✅ User is not logged in, showing auth page')
     }
-  }, [user, loading, router])
+  }, [user, loading, router, hasRedirected])
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true)
@@ -188,9 +200,16 @@ export default function VendorLoginContent() {
     )
   }
 
-  // Don't render if user is already logged in (prevents flash)
+  // Show loading state if user is already logged in (prevents white screen)
   if (user) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center">
+          <SpinningCupcake size={48} />
+          <p className="text-gray-600 mt-4">Redirecting...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -201,7 +220,7 @@ export default function VendorLoginContent() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
           {/* Logo and Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-4">
             <div className="mx-auto w-50 h-50 mb-2 relative">
               <Image
                 src="/cupcake_logo.png"
@@ -228,10 +247,10 @@ export default function VendorLoginContent() {
             </div>
           )}
           {success && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className=" p-4 bg-green-50 border-2 border-green-700 rounded-lg">
               <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                <p className="text-green-700 text-sm">{success}</p>
+                <CheckCircle className="h-5 w-5 text-green-700 mr-2" />
+                <p className="text-green-700 text-medium">{success}</p>
               </div>
             </div>
           )}
@@ -245,21 +264,21 @@ export default function VendorLoginContent() {
           <Button
             type="button"
             variant="outline"
-            className="w-full mb-6 h-14 text-base font-medium border-2 hover:bg-gray-50 transition-all duration-200"
+            className="w-full mb-6 h-14 text-gray-700 font-medium bg-pink-200 border-1 border-pink-400 hover:bg-pink-200  hover:shadow-lg hover:text-gray-900 transition-all duration-200"
             onClick={handleGoogleSignIn}
             disabled={isLoading}
           >
             <Chrome className="mr-3 h-6 w-6" />
-            Continue with Google (fallback)
+            Sign in with Google
           </Button>
 
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-pink-200" />
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500 font-medium">or</span>
+              <span className="px-4 bg-white text-pink-600 font-medium">OR</span>
             </div>
           </div>
 
@@ -289,7 +308,7 @@ export default function VendorLoginContent() {
 
             <Button
               type="submit"
-              className="w-full h-14 text-base font-medium bg-blue-600 hover:bg-blue-700 transition-all duration-200"
+              className="w-full h-14 text-white font-bold bg-pink-600 hover:bg-pink-700 transition-all duration-200"
               disabled={isLoading || !email.trim()}
               data-testid="magic-link-button"
             >
@@ -305,32 +324,24 @@ export default function VendorLoginContent() {
           </form>
 
           {/* Info Text */}
-          <div className="mt-6 text-center">
+          <div className="my-4 text-center">
             <p className="text-sm text-gray-500">
-              We'll send you a secure fairy link to sign in without a password
+              We'll send you a secure link to sign in without a password
             </p>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 space-y-4">
-          <p className="text-sm text-gray-500">
-            Need help? Contact your administrator
-          </p>
+          <div className="text-center border-t border-pink-200">
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-2 text-sm">
+  
+            <span className="text-gray-600">Are you an industry analyst?</span>
           
-          {/* Analyst Login Link */}
-          <div className="pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600 mb-2">
-              Are you an external analyst?
-            </p>
             <a 
               href="/analyst_portal/login" 
-              className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
-            >
-              I am an analyst
+              className="inline-flex items-center font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
+            >Go to analyst portal
               <ArrowRight className="ml-1 h-4 w-4" />
             </a>
           </div>
+        </div>
         </div>
       </div>
     </div>

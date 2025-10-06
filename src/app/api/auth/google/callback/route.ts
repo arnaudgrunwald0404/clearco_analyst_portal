@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
       .eq('id', user?.id)
       .single()
 
-    const redirectPath = roleData?.role === 'ANALYST' ? '/portal' : '/'
+    const redirectPath = roleData?.role === 'ANALYST' ? '/analyst_portal/analyst_hub' : '/'
     
     console.log('✅ [GOOGLE OAUTH] Authentication successful')
     console.log('🔄 [GOOGLE OAUTH] Redirecting to:', redirectPath)

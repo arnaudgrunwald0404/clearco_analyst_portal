@@ -38,7 +38,7 @@ async function setupDemoUsers() {
         email: 'admin@clearcompany.com',
         password: 'password',
         profile: {
-          role: 'ADMIN',
+          role: 'VENDOR_ADMIN',
           first_name: 'Admin',
           last_name: 'User',
           company: 'ClearCompany'

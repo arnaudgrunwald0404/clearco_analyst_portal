@@ -23,7 +23,8 @@ import {
   Download,
   Bot,
   Settings,
-  CheckSquare
+  CheckSquare,
+  Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import CalendarSyncOptionsModal from '@/components/modals/calendar-sync-options-modal'
@@ -271,7 +272,7 @@ export default function PortalBriefingsPage() {
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Sync Calendar
               </button>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                 <Plus className="w-4 h-4 mr-2" />
                 Schedule Briefing
               </button>
@@ -285,7 +286,7 @@ export default function PortalBriefingsPage() {
               <input
                 type="text"
                 placeholder="Search briefings..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white bg-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -294,7 +295,7 @@ export default function PortalBriefingsPage() {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-gray-400" />
               <select
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
               >
@@ -417,6 +418,23 @@ function BriefingCard({
 }) {
   const { date, time } = formatDateTime(briefing.scheduledAt)
 
+  // Vendor rating badge loader (show only if ratings exist)
+  const [rating, setRating] = useState<{ avg: number | null, count: number }>({ avg: null, count: 0 })
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const r = await fetch(`/api/briefings/${encodeURIComponent(briefing.id)}/ratings`)
+        if (!r.ok) return
+        const j = await r.json().catch(() => null as any)
+        if (!cancelled && j?.success && j?.stats) {
+          setRating({ avg: j.stats.averageOverall ?? null, count: j.stats.count || 0 })
+        }
+      } catch {}
+    })()
+    return () => { cancelled = true }
+  }, [briefing.id])
+
   // Calculate follow-up status
   const getFollowUpState = (followUpId: string) => {
     if (typeof window === 'undefined') return { isCompleted: false }
@@ -513,6 +531,13 @@ function BriefingCard({
         </div>
         
         <div className="flex flex-col items-end space-y-2">
+          {/* Rating badge (only if exists) */}
+          {rating.count > 0 && (
+            <div className="flex items-center text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-1 rounded">
+              <Star className="w-3 h-3 mr-1 text-yellow-600" />
+              <span>{rating.avg?.toFixed(1)} / 5 ({rating.count})</span>
+            </div>
+          )}
           <span className={cn(
             'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
             statusColors[briefing.status]

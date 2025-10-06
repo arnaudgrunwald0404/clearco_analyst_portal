@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 import CryptoJS from 'crypto-js'
 
 // Initialize Google OAuth2 client
@@ -24,11 +24,22 @@ function generateId(): string {
   return `cl${timestamp}${randomPart}`
 }
 
+// Helper function to determine the correct settings URL based on user context
+function getSettingsUrl(userRole?: string): string {
+  // For now, default to analyst portal since this is primarily used by analysts
+  return '/analyst_portal/settings'
+}
+
 export async function GET(request: NextRequest) {
   console.log('\n' + '='.repeat(80))
   console.log('📅 [CALENDAR OAUTH] Google Calendar OAuth callback started')
   console.log('🕐 [CALENDAR OAUTH] Timestamp:', new Date().toISOString())
   console.log('📍 [CALENDAR OAUTH] Request URL:', request.nextUrl.toString())
+  
+  // Verify environment variables are loaded
+  console.log('🔧 [CALENDAR OAUTH] Environment check:')
+  console.log('🔧 [CALENDAR OAUTH] NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Present' : 'Missing')
+  console.log('🔧 [CALENDAR OAUTH] SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Present' : 'Missing')
   console.log('🌐 [CALENDAR OAUTH] Request method:', request.method)
   console.log('📋 [CALENDAR OAUTH] Request headers:', JSON.stringify(Object.fromEntries(request.headers), null, 2))
   
@@ -39,6 +50,16 @@ export async function GET(request: NextRequest) {
   console.log('  - GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || 'Missing')
   console.log('  - ENCRYPTION_KEY:', process.env.ENCRYPTION_KEY ? 'Present' : 'Missing')
   console.log('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
+  console.log('  - NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'Present' : 'Missing')
+  console.log('  - SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Present' : 'Missing')
+  
+  // Check for required Supabase environment variables
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('❌ [CALENDAR OAUTH] Missing required Supabase environment variables')
+    return NextResponse.redirect(
+      new URL(`${getSettingsUrl()}?error=missing_supabase_config`, request.url)
+    )
+  }
   
   try {
     const searchParams = request.nextUrl.searchParams
@@ -55,14 +76,16 @@ export async function GET(request: NextRequest) {
     console.log('📊 [CALENDAR OAUTH] All search params:', Object.fromEntries(searchParams))
 
     if (error) {
+      // Try to determine user role for redirect, but default to vendor portal if unknown
+      const settingsUrl = '/settings' // Default to vendor portal for errors
       return NextResponse.redirect(
-        new URL('/settings?error=google_auth_denied', request.url)
+        new URL(`${settingsUrl}?error=google_auth_denied`, request.url)
       )
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL('/settings?error=missing_auth_params', request.url)
+        new URL(`${getSettingsUrl()}?error=missing_auth_params`, request.url)
       )
     }
 
@@ -77,7 +100,7 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       console.error('❌ [CALENDAR OAUTH] Failed to decode state:', e)
       return NextResponse.redirect(
-        new URL('/settings?error=invalid_state', request.url)
+        new URL(`${getSettingsUrl()}?error=invalid_state`, request.url)
       )
     }
 
@@ -98,13 +121,13 @@ export async function GET(request: NextRequest) {
       console.error('📝 [CALENDAR OAUTH] Token error details:', tokenError)
       console.error('💬 [CALENDAR OAUTH] Token error message:', tokenError instanceof Error ? tokenError.message : 'Unknown error')
       return NextResponse.redirect(
-        new URL('/settings?error=token_exchange_failed', request.url)
+        new URL(`${getSettingsUrl()}?error=token_exchange_failed`, request.url)
       )
     }
     
     if (!tokens.access_token) {
       return NextResponse.redirect(
-        new URL('/settings?error=no_access_token', request.url)
+        new URL(`${getSettingsUrl()}?error=no_access_token`, request.url)
       )
     }
 
@@ -124,14 +147,14 @@ export async function GET(request: NextRequest) {
     } catch (userError) {
       console.error('❌ [CALENDAR OAUTH] Failed to get user info:', userError)
       return NextResponse.redirect(
-        new URL('/settings?error=user_info_failed', request.url)
+        new URL(`${getSettingsUrl()}?error=user_info_failed`, request.url)
       )
     }
 
     if (!userInfo.data.email) {
       console.error('❌ [CALENDAR OAUTH] No email found in user info')
       return NextResponse.redirect(
-        new URL('/settings?error=no_user_email', request.url)
+        new URL(`${getSettingsUrl()}?error=no_user_email`, request.url)
       )
     }
 
@@ -156,13 +179,7 @@ export async function GET(request: NextRequest) {
     // Ensure user exists in database (use service role to bypass any RLS)
     console.log('🔍 [CALENDAR OAUTH] Ensuring user exists in database...')
     try {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('Supabase service configuration missing')
-      }
-      const sClient = createServiceClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      )
+      const sClient = createServiceClient()
       
       let { data: user, error: userError } = await sClient
         .from('user_profiles')
@@ -172,25 +189,72 @@ export async function GET(request: NextRequest) {
 
       // PGRST116 means no rows found, which is expected for new users
       if (!user && (userError?.code === 'PGRST116' || !userError)) {
-        console.log('👤 [CALENDAR OAUTH] User not found, creating new user profile...')
+        console.log('👤 [CALENDAR OAUTH] User not found, checking if they are an analyst...')
+        
+        // Check if user is an analyst
+        const { data: analyst, error: analystError } = await sClient
+          .from('analysts')
+          .select('id, email')
+          .eq('email', userInfo.data.email?.toLowerCase())
+          .single()
+        
+        // Map roles to match the current database schema
+        const userRole = !analystError && analyst ? 'ANALYST' : 'VENDOR_ADMIN'
+        console.log('👤 [CALENDAR OAUTH] User role determined:', userRole)
+        
+        console.log('👤 [CALENDAR OAUTH] Creating new user profile...')
+        
+        // Create user profile data with fallback values
+        const userProfileData = {
+          id: user_id,
+          first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
+          last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
+          company: userInfo.data.hd || null, // Google hosted domain (company)
+          role: userRole as 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST' // Explicit type casting
+        }
+        
+        console.log('👤 [CALENDAR OAUTH] User profile data:', userProfileData)
+        
+        // Try with service client first (should bypass RLS)
+        console.log('👤 [CALENDAR OAUTH] Using service client to bypass RLS...')
         const { data: newUser, error: createError } = await sClient
           .from('user_profiles')
-          .insert({
-            id: user_id,
-            first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
-            last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
-            company: userInfo.data.hd || null, // Google hosted domain (company)
-            role: 'ADMIN' // Default role for OAuth users
-          })
+          .insert(userProfileData)
           .select()
           .single()
         
         if (createError) {
-          throw createError
+          console.error('❌ [CALENDAR OAUTH] User profile creation failed:', createError)
+          console.error('❌ [CALENDAR OAUTH] Attempting fallback without explicit role...')
+          
+          // Try fallback without role (let database default handle it)
+          const fallbackData = {
+            id: user_id,
+            first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
+            last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
+            company: userInfo.data.hd || null
+            // role omitted - let database default handle it
+          }
+          
+          console.log('👤 [CALENDAR OAUTH] Fallback data:', fallbackData)
+          const { data: fallbackUser, error: fallbackError } = await sClient
+            .from('user_profiles')
+            .insert(fallbackData)
+            .select()
+            .single()
+          
+          if (fallbackError) {
+            console.error('❌ [CALENDAR OAUTH] Fallback also failed:', fallbackError)
+            console.error('❌ [CALENDAR OAUTH] All user profile creation methods failed')
+            throw fallbackError
+          } else {
+            user = fallbackUser
+            console.log('✅ [CALENDAR OAUTH] User profile created with fallback method')
+          }
+        } else {
+          user = newUser
+          console.log('✅ [CALENDAR OAUTH] User profile created successfully')
         }
-        
-        user = newUser
-        console.log('✅ [CALENDAR OAUTH] User profile created successfully:', user.email)
       } else if (user) {
         console.log('✅ [CALENDAR OAUTH] User profile already exists:', user.email)
       } else {
@@ -199,8 +263,24 @@ export async function GET(request: NextRequest) {
       }
     } catch (userError) {
       console.error('❌ [CALENDAR OAUTH] Error ensuring user profile exists:', userError)
+      console.error('❌ [CALENDAR OAUTH] Error details:', {
+        message: userError instanceof Error ? userError.message : String(userError),
+        code: (userError as any)?.code,
+        details: (userError as any)?.details,
+        hint: (userError as any)?.hint
+      })
+      console.error('❌ [CALENDAR OAUTH] Full error object:', JSON.stringify(userError, null, 2))
+      
+      // Create a more detailed error message
+      const errorDetails = {
+        message: userError instanceof Error ? userError.message : String(userError),
+        code: (userError as any)?.code,
+        details: (userError as any)?.details,
+        hint: (userError as any)?.hint
+      }
+      
       return NextResponse.redirect(
-        new URL('/settings?error=user_creation_failed', request.url)
+        new URL(`${getSettingsUrl()}?error=user_creation_failed&details=${encodeURIComponent(JSON.stringify(errorDetails))}`, request.url)
       )
     }
 
@@ -209,11 +289,11 @@ export async function GET(request: NextRequest) {
     console.log('🔑 [CALENDAR OAUTH] Looking for user_id:', user_id)
     console.log('🔑 [CALENDAR OAUTH] Looking for google_account_id:', userInfo.data.id)
     
-    // Use service role for calendar connections writes
-    const supabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    // Use service role for calendar connections writes - ensure proper configuration
+    const supabase = createServiceClient()
+    
+    console.log('🔑 [CALENDAR OAUTH] Service client created with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 30) + '...')
+    console.log('🔑 [CALENDAR OAUTH] Service client has key:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'Present' : 'Missing')
     let existingConnection
     try {
       console.log('🔍 [CALENDAR OAUTH] Checking for existing calendar connection...')
@@ -242,7 +322,7 @@ export async function GET(request: NextRequest) {
     } catch (dbError) {
       console.error('❌ [CALENDAR OAUTH] Database query failed:', dbError)
       return NextResponse.redirect(
-        new URL('/settings?error=database_query_failed', request.url)
+        new URL(`${getSettingsUrl()}?error=database_query_failed`, request.url)
       )
     }
 
@@ -298,6 +378,9 @@ export async function GET(request: NextRequest) {
       connectionId = newConnection.id
     }
 
+    // Determine the correct settings URL based on user role
+    const settingsUrl = getSettingsUrl(user?.role)
+    
     // If this is the new connect-first flow, redirect with connection details for naming
     if (connectionData.connectFirst) {
       const params = new URLSearchParams({
@@ -311,12 +394,12 @@ export async function GET(request: NextRequest) {
       }
       
       return NextResponse.redirect(
-        new URL(`/settings?${params.toString()}`, request.url)
+        new URL(`${settingsUrl}?${params.toString()}`, request.url)
       )
     } else {
       // Legacy flow - redirect with simple success message
       return NextResponse.redirect(
-        new URL('/settings?success=calendar_connected', request.url)
+        new URL(`${settingsUrl}?success=calendar_connected`, request.url)
       )
     }
   } catch (error) {
@@ -335,7 +418,7 @@ export async function GET(request: NextRequest) {
     console.error('  - DATABASE_URL:', process.env.DATABASE_URL ? 'Present' : 'Missing')
     
     return NextResponse.redirect(
-      new URL('/settings?error=oauth_callback_failed', request.url)
+      new URL(`${getSettingsUrl()}?error=oauth_callback_failed`, request.url)
     )
   }
 }

@@ -4,9 +4,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
+type AppRole = 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST' | 'ADMIN' | 'EDITOR'
+
 interface ProtectedRouteProps {
   children: React.ReactNode
-  allowedRoles?: ('ADMIN' | 'EDITOR' | 'ANALYST')[]
+  allowedRoles?: AppRole[]
   redirectTo?: string
 }
 
@@ -26,9 +28,9 @@ export default function ProtectedRoute({
         return
       }
 
-      if (allowedRoles && !allowedRoles.includes(user.role)) {
+if (allowedRoles && !allowedRoles.includes(user.role as AppRole)) {
         // User doesn't have required role
-        const defaultRedirect = user.role === 'ANALYST' ? '/portal' : '/'
+        const defaultRedirect = user.role === 'ANALYST' ? '/analyst_portal/analyst_hub' : '/'
         router.push(defaultRedirect)
         return
       }
@@ -45,7 +47,7 @@ export default function ProtectedRoute({
   }
 
   // Show nothing while redirecting
-  if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
+if (!user || (allowedRoles && !allowedRoles.includes(user.role as AppRole))) {
     return null
   }
 

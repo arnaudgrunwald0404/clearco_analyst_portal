@@ -723,7 +723,7 @@ analyst[targetField] = value.split(/[,;]/).map((nl: string) => nl.trim()).filter
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                    className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                   >
                     {isSubmitting && <Loader className="w-4 h-4 animate-spin" />}
                     Add Analyst
@@ -754,7 +754,7 @@ analyst[targetField] = value.split(/[,;]/).map((nl: string) => nl.trim()).filter
                       />
                       <label
                         htmlFor="file-upload"
-                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
+                        className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer"
                       >
                         <Upload className="w-4 h-4 mr-2" />
                         Choose File
@@ -864,7 +864,7 @@ analyst[targetField] = value.split(/[,;]/).map((nl: string) => nl.trim()).filter
                           const mappedFields = Object.values(bulkData?.mapping || {})
                           return !mappedFields.includes('firstName') || !mappedFields.includes('lastName') || !mappedFields.includes('email')
                         })()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
                       >
                         Preview Data
                       </button>
@@ -883,11 +883,11 @@ analyst[targetField] = value.split(/[,;]/).map((nl: string) => nl.trim()).filter
 
                     <div className="max-h-60 overflow-y-auto border rounded-lg">
                       <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                        <thead className="bg-pink-200 rounded-t-lg">
                           <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 text-bold uppercase">Name</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 text-bold uppercase">Email</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-900 text-bold uppercase">Company</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">

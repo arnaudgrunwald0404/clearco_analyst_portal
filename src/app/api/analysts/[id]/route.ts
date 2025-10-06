@@ -37,7 +37,7 @@ export async function DELETE(
       .eq('id', authUser.id)
       .single()
 
-    if (!userProfile || userProfile.role !== 'ADMIN') {
+    if (!userProfile || (userProfile.role !== 'SUPER_ADMIN' && userProfile.role !== 'VENDOR_ADMIN')) {
       return NextResponse.json({
         success: false,
         error: 'Admin access required to delete analysts'
@@ -349,7 +349,7 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'User profile not found.' }, { status: 403 })
     }
 
-    if (userProfile.role !== 'ADMIN') {
+    if (userProfile.role !== 'SUPER_ADMIN' && userProfile.role !== 'VENDOR_ADMIN') {
       // If user is not an Admin, they must be an Analyst updating their own profile
       if (userProfile.role !== 'ANALYST') {
         return NextResponse.json({ success: false, error: 'Permission denied.' }, { status: 403 })
@@ -407,7 +407,7 @@ export async function PATCH(
     })
 
     // Process admin fields if user is admin
-    if (userProfile.role === 'ADMIN') {
+    if (userProfile.role === 'SUPER_ADMIN' || userProfile.role === 'VENDOR_ADMIN') {
       adminFields.forEach(field => {
         if (body[field] !== undefined) {
           updateData[field] = body[field]

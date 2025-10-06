@@ -115,7 +115,6 @@ export async function GET(request: NextRequest) {
     if (useCache) {
       cache.data = filteredAnalysts
       cache.timestamp = now
-      console.log(`📋 Cached ${filteredAnalysts.length} analysts`)
     }
 
     console.log(`📊 Found ${filteredAnalysts.length} analysts`)
@@ -142,7 +141,6 @@ export async function POST(request: NextRequest) {
       email,
       company,
       title,
-      phone,
       linkedIn,
       twitter,
       website,
@@ -196,7 +194,6 @@ export async function POST(request: NextRequest) {
       email,
       company,
       title,
-      phone,
       // Map request fields to DB column names
       linkedinUrl: linkedIn || null,
       twitterHandle: twitter || null,

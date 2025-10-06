@@ -55,3 +55,32 @@ export async function requireAuth() {
     );
   }
 }
+
+// Import from client-safe module
+import { SUPER_ADMIN_EMAILS, isSuperAdmin } from '@/lib/auth-utils-client'
+
+// Re-export for server-side use
+export { SUPER_ADMIN_EMAILS, isSuperAdmin }
+
+export async function requireSuperAdminAuth() {
+  const authResult = await requireAuth()
+  if (authResult instanceof NextResponse) {
+    return authResult
+  }
+  
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('id', authResult.id)
+    .single()
+
+  if (!profile || !isSuperAdmin(profile)) {
+    return new NextResponse(
+      JSON.stringify({ success: false, error: 'Super Admin access required' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  return { user: authResult, profile }
+}

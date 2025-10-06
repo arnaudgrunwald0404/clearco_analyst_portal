@@ -97,7 +97,7 @@ export default function NewslettersClientPage() {
               Create and manage your analyst newsletters
             </p>
           </div>
-          <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700" onClick={() => router.push('/newsletters/create')}>
+          <button className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700" onClick={() => router.push('/newsletters/create')}>
             <Plus className="w-4 h-4 mr-2" />
             Create Newsletter
           </button>
@@ -117,7 +117,7 @@ export default function NewslettersClientPage() {
           <input
             type="text"
             placeholder="Search newsletters..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -125,7 +125,7 @@ export default function NewslettersClientPage() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
           <select
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
           >
@@ -213,7 +213,7 @@ export default function NewslettersClientPage() {
                       </button>
                     </Link>
                     <button
-                      className="flex items-center px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      className="flex items-center px-3 py-1.5 text-sm bg-pink-600 text-white rounded-md hover:bg-pink-700"
                       onClick={async () => {
                         setSendingId(newsletter.id)
                         await fetch(`/api/newsletters/${newsletter.id}/send`, { method: 'POST' })

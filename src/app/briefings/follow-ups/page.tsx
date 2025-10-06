@@ -194,7 +194,7 @@ export default function FollowUpsPage() {
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={fetchFollowUps}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
@@ -210,7 +210,7 @@ export default function FollowUpsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <CheckCircle2 className="w-8 h-8 text-blue-600" />
+ 
             Follow Ups
           </h1>
           <p className="text-gray-600">Track follow-up items from all briefings</p>
@@ -219,7 +219,7 @@ export default function FollowUpsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={fetchFollowUps}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
@@ -231,9 +231,7 @@ export default function FollowUpsPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CheckCircle2 className="h-8 w-8 text-blue-600" />
-            </div>
+
             <div className="ml-5 w-0 flex-1">
               <dl>
                 <dt className="text-sm font-medium text-gray-500 truncate">
@@ -250,7 +248,7 @@ export default function FollowUpsPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Circle className="h-8 w-8 text-orange-600" />
+              <Circle className="h-8 w-8 text-pink-600" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
@@ -268,7 +266,7 @@ export default function FollowUpsPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <CheckCircle2 className="h-8 w-8 text-green-600" />
+              <Check className="h-8 w-8 text-pink-600" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
@@ -297,24 +295,24 @@ export default function FollowUpsPage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-pink-200 rounded-t-lg">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Follow Up
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Analyst
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Briefing Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Assigned To
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Comments
                   </th>
                 </tr>
@@ -329,13 +327,13 @@ export default function FollowUpsPage() {
                     )}
                   >
                     {/* Status Checkbox */}
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-nowrap items-center justify-center">
                       <button
                         onClick={() => handleToggleComplete(followUp.id)}
                         className={cn(
                           "flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors",
                           followUp.isCompleted
-                            ? "bg-green-600 border-green-600 text-white"
+                            ? "bg-pink-600 border-pink-600 text-white"
                             : "border-gray-300 hover:border-green-500"
                         )}
                       >
@@ -420,7 +418,7 @@ export default function FollowUpsPage() {
                               type="text"
                               value={commentText}
                               onChange={(e) => setCommentText(e.target.value)}
-                              className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="flex-1 text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                               placeholder="Add a comment..."
                               autoFocus
                             />

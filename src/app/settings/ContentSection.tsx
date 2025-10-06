@@ -228,7 +228,7 @@ export default function ContentSection() {
 
 
   return (
-    <div className="space-y-4"><Card className="shadow-sm border border-gray-200 p-6">
+    <div className="space-y-8"><Card className="shadow-sm border border-gray-200 p-6">
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center gap-3 text-2xl font-bold text-gray-900">Content</CardTitle>
         <CardDescription className="text-base  text-gray-600 leading-relaxed">
@@ -238,7 +238,7 @@ export default function ContentSection() {
       <CardContent className="pt-2 pl-4 mr-10">
         {/* Header Actions */}
         <div className="mb-6 flex justify-end">
-          <Button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={() => setShowForm(true)} className="bg-pink-600 hover:bg-pink-700 text-white">
             <Plus className="mr-2 h-4 w-4" />
             Add Content
           </Button>

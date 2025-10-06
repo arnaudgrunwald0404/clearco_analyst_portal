@@ -11,7 +11,7 @@ interface HelpText {
 }
 
 interface CompanySectionProps {
-  showHelp?: (helpText: HelpText) => void
+  showHelp?: (helpText: HelpText, element?: HTMLElement) => void
   hideHelp?: () => void
 }
 

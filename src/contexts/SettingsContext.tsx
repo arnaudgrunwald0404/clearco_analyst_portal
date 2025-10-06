@@ -42,17 +42,29 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [fetching, setFetching] = useState(false)
 
   const fetchSettings = async (force = false) => {
+    // Prevent concurrent requests
+    if (fetching) {
+      console.log('Settings fetch already in progress, skipping...')
+      return
+    }
+
     // Cache for 5 minutes
     const cacheTime = 5 * 60 * 1000
     if (!force && settings && (Date.now() - lastFetch) < cacheTime) {
       return
     }
 
+    setFetching(true)
+
     // Add timeout to prevent hanging requests
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort('timeout'), 8000) // 8s timeout
+    const timeoutId = setTimeout(() => {
+      console.warn('Settings fetch timeout - aborting request')
+      controller.abort()
+    }, 8000) // 8s timeout
 
     try {
       setLoading(true)
@@ -89,7 +101,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       // Swallow abort timeouts to avoid noisy overlay errors
-      if (error?.name === 'AbortError' || (typeof error?.message === 'string' && error.message.includes('aborted'))) {
+      if (error?.name === 'AbortError' || 
+          (typeof error?.message === 'string' && 
+           (error.message.includes('aborted') || error.message.includes('timeout')))) {
         console.warn('Settings request aborted (timeout) – using fallback settings')
         // Use fallback silently without setting an error banner
         setSettings(current => createFallbackSettings(current || undefined))
@@ -101,6 +115,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } finally {
       clearTimeout(timeoutId)
       setLoading(false)
+      setFetching(false)
       setIsInitialized(true)
     }
   }

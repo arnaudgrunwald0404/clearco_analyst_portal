@@ -260,7 +260,7 @@ export default function Drawer({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-center justify-between p-6 border-b border-gray-200">
+      <div className="flex items-center justify-between p-6 border-b border-pink-200">
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold text-gray-900 truncate">{briefing.title}</h2>
           <div className="flex items-center text-sm text-gray-600 mt-1">
@@ -428,7 +428,7 @@ export default function Drawer({
               <button
                 className={cn(
                   "px-4 py-2 text-sm rounded-md text-white",
-                  savingTestimonial ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+                  savingTestimonial ? "bg-blue-400" : "bg-pink-600 hover:bg-blue-700"
                 )}
                 onClick={(e) => {
                   e.preventDefault()

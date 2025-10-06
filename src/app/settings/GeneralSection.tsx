@@ -9,7 +9,7 @@ interface HelpText {
 }
 
 interface GeneralSectionProps {
-  showHelp?: (helpText: HelpText) => void;
+  showHelp?: (helpText: HelpText, element?: HTMLElement) => void;
   hideHelp?: () => void;
   titleOverride?: string;
   descriptionOverride?: string;
@@ -27,7 +27,7 @@ export default function GeneralSection({ showHelp, hideHelp, titleOverride, desc
           {'Name, protected domain, logo, and industry.'}
         </CardDescription>
       </CardHeader>
-      <CardContent className="pt-2 pl-4 mr-10">
+      <CardContent className="pt-2 pl-4 mr-4">
 <GeneralSettingsForm showHelp={showHelp ? ((helpText: any, _el: any) => showHelp({ title: helpText?.title ?? '', content: helpText?.content ?? '' })) : undefined} hideHelp={hideHelp} />
       </CardContent>
     </Card>

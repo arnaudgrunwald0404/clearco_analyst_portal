@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, Building, Mail, Phone, Linkedin, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
+import { X, User, Building, Mail, Linkedin, Globe, Calendar, FileText, MessageSquare, Users, ExternalLink, TrendingUp, Clock, MapPin, Loader, Tag, Sparkles, Reply, Share, Send, Wand2, Search, RefreshCw, Edit, Save, XCircle, Camera, Image } from 'lucide-react'
 import { SpinningCupcake } from '@/components/ui/spinning-cupcake'
 import { cn, getInfluenceColor, getStatusColor } from '@/lib/utils'
 import { Icons } from '@/components/ui/icons'
@@ -21,7 +21,6 @@ interface AnalystDrawerProps {
     expertise: string[]
     linkedIn?: string
     twitter?: string
-    phone?: string
     bio?: string
     profileImageUrl?: string
     // Additional fields for drawer
@@ -171,12 +170,11 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
   const [socialSearchLoading, setSocialSearchLoading] = useState({
     linkedin: false,
     twitter: false,
-    phone: false,
     website: false
   })
   const [searchResultsModal, setSearchResultsModal] = useState<{
     isOpen: boolean
-    type: 'linkedin' | 'twitter' | 'phone' | 'website' | null
+    type: 'linkedin' | 'twitter' | 'website' | null
     results: any[]
   }>({ isOpen: false, type: null, results: [] })
   const [selectedResults, setSelectedResults] = useState<string[]>([])
@@ -188,7 +186,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     influence: string
     relationshipHealth: string
     email: string
-    phone: string
     linkedIn: string
     twitter: string
     website: string
@@ -202,7 +199,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     influence: analyst?.influence || 'MEDIUM',
     relationshipHealth: analyst?.relationshipHealth || 'GOOD',
     email: analyst?.email || '',
-    phone: analyst?.phone || '',
     linkedIn: (analyst as any)?.linkedIn || (analyst as any)?.linkedinUrl || '',
     twitter: (analyst as any)?.twitter || (analyst as any)?.twitterHandle || '',
     website: (analyst as any)?.website || (analyst as any)?.personalWebsite || '',
@@ -228,7 +224,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       influence: analyst.influence || 'MEDIUM',
       relationshipHealth: analyst.relationshipHealth || 'GOOD',
       email: analyst.email || '',
-      phone: analyst.phone || '',
       linkedIn: (analyst as any).linkedIn || (analyst as any).linkedinUrl || '',
       twitter: (analyst as any).twitter || (analyst as any).twitterHandle || '',
       website: (analyst as any).website || (analyst as any).personalWebsite || '',
@@ -249,7 +244,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
       influence: analyst?.influence || 'MEDIUM',
       relationshipHealth: analyst?.relationshipHealth || 'GOOD',
       email: analyst?.email || '',
-      phone: analyst?.phone || '',
       linkedIn: (analyst as any)?.linkedIn || (analyst as any)?.linkedinUrl || '',
       twitter: (analyst as any)?.twitter || (analyst as any)?.twitterHandle || '',
       website: (analyst as any)?.website || (analyst as any)?.personalWebsite || '',
@@ -287,7 +281,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
             influence: editedData.influence,
             relationshipHealth: editedData.relationshipHealth,
             email: editedData.email,
-            phone: editedData.phone,
             company: editedData.company,
             title: editedData.title,
             // Keep local object aligned to DB field names used by API
@@ -380,7 +373,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
         influence: analyst.influence || 'MEDIUM',
         relationshipHealth: analyst.relationshipHealth || 'GOOD',
         email: analyst.email || '',
-        phone: analyst.phone || '',
         linkedIn: (analyst as any).linkedIn || (analyst as any).linkedinUrl || '',
         twitter: (analyst as any).twitter || (analyst as any).twitterHandle || '',
         website: (analyst as any).website || (analyst as any).personalWebsite || '',
@@ -593,7 +585,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     }
   }
 
-  const searchSocialProfile = async (platform: 'linkedin' | 'twitter' | 'phone' | 'website') => {
+  const searchSocialProfile = async (platform: 'linkedin' | 'twitter' | 'website') => {
     setSocialSearchLoading(prev => ({ ...prev, [platform]: true }))
     
     try {
@@ -652,13 +644,12 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     switch (platform) {
       case 'linkedin': return 'LinkedIn URL'
       case 'twitter': return 'X Handle'
-      case 'phone': return 'Phone Number'
       case 'website': return 'Website URL'
       default: return 'Value'
     }
   }
   
-  const saveSocialMediaResult = async (platform: 'linkedin' | 'twitter' | 'phone' | 'website', searchResult: any) => {
+  const saveSocialMediaResult = async (platform: 'linkedin' | 'twitter' | 'website', searchResult: any) => {
     try {
       // Determine the field name and value based on platform
       let fieldName: string
@@ -672,10 +663,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
         case 'twitter':
           fieldName = 'twitter'
           fieldValue = searchResult.handle || searchResult.url || ''
-          break
-        case 'phone':
-          fieldName = 'phone'
-          fieldValue = searchResult.value || searchResult.url || ''
           break
         case 'website':
           fieldName = 'website'
@@ -731,11 +718,10 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
     
     try {
       // Map modal type to backend field names used elsewhere
-      let fieldName: 'linkedIn' | 'twitter' | 'phone' | 'website'
+      let fieldName: 'linkedIn' | 'twitter' | 'website'
       switch (searchResultsModal.type) {
         case 'linkedin': fieldName = 'linkedIn'; break
         case 'twitter': fieldName = 'twitter'; break
-        case 'phone': fieldName = 'phone'; break
         default: fieldName = 'website'
       }
       const fieldValue = selectedResults[0]
@@ -1038,47 +1024,6 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                       </div>
                     </div>
 
-                    {/* Phone */}
-                    <div className="flex items-center space-x-3">
-                      <Phone className="w-4 h-4 text-gray-400" />
-                      <div className="flex-1">
-                        <div className="text-xs font-medium text-gray-500">Phone</div>
-                        {isEditMode ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="tel"
-                              value={editedData.phone}
-                              onChange={(e) => setEditedData(prev => ({ ...prev, phone: e.target.value }))}
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              placeholder="Enter phone number"
-                            />
-                            <button
-                              onClick={() => searchSocialProfile('phone')}
-                              disabled={socialSearchLoading.phone}
-                              className="flex items-center space-x-1 px-2 py-2 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md transition-colors disabled:opacity-50"
-                              title="Search with AI"
-                            >
-                              {socialSearchLoading.phone ? (
-                                <SpinningCupcake size="sm" />
-                              ) : (
-                                <Search className="w-3 h-3" />
-                              )}
-                              <span className="hidden sm:inline">Search with AI</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            {analyst.phone ? (
-                              <a href={`tel:${analyst.phone}`} className="text-blue-600 hover:underline text-sm">
-                                {analyst.phone}
-                              </a>
-                            ) : (
-                              <span className="text-gray-500 text-sm">N/A</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
 
                     {/* LinkedIn */}
                     <div className="flex items-center space-x-3">
@@ -1661,7 +1606,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                     <button
                       onClick={handleEngagementSubmit}
                       disabled={!engagementText.trim()}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Send className="w-4 h-4" />
                       {engagementModal.type === 'reply' ? 'Post Reply' : 'Share Post'}
@@ -1794,7 +1739,7 @@ export default function AnalystDrawer({ isOpen, onClose, analyst }: AnalystDrawe
                   <button
                     onClick={handleSaveSelectedResults}
                     disabled={selectedResults.length === 0}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Save Selected
                   </button>

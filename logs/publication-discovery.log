@@ -73323,3 +73323,43 @@ npm error   npm run
 npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-09-29T09_00_02_582Z-debug-0.log
 [Mon Sep 29 02:00:02 PDT 2025] Publication discovery failed with exit code 1
 [Mon Sep 29 02:00:02 PDT 2025] ----------------------------------------
+[Tue Sep 30 02:00:00 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-09-30T09_00_01_956Z-debug-0.log
+[Tue Sep 30 02:00:02 PDT 2025] Publication discovery failed with exit code 1
+[Tue Sep 30 02:00:02 PDT 2025] ----------------------------------------
+[Wed Oct  1 02:00:00 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-10-01T09_00_07_189Z-debug-0.log
+[Wed Oct  1 02:00:07 PDT 2025] Publication discovery failed with exit code 1
+[Wed Oct  1 02:00:07 PDT 2025] ----------------------------------------
+[Fri Oct  3 02:00:01 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-10-03T09_00_01_822Z-debug-0.log
+[Fri Oct  3 02:00:02 PDT 2025] Publication discovery failed with exit code 1
+[Fri Oct  3 02:00:02 PDT 2025] ----------------------------------------
+[Sat Oct  4 02:00:01 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-10-04T09_00_02_393Z-debug-0.log
+[Sat Oct  4 02:00:02 PDT 2025] Publication discovery failed with exit code 1
+[Sat Oct  4 02:00:02 PDT 2025] ----------------------------------------
+[Sun Oct  5 02:00:00 PDT 2025] Starting publication discovery cron job
+npm error Missing script: "discover:daily"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /Users/arnaudgrunwald/.npm/_logs/2025-10-05T09_00_01_769Z-debug-0.log
+[Sun Oct  5 02:00:02 PDT 2025] Publication discovery failed with exit code 1
+[Sun Oct  5 02:00:02 PDT 2025] ----------------------------------------

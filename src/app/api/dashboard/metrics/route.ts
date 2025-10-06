@@ -1,23 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { vendorFetch } from '@/lib/vendor-server';
+import { requireVendorScope, withVendorHeaders } from '@/lib/vendor-context';
 
 // Cache duration in seconds
 const CACHE_DURATION = 300; // 5 minutes
+// Vendor-aware cache to prevent cross-tenant leakage
+const metricsCacheByVendor = new Map<string, { data: any; timestamp: number }>();
+// Track last user per vendor to trigger one-time cache bust on session change
+const lastUserByVendor = new Map<string, string>();
+// Legacy cache vars used lower in this file
 let metricsCache: any = null;
 let cacheTimestamp: number = 0;
 
 export async function GET(request: NextRequest) {
   try {
     const now = Date.now();
-    
-    // Return cached data if still valid
-    if (metricsCache && (now - cacheTimestamp) < (CACHE_DURATION * 1000)) {
+    // Resolve vendor context (SUPER_ADMIN gets a default vendor via bypass)
+    const ctxOrResp = await requireVendorScope(request);
+    if (ctxOrResp instanceof NextResponse) return ctxOrResp;
+    const vendorDomainId = ctxOrResp.id;
+    const vendorKey = ctxOrResp.slug || ctxOrResp.protectedDomain || vendorDomainId || 'default';
+
+    // Determine if we should force-refresh dependent endpoints on first load after session change
+    const supa = await createClient();
+    const { data: { user } } = await supa.auth.getUser();
+    const currentUserId = user?.id || 'anonymous';
+    const lastUser = lastUserByVendor.get(vendorKey);
+    const forceOnSessionChange = !lastUser || lastUser !== currentUserId;
+    if (forceOnSessionChange) {
+      lastUserByVendor.set(vendorKey, currentUserId);
+    }
+
+    // Return cached data for this vendor if still valid and no forced refresh requested
+    const cached = metricsCacheByVendor.get(vendorKey);
+    if (!forceOnSessionChange && cached && (now - cached.timestamp) < (CACHE_DURATION * 1000)) {
       return NextResponse.json({
         success: true,
-        data: metricsCache,
+        data: cached.data,
         cached: true,
-        cacheAge: Math.floor((now - cacheTimestamp) / 1000)
+        cacheAge: Math.floor((now - cached.timestamp) / 1000)
       });
     }
 
@@ -57,53 +80,60 @@ export async function GET(request: NextRequest) {
       newAnalysts,
       upcomingPublications
     ] = await Promise.all([
-      // Analyst stats - get ALL analysts (simplified query)
+      // Analyst stats - scoped to vendor
       supabase
         .from('analysts')
-        .select('*'),
+        .select('*')
+        .eq('vendor_domain_id', vendorDomainId),
       
-      // Briefing stats (90 days)
+      // Briefing stats (90 days) - scoped to vendor
       supabase
         .from('briefings')
         .select('id, status, scheduledAt, ai_summary, followUpActions')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('scheduledAt', ninetyDaysAgoISO),
       
-      // Briefing stats YTD (completed briefings between Jan 1 and today)
+      // Briefing stats YTD (completed briefings between Jan 1 and today) - scoped to vendor
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('scheduledAt', yearStartISO)
         .lte('scheduledAt', today.toISOString())
         .eq('status', 'COMPLETED'),
       
-      // Briefing stats QTD
+      // Briefing stats QTD - scoped to vendor
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('scheduledAt', quarterStartISO),
       
-      // Briefings due (overdue + due today)
+      // Briefings due (overdue + due today) - scoped to vendor
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .lt('scheduledAt', new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString()) // Before tomorrow
         .eq('status', 'SCHEDULED'),
       
-      // Briefings planned (scheduled from now onwards, including later today)
+      // Briefings planned (scheduled from now onwards, including later today) - scoped to vendor
       supabase
         .from('briefings')
         .select('id, status, scheduledAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('scheduledAt', today.toISOString()) // From now onwards
         .eq('status', 'SCHEDULED')
         .order('scheduledAt', { ascending: true }),
       
-      // Action item stats (using briefings as action items for now)
+      // Action item stats (using briefings as action items for now) - scoped to vendor
       supabase
         .from('briefings')
         .select('id, createdAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('createdAt', ninetyDaysAgoISO),
       
-      // Publication stats
+      // Publication stats (left unscoped if Publication lacks vendor_domain_id)
       supabase
         .from('Publication')
         .select('id, publishedAt')
@@ -117,10 +147,11 @@ export async function GET(request: NextRequest) {
         .order('publishedAt', { ascending: false })
         .limit(10),
       
-      // New analysts
+      // New analysts - scoped to vendor
       supabase
         .from('analysts')
         .select('id, firstName, lastName, company, createdAt')
+        .eq('vendor_domain_id', vendorDomainId)
         .gte('createdAt', ninetyDaysAgoISO)
         .order('createdAt', { ascending: false })
         .limit(10),
@@ -207,8 +238,11 @@ export async function GET(request: NextRequest) {
         console.warn('⚠️ [Dashboard Metrics] Could not fetch vendor domain:', error)
       }
       
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || `http://localhost:3001`;
-      const dueResp = await fetch(`${baseUrl}/api/briefings/due?page=1&limit=10000`, { cache: 'no-store' });
+      const dueUrl = `/api/briefings/due?page=1&limit=10000${forceOnSessionChange ? '&force=true' : ''}`;
+      const dueResp = await vendorFetch(
+        dueUrl,
+        withVendorHeaders({ cache: 'no-store' }, ctxOrResp as any)
+      );
       if (dueResp.ok) {
         const dueJson = await dueResp.json();
         briefingsDueCount = Array.isArray(dueJson?.data) ? dueJson.data.length : 0;
@@ -237,7 +271,26 @@ export async function GET(request: NextRequest) {
     
     console.log('📅 Briefings Due (analysts) count:', briefingsDueCount);
     console.log('📅 Briefings Scheduled count:', briefingsScheduledCount);
-    
+
+    // Persist vendor-specific cache
+    metricsCacheByVendor.set(vendorKey, { data: {
+      totalAnalysts,
+      activeAnalysts,
+      analystsAddedPast90Days,
+      contentItemsPast90Days: 0,
+      engagementRate: 0,
+      briefingsPast90Days,
+      briefingsYTD,
+      briefingsScheduled: briefingsScheduledCount,
+      briefingsDue: briefingsDueCount,
+      newslettersYTD: 0,
+      relationshipHealth: averageRelationshipHealth,
+      upcomingPublications: (upcomingPublications.count as number) || 0,
+      recentContentItems: [],
+      newAnalysts: newAnalysts.data || [],
+      coverageByTier: dueByTier,
+    }, timestamp: now })
+
     // Calculate briefing follow-ups (completed briefings that need follow-up)
     const hasFollowup = (b: any): boolean => {
       // Prefer explicit structured follow-up actions if present
@@ -353,15 +406,17 @@ export async function GET(request: NextRequest) {
     // Debug holders
     let coverageDebug: any = { activeIds: activeIds.length, baCount: 0, qualifyingCount: 0, tierTotals: { ...tierTotals }, coveredCounts: { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 } };
     if (activeIds.length > 0) {
-      // Fetch associations and candidate briefings within window
+      // Fetch associations and candidate briefings within window (scoped to vendor)
       const [baResp, briefingsResp] = await Promise.all([
         supabase
           .from('briefing_analysts')
           .select('briefingId, analystId')
+          .eq('vendor_domain_id', vendorDomainId)
           .in('analystId', activeIds as any),
         supabase
           .from('briefings')
           .select('id, status, scheduledAt')
+          .eq('vendor_domain_id', vendorDomainId)
           .gte('scheduledAt', cutoff365ISO)
       ]);
 

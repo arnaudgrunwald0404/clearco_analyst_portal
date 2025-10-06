@@ -190,7 +190,7 @@ export function AnalystImpersonationModal({
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
                 selectedAnalyst
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-pink-600 text-white hover:bg-blue-700'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               )}
             >

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { isSuperAdmin } from '@/lib/auth-utils'
 
 export async function GET(request: NextRequest) {
   console.log('🔄 [Admin Users API] GET request started')
@@ -27,33 +28,44 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get the protected domain from general settings
+    // Check if user is Super Admin - they get access to all users across all domains
     console.log('🔧 [Admin Users API] Creating service client...')
     const serviceSupabase = createServiceClient()
     
-    console.log('📋 [Admin Users API] Fetching vendor domain settings...')
-    const { data: settings, error: settingsError } = await serviceSupabase
-      .from('vendor_domains')
-      .select('protected_domain')
-      .limit(1)
-      .single()
+    const userIsSuperAdmin = isSuperAdmin(user)
+    console.log('👑 [Admin Users API] Super Admin check:', { userIsSuperAdmin, email: user.email })
 
-    console.log('📋 [Admin Users API] Settings result:', { 
-      hasSettings: !!settings, 
-      domain: settings?.protected_domain,
-      settingsError: settingsError?.message 
-    })
+    let protectedDomain: string | null = null
+    let filterByDomain = true
 
-    if (settingsError || !settings?.protected_domain) {
-      console.error('❌ [Admin Users API] Error fetching vendor domain settings:', settingsError)
-      return NextResponse.json(
-        { success: false, error: 'Protected domain not configured in vendor domain settings' },
-        { status: 400 }
-      )
+    if (userIsSuperAdmin) {
+      console.log('👑 [Admin Users API] Super Admin detected - showing all users across all domains')
+      filterByDomain = false
+    } else {
+      console.log('📋 [Admin Users API] Fetching vendor domain settings...')
+      const { data: settings, error: settingsError } = await serviceSupabase
+        .from('vendor_domains')
+        .select('protected_domain')
+        .limit(1)
+        .single()
+
+      console.log('📋 [Admin Users API] Settings result:', { 
+        hasSettings: !!settings, 
+        domain: settings?.protected_domain,
+        settingsError: settingsError?.message 
+      })
+
+      if (settingsError || !settings?.protected_domain) {
+        console.error('❌ [Admin Users API] Error fetching vendor domain settings:', settingsError)
+        return NextResponse.json(
+          { success: false, error: 'Protected domain not configured in vendor domain settings' },
+          { status: 400 }
+        )
+      }
+
+      protectedDomain = settings.protected_domain.toLowerCase().trim()
+      console.log(`🔒 [Admin Users API] Filtering users by domain: ${protectedDomain}`)
     }
-
-    const protectedDomain = settings.protected_domain.toLowerCase().trim()
-    console.log(`🔒 [Admin Users API] Filtering users by domain: ${protectedDomain}`)
 
     // Fetch users from auth.users filtered by the protected domain
     console.log('👥 [Admin Users API] Fetching auth users...')
@@ -98,10 +110,15 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Filter users by the protected domain and transform the data
+    // Filter users by the protected domain (unless Super Admin)
     const filteredUsers = authUsers.users
       .filter(authUser => {
         if (!authUser.email) return false
+        
+        // Super Admins see all users
+        if (!filterByDomain) return true
+        
+        // Regular admins see only users from their domain
         const emailDomain = authUser.email.split('@')[1]?.toLowerCase()
         return emailDomain === protectedDomain
       })
@@ -145,30 +162,38 @@ export async function GET(request: NextRequest) {
           lastName = nameParts.slice(1).join(' ') || ''
         }
 
+        // Extract domain from email for Super Admin visibility
+        const userDomain = authUser.email ? authUser.email.split('@')[1]?.toLowerCase() : null
+
         return {
           id: authUser.id,
           firstName: firstName || 'Unknown',
           lastName: lastName || 'User',
           email: authUser.email || '',
-          role: userProfile?.role || userMetadata.role || rawMetadata.role || 'EDITOR',
+          role: userProfile?.role || userMetadata.role || rawMetadata.role || 'VENDOR_USER',
           createdAt: authUser.created_at,
           updatedAt: authUser.updated_at || authUser.created_at,
           emailConfirmed: !!authUser.email_confirmed_at,
           lastSignIn: authUser.last_sign_in_at,
           provider: authUser.app_metadata?.provider || 'email',
           hasProfile: hasProfile,
-          company: userProfile?.company || null
+          company: userProfile?.company || null,
+          domain: userDomain
         }
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-    console.log(`📊 [Admin Users API] Found ${filteredUsers.length} users for domain ${protectedDomain}`)
+    const logMessage = filterByDomain 
+      ? `📊 [Admin Users API] Found ${filteredUsers.length} users for domain ${protectedDomain}`
+      : `📊 [Admin Users API] Super Admin - Found ${filteredUsers.length} users across all domains`
+    console.log(logMessage)
 
     return NextResponse.json({
       success: true,
       data: filteredUsers,
-      domain: protectedDomain,
-      totalAuthUsers: authUsers.users.length
+      domain: protectedDomain || 'ALL_DOMAINS',
+      totalAuthUsers: authUsers.users.length,
+      isSuperAdmin: userIsSuperAdmin
     })
 
   } catch (error) {

@@ -25,7 +25,7 @@ export async function GET(
             .eq('id', authUser.id)
             .single()
 
-        if (!userProfile || userProfile.role !== 'ADMIN') {
+        if (!userProfile || (userProfile.role !== 'SUPER_ADMIN' && userProfile.role !== 'VENDOR_ADMIN')) {
             return NextResponse.json({ success: false, error: 'Permission denied.' }, { status: 403 })
         }
     }

@@ -55,8 +55,8 @@ export default function AnalystPortalSettingsForm() {
     ;(async () => {
       try {
         const qs = new URLSearchParams()
-        const vendorId = searchParams.get('vendorId')
-        const vendorDomain = searchParams.get('vendorDomain')
+        const vendorId = searchParams?.get('vendorId')
+        const vendorDomain = searchParams?.get('vendorDomain')
         if (vendorId) qs.set('vendorId', vendorId)
         if (vendorDomain) qs.set('vendorDomain', vendorDomain)
         const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`)
@@ -95,8 +95,8 @@ export default function AnalystPortalSettingsForm() {
 
     try {
       const qs = new URLSearchParams()
-      const vendorId = searchParams.get('vendorId')
-      const vendorDomain = searchParams.get('vendorDomain')
+      const vendorId = searchParams?.get('vendorId')
+      const vendorDomain = searchParams?.get('vendorDomain') 
       if (vendorId) qs.set('vendorId', vendorId)
       if (vendorDomain) qs.set('vendorDomain', vendorDomain)
       const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, {

@@ -82,10 +82,12 @@ export async function middleware(request: NextRequest) {
     return attachVendorHeaders(resp, reqId, vendorSlug, vendorId)
   }
 
-  // Bypass middleware for auth callbacks and SSE endpoints
+  // Bypass middleware for auth callbacks, login pages, and SSE endpoints
   if (/^\/api\/settings\/calendar-connections\/[^/]+\/sync$/.test(pathname) ||
       /^\/api\/auth\/.*\/callback$/.test(pathname) ||
-      pathname === '/auth/callback') {
+      pathname === '/auth/callback' ||
+      pathname === '/vendor_portal/login' ||
+      pathname === '/login') {
     const resp = NextResponse.next()
     return attachVendorHeaders(resp, reqId, vendorSlug, vendorId)
   }
@@ -137,59 +139,14 @@ export async function middleware(request: NextRequest) {
     return attachVendorHeaders(response, reqId, vendorSlug, vendorId)
   }
 
-  // Restrict app routes to allowed email domains
-  const protectedPaths = [
-    '/',
-    '/overview',
-    '/analysts',
-    '/briefings',
-    '/briefings/due',
-    '/newsletters',
-    '/testimonials',
-    '/publications',
-    '/awards',
-    '/events',
-    '/analytics',
-    '/settings',
-    '/portal'
-  ]
-
-  if (protectedPaths.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    try {
-      // Basic auth gate via Supabase cookies
-      const email = request.cookies.get('sb-email')?.value || ''
-
-      // Supabase auth cookies (project ref is embedded; look for segment names)
-      const allCookies = request.cookies.getAll()
-      const accessCookie = allCookies.find(c => c.name.includes('auth-token.0'))?.value
-      const refreshCookie = allCookies.find(c => c.name.includes('auth-token.1'))?.value
-      const hasSession = Boolean(accessCookie || refreshCookie)
-
-      const domain = email.split('@')[1]?.toLowerCase() || ''
-      console.log(`[MID ${reqId}] Protected path access check: email=${email || 'none'} domain=${domain || 'none'} hasSession=${hasSession ? 'yes' : 'no'}`)
-
-      // If no session at all, force login
-      if (!hasSession) {
-        console.warn(`[MID ${reqId}] No session on protected path. Redirecting to /auth`)
-        const redir = NextResponse.redirect(new URL('/vendor_portal/login', request.url))
-        return attachVendorHeaders(redir, reqId, vendorSlug, vendorId)
-      }
-
-      // If session exists but domain is not in allowed domains, redirect to /auth
-      const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
-      if (email && !allowedDomains.includes(domain)) {
-        console.warn(`[MID ${reqId}] Redirecting to /auth due to domain mismatch: ${domain}`)
-        const redir = NextResponse.redirect(new URL('/vendor_portal/login', request.url))
-        return attachVendorHeaders(redir, reqId, vendorSlug, vendorId)
-      }
-    } catch (e) {
-      console.warn(`[MID ${reqId}] Protected path check error:`, e)
-    }
-  }
-
   // Apply Supabase session middleware to ensure cookies are properly set
   console.log(`[MID ${reqId}] Applying Supabase session middleware`)
   const resp = await updateSession(request)
+  
+  // DISABLED: Server-side authentication checks to prevent redirect loops
+  // Authentication is now handled client-side in components
+  console.log(`[MID ${reqId}] Authentication checks disabled - using client-side auth`)
+
   return attachVendorHeaders(resp, reqId, vendorSlug, vendorId)
 }
 

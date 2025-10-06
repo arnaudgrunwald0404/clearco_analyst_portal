@@ -29,7 +29,7 @@ export function SidebarLogo() {
   const showLogo = logoUrl && !logoError
 
   return (
-    <div className="flex items-center justify-center h-36 p-4 bg-white border-b border-gray-200">
+    <div className="flex items-center justify-center h-36 p-4 bg-white border-b border-pink-200">
       {showLogo ? (
         <img
           src={logoUrl}

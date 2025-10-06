@@ -438,7 +438,7 @@ export default function ClientBriefingsPage() {
               {hasCalendarConnection && (
                 <button
                   onClick={syncCalendarMeetings}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors"
                   disabled={isSyncInProgress}
                 >
                   <RefreshCw className={cn("w-4 h-4 mr-2", isSyncInProgress && "animate-spin")} />
@@ -469,7 +469,7 @@ export default function ClientBriefingsPage() {
               placeholder="Search briefings..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
             />
           </div>
 
@@ -479,7 +479,7 @@ export default function ClientBriefingsPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+              className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent appearance-none bg-white"
             >
               {briefingStatuses.map(status => (
                 <option key={status.value} value={status.value}>
@@ -505,7 +505,7 @@ export default function ClientBriefingsPage() {
             </p>
             <Link
               href="/briefings/create"
-              className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-lg hover:bg-pink-700 transition-colors"
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Briefing

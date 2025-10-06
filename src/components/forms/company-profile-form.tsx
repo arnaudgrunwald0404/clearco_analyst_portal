@@ -68,8 +68,8 @@ export default function CompanyProfileForm() {
     ;(async () => {
       try {
         const qs = new URLSearchParams()
-        const vendorId = searchParams.get('vendorId')
-        const vendorDomain = searchParams.get('vendorDomain')
+        const vendorId = searchParams?.get('vendorId')
+        const vendorDomain = searchParams?.get('vendorDomain')
         if (vendorId) qs.set('vendorId', vendorId)
         if (vendorDomain) qs.set('vendorDomain', vendorDomain)
         const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' })
@@ -105,8 +105,8 @@ export default function CompanyProfileForm() {
     setSaving(true)
     try {
       const qs = new URLSearchParams()
-      const vendorId = searchParams.get('vendorId')
-      const vendorDomain = searchParams.get('vendorDomain')
+      const vendorId = searchParams?.get('vendorId')
+      const vendorDomain = searchParams?.get('vendorDomain')
       if (vendorId) qs.set('vendorId', vendorId)
       if (vendorDomain) qs.set('vendorDomain', vendorDomain)
       const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, {

@@ -204,14 +204,14 @@ export default function CompanyResourcesTable() {
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-pink-200 border-b rounded-t-lg">
             <tr>
-              <th className="text-left px-6 py-3 font-medium text-gray-700">Filename</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-700">Type</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-700">Size</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-700">Updated</th>
-              <th className="text-left px-3 py-3 font-medium text-gray-700">Category</th>
-              <th className="text-right px-6 py-3 font-medium text-gray-700">Action</th>
+              <th className="text-left px-6 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Filename</th>
+              <th className="text-left px-3 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Type</th>
+              <th className="text-left px-3 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Size</th>
+              <th className="text-left px-3 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Updated</th>
+              <th className="text-left px-3 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Category</th>
+              <th className="text-right px-6 py-3 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y">

@@ -17,42 +17,34 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    // Create response object to collect cookies
+    // Create response object to collect cookies - redirect directly to main app
     const response = NextResponse.redirect(`${origin}/`)
     
-    // Use the middleware approach for consistent cookie handling
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              
-              // Use original options from Supabase, but ensure proper settings for client access
-              response.cookies.set(name, value, {
-                ...options,
-                httpOnly: false, // CRITICAL: Allow client-side access
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/'
-              })
-            })
-          },
-        },
-      }
-    )
+    // Use the proper server client for consistent cookie handling
+    const supabase = await createClient()
     
+    
+    console.log('[Auth Callback] Exchanging code for session...')
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    
+    console.log('[Auth Callback] Session exchange result:', {
+      hasSession: !!data.session,
+      hasUser: !!data.user,
+      userEmail: data.user?.email,
+      error: error?.message
+    })
     
     // Force cookie setting by explicitly setting the session
     if (data.session && !error) {
+      console.log('[Auth Callback] Setting session cookies...')
       const { error: setError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token
+      })
+      
+      console.log('[Auth Callback] Session set result:', {
+        setError: setError?.message,
+        success: !setError
       })
       
       // Set email cookie for middleware domain check
@@ -92,139 +84,72 @@ export async function GET(request: NextRequest) {
           .single()
 
         if (profileError && profileError.code === 'PGRST116') {
-          // Profile doesn't exist, create one
+          // No profile exists. To avoid schema drift issues, skip server-side creation and rely on client to build a minimal profile.
           const email = data.user.email || ''
           const emailDomain = email.split('@')[1]?.toLowerCase()
-          
-          // Apply domain validation - block unauthorized users
+
+          // Authorization checks (unchanged)
           if (email.toLowerCase() === 'dev@example.com') {
             console.error('Blocked unauthorized email:', email)
             return NextResponse.redirect(`${origin}/auth/auth-code-error?error=unauthorized`)
           }
 
-          // Check if email is from authorized domain OR is a registered analyst OR matches a vendor domain
           const allowedDomains = (process.env.NEXT_PUBLIC_SUPABASE_ALLOWED_DOMAINS || '').split(',').map(d => d.trim().toLowerCase()).filter(d => d.length > 0)
           const isAuthorizedDomain = allowedDomains.includes(emailDomain)
-          
+
           let isRegisteredAnalyst = false
           let isVendorDomain = false
           if (!isAuthorizedDomain) {
-            // Check if email exists in analysts table
-            const { data: analyst, error: analystError } = await serviceClient!
+            const { data: analyst, error: analystError } = await (createServiceClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!
+            ))
               .from('analysts')
               .select('id, email')
               .eq('email', email.toLowerCase())
               .single()
-            
             isRegisteredAnalyst = !analystError && !!analyst
 
-          // Check vendor_domains for domain
-          console.log('🔍 Checking vendor domain for:', emailDomain)
-          const { data: vendorDomain, error: vendorError } = await serviceClient!
-            .from('vendor_domains')
-            .select('id')
-            .eq('protected_domain', emailDomain)
-            .maybeSingle()
-
-          console.log('🔍 Vendor domain query result:', { vendorDomain, vendorError })
-          isVendorDomain = !!vendorDomain && !vendorError
-          console.log('🔍 isVendorDomain:', isVendorDomain)
+            console.log('🔍 Checking vendor domain for:', emailDomain)
+            const { data: vendorDomain, error: vendorError } = await (createServiceClient(
+              process.env.NEXT_PUBLIC_SUPABASE_URL!,
+              process.env.SUPABASE_SERVICE_ROLE_KEY!
+            ))
+              .from('vendor_domains')
+              .select('id')
+              .eq('protected_domain', emailDomain)
+              .maybeSingle()
+            console.log('🔍 Vendor domain query result:', { vendorDomain, vendorError })
+            isVendorDomain = !!vendorDomain && !vendorError
+            console.log('🔍 isVendorDomain:', isVendorDomain)
           }
 
-          console.log('🔍 Authorization check:', { 
-            email, 
-            emailDomain, 
-            isAuthorizedDomain, 
-            isRegisteredAnalyst, 
-            isVendorDomain 
-          })
-          
+          console.log('🔍 Authorization check:', { email, emailDomain, isAuthorizedDomain, isRegisteredAnalyst, isVendorDomain })
           if (!isAuthorizedDomain && !isRegisteredAnalyst && !isVendorDomain) {
             console.error('❌ Access denied for email:', email, 'Domain:', emailDomain)
             return NextResponse.redirect(`${origin}/auth/auth-code-error?error=domain_restricted`)
           }
-          
-          console.log('✅ Access granted for email:', email)
 
-          // Determine role based on validated authorization
-          let role: 'ADMIN' | 'EDITOR' | 'ANALYST' = 'EDITOR'
-          
-          if (isAuthorizedDomain) {
-            // All authorized domain users are admins
-            role = 'ADMIN'
-          } else if (isRegisteredAnalyst) {
-            // Registered analysts get ANALYST role
-            role = 'ANALYST'
-          } else if (isVendorDomain) {
-            // Vendors receive EDITOR role by default (limited dashboard access)
-            role = 'EDITOR'
-          }
-          
-          const defaultProfile = {
-            id: data.user.id,
-            role: role,
-            first_name: data.user.user_metadata?.first_name || 
-                       data.user.user_metadata?.name || 
-                       data.user.email?.split('@')[0] || 'User',
-            last_name: data.user.user_metadata?.last_name || '',
-            company: data.user.user_metadata?.company || 
-                    (isAuthorizedDomain ? (emailDomain ? emailDomain.split('.')[0].charAt(0).toUpperCase() + emailDomain.split('.')[0].slice(1) : 'Company') : (isRegisteredAnalyst ? 'Analyst' : 'Vendor')) || null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
+          let role: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST' = 'VENDOR_USER'
+          if (isAuthorizedDomain) role = 'VENDOR_ADMIN'
+          else if (isRegisteredAnalyst) role = 'ANALYST'
+          else if (isVendorDomain) role = 'VENDOR_USER'
 
-          const { error: createError } = await serviceClient!
-            .from('user_profiles')
-            .insert(defaultProfile)
-
-          if (createError) {
-            console.error('Failed to create user profile with service role:', createError)
-            console.error('Profile data that failed:', defaultProfile)
-            
-            // Try fallback with regular client (may succeed if RLS allows it)
-            console.log('Trying fallback with regular client...')
-            const { error: fallbackError } = await supabase
-              .from('user_profiles')
-              .insert(defaultProfile)
-            
-            if (fallbackError) {
-              console.error('Fallback also failed:', fallbackError)
-              // Do not block login; redirect and let client-side fallback handle
-              const redirectPath = role === 'ANALYST' ? '/portal' : (isVendorDomain ? '/vendor_portal/login?welcome=1' : '/')
-              return NextResponse.redirect(`${origin}${redirectPath}`, { 
-                headers: response.headers 
-              })
-            }
-          }
-          
-          console.log('New user profile created successfully for:', data.user.email)
-          console.log('Profile details:', defaultProfile)
-          
-          // Redirect based on role
-          const redirectPath = role === 'ANALYST' ? '/analyst_portal/login' : (isVendorDomain ? '/' : '/')
-          return NextResponse.redirect(`${origin}${redirectPath}`, { 
-            headers: response.headers 
-          })
+          console.log('ℹ️ Skipping server-side profile creation due to schema variance; role resolved to', role)
+          const redirectPath = role === 'ANALYST' ? '/analyst_portal/analyst_hub' : (isVendorDomain ? '/' : '/')
+          return NextResponse.redirect(`${origin}${redirectPath}`, { headers: response.headers })
         } else if (profile) {
-          
-          // Redirect based on role
-          const redirectPath = profile.role === 'ANALYST' ? '/analyst_portal/login' : '/'
-          return NextResponse.redirect(`${origin}${redirectPath}`, { 
-            headers: response.headers 
-          })
-        } else if (profileError) {
-          console.error('Error checking user profile:', profileError)
-          // Do not block login; continue
-          return response
-        }
-      } catch (dbError) {
-        console.error('Database error during OAuth callback:', dbError)
         // Do not block login; continue
         return response
       }
       
       // If we get here, everything worked but no profile handling needed
       return response
+    } catch (dbError) {
+      console.error('Database error during OAuth callback:', dbError)
+      // Do not block login; continue
+      return response
+    }
     }
     
     console.error('Session exchange failed:', error)

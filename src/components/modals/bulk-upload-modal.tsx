@@ -342,7 +342,7 @@ export default function BulkUploadModal({
                   <p className="text-sm text-gray-600 mb-2">
                     Drag and drop your file here, or
                   </p>
-                  <label className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                  <label className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 cursor-pointer">
                     Choose File
                     <input
                       type="file"

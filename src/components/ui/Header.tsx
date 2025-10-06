@@ -124,7 +124,7 @@ const Header: React.FC<HeaderProps> = ({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold">
+          <div className="w-8 h-8 rounded-full bg-pink-600 text-white flex items-center justify-center text-sm font-semibold">
             {getUserInitials()}
           </div>
           <div className="hidden sm:block text-left">

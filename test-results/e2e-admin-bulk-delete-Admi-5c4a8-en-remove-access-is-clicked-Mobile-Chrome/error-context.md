@@ -1,0 +1,53 @@
+# Page snapshot
+
+```yaml
+- img "ClearCompany Logo"
+- navigation:
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: /
+    - listitem:
+      - link "Analysts":
+        - /url: /analysts
+    - listitem:
+      - link "Briefings":
+        - /url: /briefings
+    - listitem:
+      - link "Follow Ups":
+        - /url: /briefings/follow-ups
+    - listitem:
+      - link "Briefings Due":
+        - /url: /briefings/due
+    - listitem:
+      - link "Newsletters":
+        - /url: /newsletters
+    - listitem:
+      - link "Testimonials":
+        - /url: /testimonials
+    - listitem:
+      - link "X Activity":
+        - /url: /twitter-activity
+    - listitem:
+      - link "Publications":
+        - /url: /publications
+    - listitem:
+      - link "Awards":
+        - /url: /awards
+    - listitem:
+      - link "Events":
+        - /url: /events
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+  - separator
+  - list:
+    - listitem:
+      - button "Analyst Portal"
+- banner "Main header":
+  - button "U"
+  - heading "HR Technology Industry Relationship Management" [level=1]
+  - paragraph: Manage relationships • Get noticed • Drive growth
+- main
+- alert
+```

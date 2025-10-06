@@ -372,7 +372,7 @@ export default function CalendarSyncOptionsModal({
               onClick={handleConfirm}
               disabled={isStarting || (options.timeWindow === 'custom' && (!options.startDate || !options.endDate))}
               className={cn(
-                "px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-200 disabled:opacity-50 transition-colors flex items-center gap-2",
+                "px-6 py-2 text-sm font-medium text-white bg-pink-600 rounded-lg hover:bg-pink-700 focus:ring-2 focus:ring-pink-200 disabled:opacity-50 transition-colors flex items-center gap-2",
                 isStarting && "cursor-not-allowed"
               )}
             >

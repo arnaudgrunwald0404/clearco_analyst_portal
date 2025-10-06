@@ -17,12 +17,13 @@ export default function RichNoteViewer({ value, className }: RichNoteViewerProps
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ bulletList: true, orderedList: true }),
+      StarterKit.configure({}),
       Underline,
       Link.configure({ openOnClick: true, autolink: true, protocols: ['http', 'https', 'mailto'] }),
     ],
     content: sanitized,
     editable: false,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: 'prose prose-sm max-w-none',
@@ -34,7 +35,7 @@ export default function RichNoteViewer({ value, className }: RichNoteViewerProps
     if (!editor) return
     const next = DOMPurify.sanitize(value || '')
     const current = editor.getHTML()
-    if (next !== current) editor.commands.setContent(next || '', false)
+    if (next !== current) editor.commands.setContent(next || '', { emitUpdate: false })
   }, [value, editor])
 
   return (

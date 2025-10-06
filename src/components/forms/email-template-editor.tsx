@@ -166,7 +166,7 @@ export default function EmailTemplateEditor({
                 leftSection={<Save size={14} />}
                 onClick={handleSave}
                 loading={saving}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-pink-600 hover:bg-pink-700"
               >
                 Save
               </Button>
@@ -263,7 +263,7 @@ Use merge tags like {'{{first_name}}'}, {'{{company}}'} for personalization
             <Button
               onClick={handleSave}
               loading={saving}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-pink-600 hover:bg-pink-700"
             >
               Save Changes
             </Button>

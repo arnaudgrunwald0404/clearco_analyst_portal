@@ -518,7 +518,7 @@ export default function PublicationsPage() {
             </div>
             <div className="w-full bg-blue-200 rounded-full h-2">
               <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                className="bg-pink-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(discoveryProgress.currentAnalyst / discoveryProgress.totalAnalysts) * 100}%` }}
               ></div>
             </div>
@@ -633,7 +633,7 @@ export default function PublicationsPage() {
             placeholder="Search publications by title, summary, analyst, or company..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white bg-white"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -641,7 +641,7 @@ export default function PublicationsPage() {
           <select
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
           >
             {publicationTypes.map(type => (
               <option key={type.value} value={type.value}>
@@ -700,14 +700,14 @@ export default function PublicationsPage() {
                           type="text"
                           value={editData.title || ''}
                           onChange={(e) => setEditData(prev => ({ ...prev, title: e.target.value }))}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-pink-500 focus:border-blue-500"
                           placeholder="Title"
                         />
                         <input
                           type="text"
                           value={editData.summary || ''}
                           onChange={(e) => setEditData(prev => ({ ...prev, summary: e.target.value }))}
-                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-pink-500 focus:border-blue-500"
                           placeholder="Summary"
                         />
                       </div>
@@ -718,7 +718,7 @@ export default function PublicationsPage() {
                       <select
                         value={editData.type || publication.type}
                         onChange={(e) => setEditData(prev => ({ ...prev, type: e.target.value as any }))}
-                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-pink-500 focus:border-blue-500"
                       >
                         {publicationTypes.filter(type => type.value !== 'ALL').map(type => (
                           <option key={type.value} value={type.value}>
@@ -733,7 +733,7 @@ export default function PublicationsPage() {
                       <select
                         value={editData.analystId || publication.analystId}
                         onChange={(e) => setEditData(prev => ({ ...prev, analystId: e.target.value }))}
-                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-pink-500 focus:border-blue-500"
                       >
                         <option value="">No analyst</option>
                         {analysts.map(analyst => (
@@ -750,7 +750,7 @@ export default function PublicationsPage() {
                         type="date"
                         value={editData.publishedAt ? new Date(editData.publishedAt).toISOString().split('T')[0] : new Date(publication.publishedAt).toISOString().split('T')[0]}
                         onChange={(e) => setEditData(prev => ({ ...prev, publishedAt: new Date(e.target.value).toISOString() }))}
-                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-pink-500 focus:border-blue-500"
                       />
                     </div>
 
@@ -761,7 +761,7 @@ export default function PublicationsPage() {
                           type="checkbox"
                           checked={editData.isTracked !== undefined ? editData.isTracked : publication.isTracked}
                           onChange={(e) => setEditData(prev => ({ ...prev, isTracked: e.target.checked }))}
-                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
                         />
                         <span className="ml-2 text-xs text-gray-700">Tracked</span>
                       </label>
@@ -935,7 +935,7 @@ export default function PublicationsPage() {
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none"
                   placeholder="Enter publication title"
                   required
                 />
@@ -951,7 +951,7 @@ export default function PublicationsPage() {
                   id="url"
                   value={formData.url}
                   onChange={(e) => setFormData(prev => ({ ...prev, url: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none"
                   placeholder="https://example.com/publication"
                 />
               </div>
@@ -966,7 +966,7 @@ export default function PublicationsPage() {
                   value={formData.summary}
                   onChange={(e) => setFormData(prev => ({ ...prev, summary: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none resize-none"
                   placeholder="Brief description of the publication"
                 />
               </div>
@@ -982,7 +982,7 @@ export default function PublicationsPage() {
                     id="type"
                     value={formData.type}
                     onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none"
                     required
                   >
                     {publicationTypes.filter(type => type.value !== 'ALL').map(type => (
@@ -1002,7 +1002,7 @@ export default function PublicationsPage() {
                     id="analystId"
                     value={formData.analystId}
                     onChange={(e) => setFormData(prev => ({ ...prev, analystId: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none"
                     required
                   >
                     <option value="">Select an analyst</option>
@@ -1025,7 +1025,7 @@ export default function PublicationsPage() {
                   id="publishedAt"
                   value={formData.publishedAt}
                   onChange={(e) => setFormData(prev => ({ ...prev, publishedAt: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-blue-500 outline-none"
                   required
                 />
               </div>
@@ -1037,7 +1037,7 @@ export default function PublicationsPage() {
                   id="isTracked"
                   checked={formData.isTracked}
                   onChange={(e) => setFormData(prev => ({ ...prev, isTracked: e.target.checked }))}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-pink-500 focus:ring-2"
                 />
                 <label htmlFor="isTracked" className="ml-2 text-sm text-gray-700">
                   Track this publication

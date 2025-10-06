@@ -9,7 +9,7 @@ interface UserProfile {
   id: string
   email: string
   name: string
-  role: 'ADMIN' | 'EDITOR' | 'ANALYST'
+  role: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST'
   company: string | null
   profileImageUrl: string | null
   createdAt: string
@@ -45,8 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
     // Use full redirect to ensure state resets
     if (typeof window !== 'undefined') {
-      // Always send users to vendor portal access screen after forced logout
-      window.location.href = '/vendor_portal/login'
+      // Determine appropriate login page based on current location
+      const currentPath = window.location.pathname
+      const isAnalystPortal = currentPath.includes('/analyst_portal/')
+      const userRole = user?.role
+      const redirectUrl = (userRole === 'ANALYST' || isAnalystPortal) ? '/analyst_portal/login' : '/vendor_portal/login'
+      
+      window.location.href = redirectUrl
     }
   }
 
@@ -56,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hasBasics = typeof candidate.email === 'string' && candidate.email.length > 3
       && typeof candidate.name === 'string' && candidate.name.length > 0
       && typeof candidate.id === 'string' && candidate.id.length > 0
-      && (candidate.role === 'ADMIN' || candidate.role === 'EDITOR' || candidate.role === 'ANALYST')
+      && (candidate.role === 'SUPER_ADMIN' || candidate.role === 'VENDOR_ADMIN' || candidate.role === 'VENDOR_USER' || candidate.role === 'ANALYST')
     return hasBasics
   }
 
@@ -164,18 +169,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Get user profile via API endpoint to avoid RLS issues
       console.log('[AuthContext] Fetching user profile via API for user:', authUser.id, 'email:', authUser.email)
       
-      const response = await fetch('/api/auth/profile')
+      const response = await fetch('/api/auth/profile', {
+        method: 'GET',
+        credentials: 'include', // Ensure cookies are sent
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      
+      console.log('[AuthContext] Profile API response status:', response.status)
+      
+      if (!response.ok) {
+        let errorText = ''
+        try {
+          errorText = await response.text()
+        } catch (textError) {
+          console.error('[AuthContext] Failed to read response text:', textError)
+          errorText = `HTTP ${response.status} ${response.statusText}`
+        }
+        
+        console.error('[AuthContext] Profile API failed:', { 
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          headers: Object.fromEntries(response.headers.entries()),
+          errorText: errorText || 'No error message',
+          responseBody: errorText
+        })
+        
+        throw new Error(errorText || `HTTP ${response.status}: Failed to fetch profile`)
+      }
+      
       const result = await response.json()
       
       console.log('[AuthContext] Profile API result:', { 
         status: response.status, 
         hasProfile: !!result.profile, 
-        error: result.error 
+        error: result.error,
+        authUserId: authUser.id,
+        authUserEmail: authUser.email
       })
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch profile')
-      }
       
       const profile = result.profile
 
@@ -193,7 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: authUser.id,
             email,
             name: firstName + (lastName ? ` ${lastName}` : ''),
-            role: 'ADMIN',
+            role: 'VENDOR_ADMIN',
             company: domain ? domain.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') : 'Company',
             profileImageUrl: authUser.user_metadata?.avatar_url || null,
             createdAt: authUser.created_at,
@@ -213,7 +246,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: authUser.id,
           email: authUser.email || '',
           name: profile.name || profile.first_name + ' ' + profile.last_name || authUser.email?.split('@')[0] || 'User',
-          role: profile.role as 'ADMIN' | 'EDITOR' | 'ANALYST',
+          role: profile.role as 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST',
           company: profile.company,
           profileImageUrl: authUser.user_metadata?.avatar_url || null,
           createdAt: authUser.created_at,
@@ -236,7 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: authUser.id,
             email,
             name: firstName + (lastName ? ` ${lastName}` : ''),
-            role: 'ADMIN',
+            role: 'VENDOR_ADMIN',
             company: domain ? domain.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join('') : 'Company',
             profileImageUrl: authUser.user_metadata?.avatar_url || null,
             createdAt: authUser.created_at,
@@ -363,6 +396,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('[AuthContext] 🔄 Starting sign out process...')
       
+      // Determine redirect URL based on user role or current location
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+      const isAnalystPortal = currentPath.includes('/analyst_portal/')
+      const userRole = user?.role
+      
+      // Determine appropriate login page
+      let redirectUrl = '/vendor_portal/login' // default
+      if (userRole === 'ANALYST' || isAnalystPortal) {
+        redirectUrl = '/analyst_portal/login'
+      }
+      
+      console.log(`[AuthContext] Redirecting to: ${redirectUrl} (role: ${userRole}, isAnalystPortal: ${isAnalystPortal})`)
+      
       // Start API call and Supabase signout in parallel
       const [apiResponse] = await Promise.all([
         fetch('/api/auth/logout', {
@@ -388,15 +434,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       console.log('[AuthContext] ✅ Sign out completed')
       
-      // Always redirect to vendor portal access screen after sign out
-      window.location.href = '/vendor_portal/login'
+      // Redirect to appropriate login page
+      window.location.href = redirectUrl
     } catch (error) {
       console.error('[AuthContext] Sign out error:', error)
       // Emergency cleanup and redirect
       localStorage.removeItem('user')
       sessionStorage.clear()
       setUser(null)
-      window.location.href = '/vendor_portal/login'
+      
+      // Determine redirect URL for error case too
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+      const isAnalystPortal = currentPath.includes('/analyst_portal/')
+      const userRole = user?.role
+      const redirectUrl = (userRole === 'ANALYST' || isAnalystPortal) ? '/analyst_portal/login' : '/vendor_portal/login'
+      
+      window.location.href = redirectUrl
     }
   }
 

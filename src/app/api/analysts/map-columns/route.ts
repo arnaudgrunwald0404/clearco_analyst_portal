@@ -22,7 +22,6 @@ Available target fields:
 - email: Email address
 - company: Company/organization name
 - title: Job title/position
-- phone: Phone number
 - linkedIn: LinkedIn profile URL
 - twitter: Twitter handle/URL
 - website: Personal/company website
@@ -91,9 +90,6 @@ Return only valid JSON.`
             mapped = true
           } else if (normalizedColumn.includes('mail')) {
             mapping[column] = 'email'
-            mapped = true
-          } else if (normalizedColumn.includes('phone') || normalizedColumn.includes('tel')) {
-            mapping[column] = 'phone'
             mapped = true
           } else if (normalizedColumn.includes('linkedin')) {
             mapping[column] = 'linkedIn'

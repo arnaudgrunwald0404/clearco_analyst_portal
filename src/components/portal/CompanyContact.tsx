@@ -86,7 +86,8 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
   const contactImageUrl = portal?.contactImageUrl || portal?.authorImageUrl || null
 
   const initials = useMemo(() => {
-    return (contactName || 'U')
+    if (!contactName) return ''
+    return contactName
       .split(' ')
       .map((s) => s?.[0])
       .join('')
@@ -95,7 +96,7 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
   }, [contactName])
 
   return (
-    <div className="bg-white text-gray-900 rounded-lg border border-gray-200 shadow-sm p-4">
+    <div className="bg-white text-gray-900 rounded-lg border border-gray-200 shadow-sm py-4 pr-6 pl-12">
            {/* Switch Vendor Button */}
            <div className="border-b border-gray-200 pb-4 flex justify-center">
         <button
@@ -129,48 +130,50 @@ export default function CompanyContact({ selectedVendorName, onSwitchVendor }: C
       </div>
 
       {/* Contact Information Section */}
-      <div className=" pt-2">
-        <div className="text-sm font-normal text-gray-700 mb-3">{displayHeader}</div>
-        
-        <div className="flex items-center gap-4 mb-6">
-          {/* Avatar */}
-          <div className="relative">
-            {contactImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={contactImageUrl} alt={contactName || 'Contact'} className="w-16 h-16 rounded-full object-cover" />
-            ) : (
-              <div className="w-16 h-16 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
-                {initials}
-              </div>
-            )}
-          </div>
+      {contactName && (
+        <div className=" pt-2">
+          <div className="text-sm font-normal text-gray-700 mb-3">{displayHeader}</div>
           
-          {/* Contact Info */}
-          <div className="min-w-0 flex-1">
-            <div className="text-lg font-semibold leading-tight break-words">{contactName}</div>
-            {contactTitle && (
-              <div className="text-sm text-gray-700">{contactTitle}</div>
-            )}
-            {contactEmail && (
-              <div className="mt-2">
-                <Button
-                  asChild
-                  size="icon"
-                  variant="ghost"
-                  className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-transparent"
-                  aria-label={`Email ${contactName || 'contact'}`}
-                  title={`Email ${contactName || 'contact'}`}
-                >
-                  <a href={`mailto:${contactEmail}`}>
-                    <Mail className="w-4 h-4" />
-                  </a>
-                </Button>
-              </div>
-            )}
+          <div className="flex items-center gap-4 mb-6">
+            {/* Avatar */}
+            <div className="relative">
+              {contactImageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={contactImageUrl} alt={contactName || 'Contact'} className="w-16 h-16 rounded-full object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-pink-600 text-white flex items-center justify-center font-semibold">
+                  {initials}
+                </div>
+              )}
+            </div>
+            
+            {/* Contact Info */}
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-semibold leading-tight break-words">{contactName}</div>
+              {contactTitle && (
+                <div className="text-sm text-gray-700">{contactTitle}</div>
+              )}
+              {contactEmail && (
+                <div className="mt-2">
+                  <Button
+                    asChild
+                    size="icon"
+                    variant="ghost"
+                    className="text-gray-600 hover:text-gray-900 bg-transparent hover:bg-transparent"
+                    aria-label={`Email ${contactName || 'contact'}`}
+                    title={`Email ${contactName || 'contact'}`}
+                  >
+                    <a href={`mailto:${contactEmail}`}>
+                      <Mail className="w-4 h-4" />
+                    </a>
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-      </div>
+        </div>
+      )}
 
  
     </div>

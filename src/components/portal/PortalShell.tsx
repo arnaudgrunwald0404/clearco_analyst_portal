@@ -12,12 +12,12 @@ interface PortalShellProps {
 export default function PortalShell({ sidebar, rightSidebar, children }: PortalShellProps) {
   const hasRight = !!rightSidebar
   return (
-    <div className="min-h-[100svh] bg-gray-50">
+    <div className="min-h-[120svh] bg-gray-50">
       {/* Main grid area (full width) */}
       <div className="w-full py-6">
         <div className={`grid grid-cols-1 gap-y-4 gap-x-14 ${hasRight ? 'lg:grid-cols-[2.5fr_7fr_2.5fr] xl:grid-cols-[2.5fr_7fr_2.5fr]' : 'lg:grid-cols-[2.5fr_9.5fr] xl:grid-cols-[2.5fr_9.5fr]'}`}>
           {/* Left Sidebar */}
-          <aside className="order-1 lg:order-none min-w-0">
+          <aside className="order-1 lg:order-none min-w-0 lg:-ml-6">
             {sidebar}
           </aside>
 
@@ -32,7 +32,7 @@ export default function PortalShell({ sidebar, rightSidebar, children }: PortalS
 
           {/* Right Sidebar (optional) */}
           {hasRight && (
-            <aside className="min-w-0">
+            <aside className="min-w-0 lg:-mr-6 flex flex-col">
               {rightSidebar}
             </aside>
           )}

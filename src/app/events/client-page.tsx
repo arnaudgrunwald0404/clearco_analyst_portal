@@ -199,15 +199,15 @@ export default function EventsClientPage() {
       <div className="px-6 py-3 border-b bg-gray-50 font-semibold text-gray-800">{title}</div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 table-fixed">
-          <thead className="bg-gray-50">
+          <thead className="bg-pink-200 rounded-t-lg">
             <tr>
               <th className="px-6 py-3"><input type="checkbox" checked={rows.length>0 && rows.every(r=>selectedEvents.has(r.id))} onChange={()=>toggleAllInSection(rows)} /></th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Event</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Audience</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider w-1/2">Event</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">Start Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">Location</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">Audience</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">Tag</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -310,7 +310,7 @@ export default function EventsClientPage() {
           <div>
             {showBulkActions ? (
               <div className="flex items-center gap-3 relative">
-                <button onClick={() => setBulkOpen(!bulkOpen)} className="px-4 py-2 bg-blue-600 text-white rounded-lg flex items-center">Actions</button>
+                <button onClick={() => setBulkOpen(!bulkOpen)} className="px-4 py-2 bg-pink-600 text-white rounded-lg flex items-center">Actions</button>
                 {bulkOpen && (
                   <div className="absolute z-50 mt-12 w-48 bg-white border rounded shadow bulk-actions-dropdown">
                     <div className="py-1">
@@ -365,7 +365,7 @@ export default function EventsClientPage() {
               <RefreshCw className={`w-4 h-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Syncing...' : 'Sync Events'}
             </button>
-            <button onClick={() => setShowAddModal(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button onClick={() => setShowAddModal(true)} className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">
               <Plus className="w-4 h-4 mr-2" />
               Create Event
             </button>
@@ -379,11 +379,11 @@ export default function EventsClientPage() {
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input type="text" placeholder="Search events by name, type, or location..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <input type="text" placeholder="Search events by name, type, or location..." className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white bg-white" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
-            <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+            <select className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="ALL">All Status</option>
               <option value="EVALUATING">Evaluating</option>
               <option value="PLANNED">Planned</option>

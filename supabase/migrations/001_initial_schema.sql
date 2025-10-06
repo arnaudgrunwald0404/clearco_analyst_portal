@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create enum types
-CREATE TYPE user_role AS ENUM ('ADMIN', 'EDITOR', 'ANALYST');
+CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'VENDOR_ADMIN', 'VENDOR_USER', 'ANALYST');
 CREATE TYPE analyst_influence AS ENUM ('LOW', 'MEDIUM', 'HIGH');
 CREATE TYPE analyst_status AS ENUM ('ACTIVE', 'INACTIVE', 'PROSPECT');
 CREATE TYPE newsletter_status AS ENUM ('DRAFT', 'SCHEDULED', 'SENT');
@@ -12,7 +12,7 @@ CREATE TYPE content_type AS ENUM ('WHITEPAPER', 'CASE_STUDY', 'BLOG_POST', 'WEBI
 -- User profiles table (extends auth.users)
 CREATE TABLE user_profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  role user_role NOT NULL DEFAULT 'EDITOR',
+  role user_role NOT NULL DEFAULT 'VENDOR_USER',
   first_name TEXT,
   last_name TEXT,
   company TEXT,

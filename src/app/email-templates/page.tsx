@@ -274,7 +274,7 @@ export default function EmailTemplatesPage() {
           <Button 
             leftSection={<Plus size={16} />}
             onClick={() => setCreateModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-pink-600 hover:bg-pink-700"
           >
             Create Template
           </Button>
@@ -297,7 +297,7 @@ export default function EmailTemplatesPage() {
           <Button 
             leftSection={<Plus size={16} />}
             onClick={() => setCreateModalOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-pink-600 hover:bg-pink-700"
           >
             Create Your First Template
           </Button>
@@ -428,7 +428,7 @@ export default function EmailTemplatesPage() {
             <Button 
               onClick={createTemplate}
               disabled={!newTemplateName.trim()}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-pink-600 hover:bg-pink-700"
             >
               Create Template
             </Button>

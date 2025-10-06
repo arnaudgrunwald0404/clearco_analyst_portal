@@ -1,7 +1,6 @@
 import {
   Users,
   Mail,
-  BarChart3,
   Settings,
   Home,
   User,
@@ -10,7 +9,10 @@ import {
   Award,
   CalendarDays,
   FileText,
-  Shield
+  Shield,
+  Building2,
+  UserCog,
+  ExternalLink
 } from 'lucide-react'
 import { XLogo } from '@/components/ui/x-logo'
 
@@ -21,7 +23,7 @@ export interface NavigationItem {
   subItems?: NavigationItem[]
 }
 
-// Main navigation items (excluding Analyst Portal)
+// Main navigation items (Admin is now separate)
 export const mainNavigation: NavigationItem[] = [
   { name: 'Overview', href: '/', icon: Home },
   { name: 'Analysts', href: '/analysts', icon: Users },
@@ -35,13 +37,20 @@ export const mainNavigation: NavigationItem[] = [
   { name: 'Awards', href: '/awards', icon: Award },
   { name: 'Events', href: '/events', icon: CalendarDays },
 
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
+
+// Admin navigation item (for Super Admins only - goes under separator)
+export const adminNavigationItem: NavigationItem = {
+  name: 'Admin',
+  href: '/admin',
+  icon: Shield
+}
 
 // Analyst Portal as separate item (moved to bottom)
 export const analystPortalItem: NavigationItem = { 
   name: 'Analyst Portal', 
-  href: '/portal', 
+  href: '/analyst_portal/analyst_hub', 
   icon: User 
 }
+

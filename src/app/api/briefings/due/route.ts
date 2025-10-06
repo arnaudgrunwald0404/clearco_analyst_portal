@@ -10,11 +10,12 @@ interface TierCacheEntry {
   searchTerm: string
 }
 
+// Vendor-aware caches
 const tierCache = new Map<string, TierCacheEntry>()
 const CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes (increased for better hit rate)
 
-// Legacy cache for compatibility
-let cachedDueResults: { data: any[]; updatedAt: number; counts: Record<string, number> } | null = null
+// Legacy cache for compatibility (vendor-aware)
+const cachedDueResultsByVendor = new Map<string, { data: any[]; updatedAt: number; counts: Record<string, number> }>()
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,8 +33,8 @@ export async function GET(request: NextRequest) {
     // Use service client for admin operations to bypass RLS
     const supabase = createServiceClient()
     
-    // Note: Briefings due calculation should include ALL analysts, not filtered by vendor domain
-    // This is because briefings due represents which analysts need to be contacted regardless of vendor
+    // Note: Briefings due is vendor-scoped to the current tenant (ctxOrResp.id)
+    // We aggregate analysts and briefings for the current vendor only to avoid cross-tenant leakage
 
     // Get all influence tiers for reference (active only)
     const { data: influenceTiers, error: tiersError } = await supabase
@@ -71,33 +72,36 @@ export async function GET(request: NextRequest) {
     }
 
     // Check tier-specific cache first (more granular and efficient)
-    const cacheKey = `${tierFilter}_${search}_all`
+    const vendorKey = ctxOrResp.id
+    const cacheKey = `${vendorKey}::${tierFilter}_${search}_all`
     const tierCacheEntry = tierCache.get(cacheKey)
     const tierCacheValid = !force && tierCacheEntry && 
       (Date.now() - tierCacheEntry.updatedAt) < CACHE_TTL_MS &&
       tierCacheEntry.searchTerm === search
 
     if (tierCacheValid) {
-      console.log(`💾 [CACHE HIT] Using cached data for tier: ${tierFilter}, search: "${search}"`)
+      console.log(`💾 [CACHE HIT] Using cached data for vendor=${vendorKey}, tier=${tierFilter}, search="${search}"`)
+      const legacyVendor = cachedDueResultsByVendor.get(vendorKey)
       return NextResponse.json({
         success: true,
         data: tierCacheEntry.data,
         cached: true,
         updatedAt: tierCacheEntry.updatedAt,
         total: tierCacheEntry.data.length,
-        countsByTier: cachedDueResults?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+        countsByTier: legacyVendor?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
         filters: { search, tier: tierFilter }
       })
     }
 
-    // Fallback to legacy cache for full dataset queries
-    const legacyCacheValid = !force && !tierFilter && !search && cachedDueResults && 
-      (Date.now() - cachedDueResults.updatedAt) < CACHE_TTL_MS
+    // Fallback to legacy cache for full dataset queries (vendor-aware)
+    const legacyVendor = cachedDueResultsByVendor.get(vendorKey)
+    const legacyCacheValid = !force && !tierFilter && !search && legacyVendor && 
+      (Date.now() - legacyVendor.updatedAt) < CACHE_TTL_MS
 
     let analystsDueForBriefings: any[]
     if (legacyCacheValid) {
-      console.log('💾 [LEGACY CACHE HIT] Using full cached dataset')
-      analystsDueForBriefings = cachedDueResults!.data
+      console.log(`💾 [LEGACY CACHE HIT] Using full cached dataset for vendor=${vendorKey}`)
+      analystsDueForBriefings = legacyVendor!.data
     } else {
       // Get ALL analysts - no pagination limits
       const { data: analysts, error: analystsError } = await query.order('firstName', { ascending: true })
@@ -127,7 +131,8 @@ export async function GET(request: NextRequest) {
       // Bulk fetch all briefing-analyst relationships
       const { data: allBriefingAnalysts } = await supabase
         .from('briefing_analysts')
-        .select('analystId, briefingId')
+        .select('analystId, briefingId, vendor_domain_id')
+        .eq('vendor_domain_id', ctxOrResp.id)
         .in('analystId', analystIds)
       
       // Get all briefing IDs and create lookup map
@@ -147,7 +152,7 @@ export async function GET(request: NextRequest) {
       if (briefingIds.length > 0) {
         const { data: briefingsById } = await supabase
           .from('briefings')
-          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .select('id, title, completedAt, scheduledAt, status, attendeeEmails, attendees')
           .eq('vendor_domain_id', ctxOrResp.id)
           .in('id', briefingIds)
         allBriefings = briefingsById || []
@@ -157,7 +162,7 @@ export async function GET(request: NextRequest) {
       if (analystEmails.length > 0) {
         const { data: briefingsByEmail } = await supabase
           .from('briefings')
-          .select('id, title, completedAt, scheduledAt, status, attendeeEmails')
+          .select('id, title, completedAt, scheduledAt, status, attendeeEmails, attendees')
           .eq('vendor_domain_id', ctxOrResp.id)
           .in('status', ['COMPLETED', 'SCHEDULED', 'RESCHEDULED'])
           .order('scheduledAt', { ascending: false })
@@ -166,10 +171,16 @@ export async function GET(request: NextRequest) {
         // Filter client-side for email matches and merge with existing
         const emailMatchedBriefings = (briefingsByEmail || []).filter(b => {
           if (allBriefings.some(existing => existing.id === b.id)) return false // Avoid duplicates
-          const attendeeList = Array.isArray(b.attendeeEmails) ? b.attendeeEmails : []
-          return analystEmails.some(email => 
-            attendeeList.some((e: string) => e.toLowerCase() === email.toLowerCase())
-          )
+          const attendeeEmailsArr = Array.isArray(b.attendeeEmails) ? (b.attendeeEmails as string[]) : []
+          const attendeesArr = Array.isArray(b.attendees) ? (b.attendees as any[]) : []
+          const attendeeEmailsFromAttendees = attendeesArr
+            .map(row => Array.isArray(row) ? String(row[0] || '').toLowerCase() : '')
+            .filter(Boolean)
+          const allEmails = new Set([
+            ...attendeeEmailsArr.map(e => (e || '').toLowerCase()),
+            ...attendeeEmailsFromAttendees,
+          ])
+          return analystEmails.some(email => allEmails.has((email || '').toLowerCase()))
         })
         
         allBriefings = [...allBriefings, ...emailMatchedBriefings]
@@ -237,11 +248,21 @@ export async function GET(request: NextRequest) {
         const analystBriefingIds = analystBriefingMap.get(analyst.id) || []
         
         // Filter briefings for this analyst
-        const analystBriefings = (allBriefings || []).filter(b => 
-          analystBriefingIds.includes(b.id) ||
-          (analyst.email && Array.isArray(b.attendeeEmails) && 
-           b.attendeeEmails.some((e: string) => e.toLowerCase() === analyst.email.toLowerCase()))
-        )
+        const analystBriefings = (allBriefings || []).filter(b => {
+          if (analystBriefingIds.includes(b.id)) return true
+          const email = (analyst.email || '').toLowerCase()
+          if (!email) return false
+          const attendeeEmailsArr = Array.isArray(b.attendeeEmails) ? (b.attendeeEmails as string[]) : []
+          const attendeesArr = Array.isArray(b.attendees) ? (b.attendees as any[]) : []
+          const attendeeEmailsFromAttendees = attendeesArr
+            .map(row => Array.isArray(row) ? String(row[0] || '').toLowerCase() : '')
+            .filter(Boolean)
+          const allEmails = new Set([
+            ...attendeeEmailsArr.map(e => (e || '').toLowerCase()),
+            ...attendeeEmailsFromAttendees,
+          ])
+          return allEmails.has(email)
+        })
 
         // Find last completed briefing
         const completedBriefings = analystBriefings
@@ -347,7 +368,7 @@ export async function GET(request: NextRequest) {
         if (counts[norm] !== undefined) counts[norm] += 1
       }
 
-      cachedDueResults = { data: analystsDueForBriefings, updatedAt: Date.now(), counts };
+      cachedDueResultsByVendor.set(vendorKey, { data: analystsDueForBriefings, updatedAt: Date.now(), counts });
     }
 
     // Optional backend tier filter support (TIER_1..4), map by order if present
@@ -383,16 +404,17 @@ export async function GET(request: NextRequest) {
         updatedAt: Date.now(),
         searchTerm: search
       })
-      console.log(`💾 [CACHE SET] Cached data for tier: ${tierFilter}, search: "${search}"`)
+      console.log(`💾 [CACHE SET] Cached data for vendor=${vendorKey}, tier=${tierFilter}, search="${search}"`)
     }
 
+    const legacyVendorFinal = cachedDueResultsByVendor.get(vendorKey)
     return NextResponse.json({
       success: true,
       data: filtered,
       cached: legacyCacheValid,
-      updatedAt: cachedDueResults?.updatedAt || Date.now(),
+      updatedAt: legacyVendorFinal?.updatedAt || Date.now(),
       total: filtered.length,
-      countsByTier: cachedDueResults?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
+      countsByTier: legacyVendorFinal?.counts || { VERY_HIGH: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
       filters: { search, tier: tierFilter }
     })
 

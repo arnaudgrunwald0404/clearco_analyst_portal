@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
       email: string
       company?: string
       title?: string
-      phone?: string
       linkedIn?: string
       twitter?: string
       website?: string
@@ -103,7 +102,6 @@ export async function POST(request: NextRequest) {
           email: analystData.email,
           company: analystData.company || null,
           title: analystData.title || null,
-          phone: analystData.phone || null,
           linkedinUrl: analystData.linkedIn || null,
           twitterHandle: analystData.twitter || null,
           personalWebsite: analystData.website || null,

@@ -5,7 +5,6 @@ import { Disclosure } from '@headlessui/react'
 import { 
   User, 
   Mail, 
-  Phone, 
   Linkedin, 
   Twitter, 
   Calendar, 
@@ -47,7 +46,6 @@ interface Analyst {
   email: string
   company?: string
   title?: string
-  phone?: string
   linkedIn?: string
   twitter?: string
   website?: string
@@ -395,7 +393,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Profile
               </button>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700">
+              <button className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Contact
               </button>
@@ -422,14 +420,6 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                 {analyst.email}
               </a>
             </div>
-            {analyst.phone && (
-              <div className="flex items-center text-sm text-gray-600">
-                <Phone className="w-4 h-4 mr-2" />
-                <a href={`tel:${analyst.phone}`} className="hover:text-blue-600">
-                  {analyst.phone}
-                </a>
-              </div>
-            )}
             {analyst.linkedIn && (
               <div className="flex items-center text-sm text-gray-600">
                 <Linkedin className="w-4 h-4 mr-2" />
@@ -700,7 +690,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Briefing Schedule</h3>
-              <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700">
+              <button className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-md text-sm font-medium hover:bg-pink-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Schedule New Briefing
               </button>
@@ -730,7 +720,7 @@ export default function AnalystDetailPage({ params }: { params: { id: string } }
                       <ul className="text-sm text-gray-700 space-y-1">
                         {briefing.agenda.map((item, index) => (
                           <li key={index} className="flex items-center">
-                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2"></span>
+                            <span className="w-1.5 h-1.5 bg-pink-600 rounded-full mr-2"></span>
                             {item}
                           </li>
                         ))}

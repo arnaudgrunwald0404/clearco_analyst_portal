@@ -1,7 +1,3 @@
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
-
 async function main() {
   console.log('🌱 Seeding database with sample data...')
 
@@ -13,7 +9,7 @@ async function main() {
       email: 'admin@hrtech.com',
       name: 'Admin User',
       password: 'hashedpassword123', // In real app, this would be properly hashed
-      role: 'ADMIN',
+      role: 'VENDOR_ADMIN',
     },
   })
 

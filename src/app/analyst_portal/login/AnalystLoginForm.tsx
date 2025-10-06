@@ -24,7 +24,7 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
     console.log('[AnalystLoginForm] Auth state:', { authLoading, user: user?.email, role: user?.role })
     if (!authLoading && user && user.role === 'ANALYST') {
       console.log('Analyst already authenticated, redirecting to portal')
-      router.push('/portal')
+      router.push('/analyst_portal/analyst_hub')
     }
   }, [user, authLoading, router])
 
@@ -158,7 +158,7 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
           <Button
             type="button"
             variant="outline"
-            className="w-full mb-6 h-14 text-base font-medium border-2 hover:bg-gray-50 transition-all duration-200"
+            className="w-full mb-6 h-14 text-gray-700 font-medium bg-pink-200 border-1 border-pink-400 hover:bg-pink-200 hover:shadow-lg hover:text-gray-900 transition-all duration-200"
             onClick={handleGoogleSignIn}
             disabled={loading}
           >
@@ -169,7 +169,7 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
           {/* Divider */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
+              <div className="w-full border-t border-pink-200" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white text-gray-500 font-medium">or</span>
@@ -192,7 +192,7 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   data-testid="email-input"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white transition-all duration-200"
                   placeholder="Enter your email"
                   disabled={loading}
                 />
@@ -202,7 +202,7 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
             <button
               type="submit"
               disabled={loading || !email.trim()}
-              className="w-full h-14 text-base font-medium bg-blue-600 hover:bg-blue-700 transition-all duration-200 flex items-center justify-center rounded-lg"
+              className="w-full h-14 text-base font-medium bg-pink-600 hover:bg-pink-700 focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center rounded-lg text-white"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -224,25 +224,23 @@ export default function AnalystLoginForm({ analystOnly = false, crossLinkHref, c
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 space-y-4">
-          <p className="text-sm text-gray-500">
-            Need help? Contact your administrator
-          </p>
-          
-          {crossLinkHref && crossLinkLabel && (
-            <div className="pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-2">
-                Are you a vendor or admin?
-              </p>
-              <a 
-                href={crossLinkHref} 
-                className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
-              >
-                {crossLinkLabel}
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </a>
-            </div>
-          )}
+        <div className="text-center mt-8">
+          <div className="pt-4 border-t border-gray-200 flex flex-wrap items-center justify-center gap-2 text-sm">
+            {crossLinkHref && crossLinkLabel && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-600">Are you a vendor or admin?</span>
+                <span className="text-gray-300">|</span>
+                <a 
+                  href={crossLinkHref} 
+                  className="inline-flex items-center font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
+                >
+                  {crossLinkLabel}
+                  <ArrowRight className="ml-1 h-4 w-4" />
+                </a>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -61,12 +61,12 @@ async function createUserProfiles() {
       const emailDomain = email.split('@')[1]?.toLowerCase()
       const emailName = email.split('@')[0]?.toLowerCase()
       
-      let role = 'EDITOR'
+      let role = 'VENDOR_USER'
       if (emailDomain === 'clearcompany.com') {
         if (['sarah.chen', 'mike.johnson', 'lisa.wang'].includes(emailName)) {
           role = 'ANALYST'
         } else {
-          role = 'ADMIN'
+          role = 'VENDOR_ADMIN'
         }
       }
       

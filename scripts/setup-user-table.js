@@ -32,7 +32,7 @@ async function setupUserTable() {
     const createTableSQL = `
       -- Create user role enum if it doesn't exist
       DO $$ BEGIN
-          CREATE TYPE user_role AS ENUM ('ADMIN', 'EDITOR', 'ANALYST');
+          CREATE TYPE user_role AS ENUM ('SUPER_ADMIN', 'VENDOR_ADMIN', 'VENDOR_USER', 'ANALYST');
       EXCEPTION
           WHEN duplicate_object THEN null;
       END $$;
@@ -42,7 +42,7 @@ async function setupUserTable() {
           "id" TEXT PRIMARY KEY DEFAULT ('usr' || substring(replace(gen_random_uuid()::text, '-', ''), 1, 25)),
           "email" TEXT UNIQUE NOT NULL,
           "name" TEXT NOT NULL,
-          "role" user_role NOT NULL DEFAULT 'EDITOR',
+          "role" user_role NOT NULL DEFAULT 'VENDOR_USER',
           "password" TEXT, -- For password authentication (hashed)
           "profileImageUrl" TEXT,
           "company" TEXT,
@@ -124,7 +124,7 @@ async function setupUserTable() {
         id: 'usr_admin_001',
         email: 'admin@clearcompany.com',
         name: 'Admin User',
-        role: 'ADMIN',
+        role: 'VENDOR_ADMIN',
         password: hashedPassword,
         company: 'ClearCompany',
         title: 'Administrator',

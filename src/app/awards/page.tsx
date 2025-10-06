@@ -180,7 +180,7 @@ export default function AwardsPage() {
               Manage and track industry awards and recognition
             </p>
           </div>
-          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">
             <Plus className="w-4 h-4 mr-2" />
             Add Award
           </button>
@@ -195,7 +195,7 @@ export default function AwardsPage() {
             <input
               type="text"
               placeholder="Search awards by name, organization, topics, or owner..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -206,7 +206,7 @@ export default function AwardsPage() {
             
             {/* Priority Filter */}
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
             >
@@ -261,10 +261,10 @@ export default function AwardsPage() {
         <div className="bg-white shadow rounded-lg">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-pink-200 rounded-t-lg">
                 <tr>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('awardName')}
                   >
                     <div className="flex items-center space-x-1">
@@ -273,7 +273,7 @@ export default function AwardsPage() {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('publicationDate')}
                   >
                     <div className="flex items-center space-x-1">
@@ -282,7 +282,7 @@ export default function AwardsPage() {
                     </div>
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('processStartDate')}
                   >
                     <div className="flex items-center space-x-1">
@@ -290,11 +290,11 @@ export default function AwardsPage() {
                       {getSortIcon('processStartDate')}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Contact Information
                   </th>
                   <th 
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     onClick={() => handleSort('priority')}
                   >
                     <div className="flex items-center space-x-1">
@@ -302,10 +302,10 @@ export default function AwardsPage() {
                       {getSortIcon('priority')}
                     </div>
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Topics
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-900 text-bold uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>

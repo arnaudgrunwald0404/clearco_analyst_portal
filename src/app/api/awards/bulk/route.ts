@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { parseDate } from '@/lib/date-utils'
-import { requireVendorScope } from '@/lib/vendor-context'
+import { getCurrentVendorDomainId } from '@/lib/vendor-domain-utils'
 
 function generateId(): string {
   const timestamp = Date.now().toString(36)
@@ -12,9 +12,10 @@ function generateId(): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const ctxOrResp = await requireVendorScope(request)
-    if (ctxOrResp instanceof NextResponse) return ctxOrResp
-    const vendorDomainId = ctxOrResp.id
+    const vendorDomainId = await getCurrentVendorDomainId()
+    if (!vendorDomainId) {
+      return NextResponse.json({ success: false, error: 'Unauthorized: missing vendor scope' }, { status: 403 })
+    }
 
     const body = await request.json()
     const { awards } = body

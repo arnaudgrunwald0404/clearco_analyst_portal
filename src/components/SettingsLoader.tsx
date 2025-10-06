@@ -48,7 +48,7 @@ export const SettingsLoader: React.FC<SettingsLoaderProps> = ({ children }) => {
           <p className="text-gray-500 text-sm mt-2">{error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             Retry
           </button>

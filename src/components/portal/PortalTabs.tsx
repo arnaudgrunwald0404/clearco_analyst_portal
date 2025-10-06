@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 const getBaseTabs = (companyName: string) => [
-  { href: '/portal', value: 'relationship', label: 'Relationship' },
-  { href: '/portal/company', value: 'company', label: 'Company' },
-  { href: '/portal/roadmap', value: 'roadmap', label: 'Product Roadmap' },
-  { href: '/portal/testimonials', value: 'testimonials', label: 'Analyst Testimonials' },
-  { href: '/portal/resources', value: 'resources', label: 'Content' },
+  { href: '/analyst_portal/vendor_profile', value: 'relationship', label: 'Relationship' },
+  { href: '/analyst_portal/vendor_profile/company', value: 'company', label: 'Company' },
+  { href: '/analyst_portal/vendor_profile/roadmap', value: 'roadmap', label: 'Product Roadmap' },
+  { href: '/analyst_portal/vendor_profile/testimonials', value: 'testimonials', label: 'Analyst Testimonials' },
+  { href: '/analyst_portal/vendor_profile/resources', value: 'resources', label: 'Content' },
 ]
 
 export function PortalTabs() {
@@ -19,11 +19,11 @@ export function PortalTabs() {
   const [tabs, setTabs] = useState(getBaseTabs('Company'))
   
   const active =
-    pathname?.startsWith('/portal/company') ? 'company' :
-    pathname?.startsWith('/portal/roadmap') ? 'roadmap' :
-    pathname?.startsWith('/portal/testimonials') ? 'testimonials' :
-    pathname?.startsWith('/portal/research') ? 'research' :
-    pathname?.startsWith('/portal/resources') ? 'resources' :
+    pathname?.startsWith('/analyst_portal/vendor_profile/company') ? 'company' :
+    pathname?.startsWith('/analyst_portal/vendor_profile/roadmap') ? 'roadmap' :
+    pathname?.startsWith('/analyst_portal/vendor_profile/testimonials') ? 'testimonials' :
+    pathname?.startsWith('/analyst_portal/vendor_profile/research') ? 'research' :
+    pathname?.startsWith('/analyst_portal/vendor_profile/resources') ? 'resources' :
     'relationship'
 
   useEffect(() => {

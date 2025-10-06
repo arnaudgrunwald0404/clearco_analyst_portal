@@ -95,8 +95,8 @@ const analystAttendees = attendees.filter((a: any) => analystEmails.has(a.email.
       className={cn(
         "rounded-lg border p-6 hover:shadow-md transition-shadow cursor-pointer",
         hasTranscript 
-          ? "bg-orange-50 border-orange-200 hover:border-orange-300" 
-          : "bg-white border-gray-200"
+          ? "bg-pink-100 border-pink-200 hover:border-pink-400" 
+          : "bg-white border-pink-200"
       )}
       onClick={() => onSelect(briefing)}
     >
@@ -106,21 +106,21 @@ const analystAttendees = attendees.filter((a: any) => analystEmails.has(a.email.
             className={cn(
               'flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center relative',
               hasTranscript 
-                ? 'bg-orange-100' 
+                ? 'bg-pink-100 border border-pink-400' 
                 : isUpcoming 
                   ? 'bg-blue-100' 
                   : 'bg-gray-100'
             )}
           >
             {hasTranscript ? (
-              <Mic className="w-6 h-6 text-orange-600" />
+              <Calendar className="w-6 h-6 text-pink-600" />
             ) : (
               <Calendar className={cn('w-6 h-6', isUpcoming ? 'text-blue-600' : 'text-gray-600')} />
             )}
             
             {/* Transcript Badge */}
             {hasTranscript && (
-              <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
+              <div className="absolute -top-1 -right-1 w-5 h-5 bg-pink-600 rounded-full flex items-center justify-center">
                 <FileText className="w-3 h-3 text-white" />
               </div>
             )}

@@ -17,7 +17,7 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
   const [drawerTab, setDrawerTab] = useState<"overview" | "materials" | "transcript">("overview")
   
   // Get analyst context from URL for impersonation - try multiple sources
-  let analystId = searchParams.get('analystId')
+  let analystId = searchParams?.get('analystId')
   
   // If no analystId in search params, try to extract from current URL
   if (!analystId && typeof window !== 'undefined') {
@@ -38,9 +38,9 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
           const gj = await generalResp.json().catch(() => null as any)
           vendorDomain = gj?.protected_domain || undefined
         }
-        const qs = new URLSearchParams()
-        if (vendorDomain) qs.set('vendorDomain', vendorDomain)
-        const resp = await fetch(`/api/settings/analyst-portal${qs.toString() ? `?${qs.toString()}` : ''}`, { cache: 'no-store' })
+        const settingsParams = new URLSearchParams()
+        if (vendorDomain) settingsParams.set('vendorDomain', vendorDomain)
+        const resp = await fetch(`/api/settings/analyst-portal${settingsParams.toString() ? `?${settingsParams.toString()}` : ''}`, { cache: 'no-store' })
         if (resp.ok) {
           const json = await resp.json().catch(() => null as any)
           if (!cancelled) {
@@ -77,8 +77,11 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
         }
         
         // Security: Fetch briefings with analyst context for proper data isolation
+        // Include analystId in the query to activate the impersonation/vendor-admin guard path in the API
+        const briefingsParams = new URLSearchParams({ limit: '1', order: 'desc' })
+        if (analystId) briefingsParams.set('analystId', analystId)
         
-        const briefingsResp = await fetch('/api/briefings?limit=1&order=desc', { 
+        const briefingsResp = await fetch(`/api/briefings?${briefingsParams.toString()}`, { 
           headers: finalHeaders
         })
         if (briefingsResp.ok) {
@@ -108,19 +111,19 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
       const analystId = currentUrl.searchParams.get('analystId')
       
       if (analystId) {
-        router.push(`/portal/briefings?analystId=${analystId}`)
+        router.push(`/analyst_portal/vendor_profile/briefings?analystId=${analystId}`)
       } else {
-        router.push('/portal/briefings')
+        router.push('/analyst_portal/vendor_profile/briefings')
       }
     }
   }
 
   const Actions = (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pl-12 pr-6 pt-4">
         <div className="text-base font-semibold text-gray-900">Quick Actions</div>
       </div>
-      <div className="flex flex-col gap-2 mt-2">
+      <div className="flex flex-col gap-2 mt-2 pl-8 pr-6 ">
         <Button variant="ghost" className="justify-start gap-2" onClick={handleViewLastBriefing}>
           <Calendar className="w-4 h-4" />
           View Last Briefing
@@ -129,7 +132,7 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
           <MessageSquarePlus className="w-4 h-4" />
           Request a Briefing
         </Button>
-        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/portal/resources')}>
+        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/analyst_portal/vendor_profile/resources')}>
           <FolderOpen className="w-4 h-4" />
           Recent Materials
         </Button>
@@ -139,7 +142,7 @@ export function QuickActionsList({ minimal = false }: { minimal?: boolean }) {
             Contact Support
           </a>
         </Button>
-        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/portal/settings')}>
+        <Button variant="ghost" className="justify-start gap-2" onClick={() => router.push('/analyst_portal/vendor_profile/settings')}>
           <Settings className="w-4 h-4" />
           My Settings
         </Button>

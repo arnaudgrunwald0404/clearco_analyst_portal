@@ -161,6 +161,25 @@ The platform uses a comprehensive database schema with the following key models:
 - **Mobile App**: React Native companion app
 - **Advanced Reporting**: Custom dashboard builder
 
+## 🧩 Vendor scoping: backfill & validation
+
+These helper scripts populate and validate vendor_domain_id values in your database. Requires psql and DATABASE_URL in your environment.
+
+- Validate NULLs across tables:
+  - npm run db:validate:vendor
+
+- Backfill in three passes (idempotent; safe to re-run):
+  - Core relational fill from analysts/briefings:
+    - npm run db:backfill:core
+  - Targeted fixes (briefings from briefing_analysts; single vendor assignment for global tables if one vendor exists):
+    - npm run db:backfill:targeted
+  - Assign remaining NULLs to the single vendor (if exactly one exists):
+    - npm run db:backfill:single
+
+Notes:
+- Scripts only fill NULLs and rely on existing relationships when possible.
+- For multi-tenant environments, skip the single-vendor scripts or run with caution.
+
 ## 🤝 Contributing
 
 This project represents a comprehensive analyst relationship management platform. For contributions:

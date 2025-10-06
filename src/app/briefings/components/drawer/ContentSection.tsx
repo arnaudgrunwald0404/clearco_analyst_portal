@@ -216,7 +216,7 @@ export default function ContentSection({ briefing, onUpdate, hideHeader = false 
                       className={cn(
                         'px-3 py-2 text-sm rounded-lg transition-colors',
                         url.trim() && !saving
-                          ? 'bg-blue-600 text-white hover:bg-blue-700'
+                          ? 'bg-pink-600 text-white hover:bg-blue-700'
                           : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                       )}
                     >

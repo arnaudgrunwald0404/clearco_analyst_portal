@@ -9,6 +9,8 @@ import AnalystDrawer from '@/components/drawers/analyst-drawer'
 import AddAnalystModal from '@/components/modals/add-analyst-modal'
 import AnalystActionsMenu from '@/components/actions/analyst-actions-menu'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/contexts/AuthContext'
+import { useRouter } from 'next/navigation'
 
 interface Analyst {
   id: string
@@ -23,7 +25,6 @@ interface Analyst {
   keyThemes?: string
   linkedinUrl?: string
   twitterHandle?: string
-  phone?: string
   bio?: string
   personalWebsite?: string
   lastContactDate?: string
@@ -33,6 +34,8 @@ interface Analyst {
 }
 
 export default function AnalystsPage() {
+  const { user } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('ACTIVE')
@@ -86,6 +89,15 @@ export default function AnalystsPage() {
     }
   }
 
+  // SECURITY: Block analysts from accessing vendor analyst management
+  useEffect(() => {
+    if (user && user.role === 'ANALYST') {
+      console.warn('🚨 SECURITY: Analyst attempted to access vendor analyst management. Redirecting to analyst portal.')
+      router.replace('/analyst_portal/analyst_hub')
+      return
+    }
+  }, [user, router])
+
   // Load analysts on component mount
   useEffect(() => {
     fetchAnalysts()
@@ -93,13 +105,25 @@ export default function AnalystsPage() {
 
   // Check URL parameters on mount
   useEffect(() => {
-    const filter = searchParams.get('filter')
+    const filter = searchParams?.get('filter')
     if (filter === 'recent') {
       setFilterRecent(true)
       setSortField('createdAt')
       setSortDirection('desc')
     }
   }, [searchParams])
+
+  // Show loading/redirecting state for analysts
+  if (user && user.role === 'ANALYST') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to Analyst Portal...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Handle clicking outside dropdowns
   useEffect(() => {
@@ -444,8 +468,8 @@ export default function AnalystsPage() {
       return <ArrowUpDown className="w-4 h-4 text-gray-400" />
     }
     return sortDirection === 'asc' 
-      ? <ArrowUp className="w-4 h-4 text-blue-600" />
-      : <ArrowDown className="w-4 h-4 text-blue-600" />
+      ? <ArrowUp className="w-4 h-4 text-white- 600" />
+      : <ArrowDown className="w-4 h-4 text-white-6-600" />
   }
 
   return (
@@ -458,7 +482,7 @@ export default function AnalystsPage() {
                 <div className="relative bulk-actions-dropdown">
                   <button
                     onClick={() => setBulkActionDropdownOpen(!bulkActionDropdownOpen)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors"
                   >
                     Actions
                     <ChevronDown className="w-4 h-4 ml-2" />
@@ -548,7 +572,7 @@ export default function AnalystsPage() {
               </>
             )}
           </div>
-          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button onClick={() => setIsAddModalOpen(true)} className="flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700">
             <Plus className="w-4 h-4 mr-2" />
             Add Analyst
           </button>
@@ -564,7 +588,7 @@ export default function AnalystsPage() {
             <input
               type="text"
               placeholder="Search analysts by name, company, or email..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -575,7 +599,7 @@ export default function AnalystsPage() {
             
             {/* Type Filter */}
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -589,7 +613,7 @@ export default function AnalystsPage() {
             
             {/* Status Filter */}
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
             >
@@ -601,7 +625,7 @@ export default function AnalystsPage() {
             
             {/* Influence Filter */}
             <select
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white"
               value={filterInfluence}
               onChange={(e) => setFilterInfluence(e.target.value)}
             >
@@ -739,7 +763,7 @@ export default function AnalystsPage() {
         <div className="bg-white shadow rounded-lg">
           <div className="overflow-x-auto">
             {/* Grid Header */}
-            <div className="grid grid-cols-13 gap-4 bg-gray-50 px-6 py-3 border-b border-gray-200 font-medium text-xs text-gray-500 uppercase tracking-wider">
+            <div className="grid grid-cols-13 gap-4 bg-pink-200 px-6 py-3 border-b border-pink-200 font-medium text-xs text-gray-900 text-bold uppercase tracking-wider rounded-t-lg">
               {/* Checkbox column */}
               <div className="col-span-1 flex items-center">
                 <input
@@ -763,11 +787,11 @@ export default function AnalystsPage() {
                 <span>Company & Title</span>
                 {getSortIcon('company')}
               </div>
-              <div className="col-span-4">
+              <div className="col-span-3">
                 Covered Topics
               </div>
               <div 
-                className="col-span-1 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
+                className="col-span-2 cursor-pointer hover:bg-gray-100 transition-colors flex items-center space-x-1 rounded px-2 py-1"
                 onClick={() => handleSort('influence')}
               >
                 <span>Influence</span>
@@ -852,7 +876,7 @@ export default function AnalystsPage() {
                   </div>
                   
                   {/* Covered Topics - 4/13 */}
-                  <div className="col-span-4 cursor-pointer" onClick={() => handleRowClick(analyst)}>
+                  <div className="col-span-3 cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <div className="flex flex-wrap gap-1">
                       {analyst.keyThemes && analyst.keyThemes.split(',').map((topic, index) => (
                         <span
@@ -866,7 +890,7 @@ export default function AnalystsPage() {
                   </div>
                   
                   {/* Influence - inline editable pill */}
-                  <div className="col-span-1 relative">
+                  <div className="col-span-2 relative">
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setOpenInfluenceFor(openInfluenceFor === analyst.id ? null : analyst.id) }}
@@ -874,6 +898,7 @@ export default function AnalystsPage() {
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-transparent hover:opacity-90',
                         getInfluenceColor(analyst.influence)
                       )}
+                      style={{ fontSize: '0.75rem', fontWeight: '500' }}
                       aria-haspopup="listbox"
                       aria-expanded={openInfluenceFor === analyst.id}
                       aria-label="Change influence"
@@ -895,7 +920,7 @@ export default function AnalystsPage() {
                           <button
                             key={value}
                             className={cn(
-                              'w-full text-left px-3 py-2 text-sm hover:bg-gray-50',
+                              'w-full text-left px-3 py-2 text-xs hover:bg-gray-50',
                               value === analyst.influence ? 'font-semibold text-gray-900' : 'text-gray-700'
                             )}
                             onClick={(e) => { e.stopPropagation(); updateAnalystInfluence(analyst.id, value) }}
@@ -913,10 +938,9 @@ export default function AnalystsPage() {
                   <div className="col-span-1 text-center cursor-pointer" onClick={() => handleRowClick(analyst)}>
                     <span className={cn(
                       'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-                      analyst.status === 'ACTIVE' && 'bg-green-100 text-green-800',
-                      analyst.status === 'INACTIVE' && 'bg-yellow-100 text-yellow-800',
-                      analyst.status === 'ARCHIVED' && 'bg-gray-100 text-gray-600'
-                    )}>
+                      getStatusColor(analyst.status)
+                    )}
+                    style={{ fontSize: '0.75rem', fontWeight: '500' }}>
                       {analyst.status}
                     </span>
                   </div>
