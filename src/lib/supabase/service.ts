@@ -1,5 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/types/supabase.generated'
 
 /**
  * Service role client for server-side operations that need to bypass RLS

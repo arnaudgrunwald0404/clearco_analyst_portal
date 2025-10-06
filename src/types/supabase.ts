@@ -6,148 +6,508 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      User: {
+      _prisma_migrations: {
         Row: {
+          applied_steps_count: number
+          checksum: string
+          finished_at: string | null
           id: string
-          email: string
-          name: string
-          role: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST'
-          password: string | null
-          profileImageUrl: string | null
-          company: string | null
-          title: string | null
-          isActive: boolean
-          lastLoginAt: string | null
+          logs: string | null
+          migration_name: string
+          rolled_back_at: string | null
+          started_at: string
+        }
+        Insert: {
+          applied_steps_count?: number
+          checksum: string
+          finished_at?: string | null
+          id: string
+          logs?: string | null
+          migration_name: string
+          rolled_back_at?: string | null
+          started_at?: string
+        }
+        Update: {
+          applied_steps_count?: number
+          checksum?: string
+          finished_at?: string | null
+          id?: string
+          logs?: string | null
+          migration_name?: string
+          rolled_back_at?: string | null
+          started_at?: string
+        }
+        Relationships: []
+      }
+      ActionItem: {
+        Row: {
+          actionStatus: string | null
+          actionType: string | null
+          analystId: string | null
+          assignedBy: string | null
+          assignedTo: string | null
+          briefingId: string | null
+          category: string | null
+          completedAt: string | null
+          completedBy: string | null
           createdAt: string
+          description: string
+          dueDate: string | null
+          id: string
+          isCompleted: boolean
+          notes: string | null
+          priority: string
+          tags: string[] | null
+          title: string | null
+          updatedAt: string
+          userId: string | null
+        }
+        Insert: {
+          actionStatus?: string | null
+          actionType?: string | null
+          analystId?: string | null
+          assignedBy?: string | null
+          assignedTo?: string | null
+          briefingId?: string | null
+          category?: string | null
+          completedAt?: string | null
+          completedBy?: string | null
+          createdAt?: string
+          description: string
+          dueDate?: string | null
+          id: string
+          isCompleted?: boolean
+          notes?: string | null
+          priority?: string
+          tags?: string[] | null
+          title?: string | null
+          updatedAt: string
+          userId?: string | null
+        }
+        Update: {
+          actionStatus?: string | null
+          actionType?: string | null
+          analystId?: string | null
+          assignedBy?: string | null
+          assignedTo?: string | null
+          briefingId?: string | null
+          category?: string | null
+          completedAt?: string | null
+          completedBy?: string | null
+          createdAt?: string
+          description?: string
+          dueDate?: string | null
+          id?: string
+          isCompleted?: boolean
+          notes?: string | null
+          priority?: string
+          tags?: string[] | null
+          title?: string | null
+          updatedAt?: string
+          userId?: string | null
+        }
+        Relationships: []
+      }
+      Alert: {
+        Row: {
+          actionTaken: boolean
+          analystId: string
+          createdAt: string
+          dueDate: string | null
+          id: string
+          isRead: boolean
+          message: string
+          priority: string
+          title: string
+          type: Database["public"]["Enums"]["AlertType"]
+        }
+        Insert: {
+          actionTaken?: boolean
+          analystId: string
+          createdAt?: string
+          dueDate?: string | null
+          id: string
+          isRead?: boolean
+          message: string
+          priority?: string
+          title: string
+          type: Database["public"]["Enums"]["AlertType"]
+        }
+        Update: {
+          actionTaken?: boolean
+          analystId?: string
+          createdAt?: string
+          dueDate?: string | null
+          id?: string
+          isRead?: boolean
+          message?: string
+          priority?: string
+          title?: string
+          type?: Database["public"]["Enums"]["AlertType"]
+        }
+        Relationships: []
+      }
+      analyst_domains: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          protected_domain: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          name?: string | null
+          protected_domain?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          protected_domain?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      analyst_notes: {
+        Row: {
+          analyst_id: string
+          attachment_url: string | null
+          content: string
+          created_at: string
+          id: string
+          note_date: string
+          title: string | null
+          updated_at: string
+          vendor_domain_id: string | null
+        }
+        Insert: {
+          analyst_id: string
+          attachment_url?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          note_date?: string
+          title?: string | null
+          updated_at?: string
+          vendor_domain_id?: string | null
+        }
+        Update: {
+          analyst_id?: string
+          attachment_url?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          note_date?: string
+          title?: string | null
+          updated_at?: string
+          vendor_domain_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_notes_analyst_id_fkey"
+            columns: ["analyst_id"]
+            isOneToOne: false
+            referencedRelation: "analysts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analyst_notes_vendor_domain_id_fkey"
+            columns: ["vendor_domain_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analyst_portal_settings: {
+        Row: {
+          authorImageUrl: string
+          contactEmail: string | null
+          contactImageUrl: string | null
+          contactName: string | null
+          contactPhone: string | null
+          contactTitle: string | null
+          createdAt: string
+          id: string
+          quoteAuthor: string
+          updatedAt: string
+          vendor_domain_id: string | null
+          welcomeQuote: string
+        }
+        Insert: {
+          authorImageUrl?: string
+          contactEmail?: string | null
+          contactImageUrl?: string | null
+          contactName?: string | null
+          contactPhone?: string | null
+          contactTitle?: string | null
+          createdAt?: string
+          id: string
+          quoteAuthor?: string
+          updatedAt: string
+          vendor_domain_id?: string | null
+          welcomeQuote?: string
+        }
+        Update: {
+          authorImageUrl?: string
+          contactEmail?: string | null
+          contactImageUrl?: string | null
+          contactName?: string | null
+          contactPhone?: string | null
+          contactTitle?: string | null
+          createdAt?: string
+          id?: string
+          quoteAuthor?: string
+          updatedAt?: string
+          vendor_domain_id?: string | null
+          welcomeQuote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyst_portal_settings_vendor_fk"
+            columns: ["vendor_domain_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_domains"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      AnalystAccess: {
+        Row: {
+          analystId: string
+          createdAt: string
+          id: string
+          isActive: boolean
+          lastLogin: string | null
+          password: string
           updatedAt: string
         }
         Insert: {
-          id?: string
-          email: string
-          name: string
-          role?: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST'
-          password?: string | null
-          profileImageUrl?: string | null
-          company?: string | null
-          title?: string | null
-          isActive?: boolean
-          lastLoginAt?: string | null
+          analystId: string
           createdAt?: string
-          updatedAt?: string
+          id: string
+          isActive?: boolean
+          lastLogin?: string | null
+          password: string
+          updatedAt: string
         }
         Update: {
-          id?: string
-          email?: string
-          name?: string
-          role?: 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST'
-          password?: string | null
-          profileImageUrl?: string | null
-          company?: string | null
-          title?: string | null
-          isActive?: boolean
-          lastLoginAt?: string | null
+          analystId?: string
           createdAt?: string
+          id?: string
+          isActive?: boolean
+          lastLogin?: string | null
+          password?: string
           updatedAt?: string
         }
+        Relationships: []
+      }
+      AnalystCoveredTopic: {
+        Row: {
+          analystId: string
+          id: string
+          topic: string
+        }
+        Insert: {
+          analystId: string
+          id: string
+          topic: string
+        }
+        Update: {
+          analystId?: string
+          id?: string
+          topic?: string
+        }
+        Relationships: []
+      }
+      AnalystPortalSession: {
+        Row: {
+          analystId: string
+          id: string
+          ipAddress: string | null
+          loginAt: string
+          logoutAt: string | null
+          sessionId: string
+          userAgent: string | null
+        }
+        Insert: {
+          analystId: string
+          id: string
+          ipAddress?: string | null
+          loginAt?: string
+          logoutAt?: string | null
+          sessionId: string
+          userAgent?: string | null
+        }
+        Update: {
+          analystId?: string
+          id?: string
+          ipAddress?: string | null
+          loginAt?: string
+          logoutAt?: string | null
+          sessionId?: string
+          userAgent?: string | null
+        }
+        Relationships: []
       }
       influence_tiers: {
         Row: {
-          id: string
-          name: string
-          color: string
           briefingFrequency: number | null
-          touchpointFrequency: number | null
-          order: number
-          isActive: boolean
+          color: string
           createdAt: string
+          id: string
+          isActive: boolean
+          name: string
+          order: number
+          touchpointFrequency: number | null
           updatedAt: string
           vendor_domain_id: string | null
         }
         Insert: {
-          id?: string
-          name: string
-          color: string
           briefingFrequency?: number | null
-          touchpointFrequency?: number | null
-          order: number
-          isActive?: boolean
+          color: string
           createdAt?: string
+          id?: string
+          isActive?: boolean
+          name: string
+          order: number
+          touchpointFrequency?: number | null
           updatedAt?: string
           vendor_domain_id?: string | null
         }
         Update: {
-          id?: string
-          name?: string
-          color?: string
           briefingFrequency?: number | null
-          touchpointFrequency?: number | null
-          order?: number
-          isActive?: boolean
+          color?: string
           createdAt?: string
+          id?: string
+          isActive?: boolean
+          name?: string
+          order?: number
+          touchpointFrequency?: number | null
           updatedAt?: string
           vendor_domain_id?: string | null
         }
+        Relationships: [
+          {
+            foreignKeyName: "influence_tiers_vendor_fk"
+            columns: ["vendor_domain_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_domains"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vendor_domains: {
         Row: {
-          id: string
           company_name: string
-          protected_domain: string
-          logo_url: string
-          industry_name: string
+          company_profile: Json | null
           created_at: string
+          id: string
+          industry_name: string
+          logo_url: string
+          portal_contact_email: string | null
+          portal_contact_image_url: string | null
+          portal_contact_name: string | null
+          portal_contact_phone: string | null
+          portal_contact_title: string | null
+          portal_welcome_quote: string | null
+          protected_domain: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          company_name?: string
-          protected_domain?: string
-          logo_url?: string
-          industry_name?: string
+          company_name: string
+          company_profile?: Json | null
           created_at?: string
+          id: string
+          industry_name: string
+          logo_url: string
+          portal_contact_email?: string | null
+          portal_contact_image_url?: string | null
+          portal_contact_name?: string | null
+          portal_contact_phone?: string | null
+          portal_contact_title?: string | null
+          portal_welcome_quote?: string | null
+          protected_domain: string
           updated_at?: string
         }
         Update: {
-          id?: string
           company_name?: string
-          protected_domain?: string
-          logo_url?: string
-          industry_name?: string
+          company_profile?: Json | null
           created_at?: string
+          id?: string
+          industry_name?: string
+          logo_url?: string
+          portal_contact_email?: string | null
+          portal_contact_image_url?: string | null
+          portal_contact_name?: string | null
+          portal_contact_phone?: string | null
+          portal_contact_title?: string | null
+          portal_welcome_quote?: string | null
+          protected_domain?: string
           updated_at?: string
         }
+        Relationships: []
       }
       GeneralSettings: {
         Row: {
-          id: string
           companyName: string
-          protectedDomain: string
-          logoUrl: string
-          industryName: string
           createdAt: string
+          id: string
+          industryName: string
+          logoUrl: string
+          protectedDomain: string
           updatedAt: string
         }
         Insert: {
-          id?: string
-          companyName?: string
-          protectedDomain?: string
-          logoUrl?: string
-          industryName?: string
+          companyName: string
           createdAt?: string
+          id: string
+          industryName: string
+          logoUrl: string
+          protectedDomain: string
           updatedAt?: string
         }
         Update: {
-          id?: string
           companyName?: string
-          protectedDomain?: string
-          logoUrl?: string
-          industryName?: string
           createdAt?: string
+          id?: string
+          industryName?: string
+          logoUrl?: string
+          protectedDomain?: string
           updatedAt?: string
         }
+        Relationships: []
       }
       analysts: {
         Row: {

@@ -153,3 +153,4 @@ export default function MergedSidebar({ selectedVendorName, onSwitchVendor }: Me
     </div>
   )
 }
+

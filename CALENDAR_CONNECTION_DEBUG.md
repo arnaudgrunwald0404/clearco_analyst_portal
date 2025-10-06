@@ -133,3 +133,4 @@ When reporting issues, include:
 - Server terminal error messages
 - Steps to reproduce the issue
 - Google account type (personal vs. workspace)
+

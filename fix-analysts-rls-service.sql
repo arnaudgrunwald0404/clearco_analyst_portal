@@ -69,3 +69,4 @@ SELECT
 FROM pg_policies 
 WHERE tablename = 'analysts'
 ORDER BY policyname;
+

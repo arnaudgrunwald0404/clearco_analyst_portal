@@ -91,3 +91,4 @@ When reporting issues, include:
 - Server log output from the calendar OAuth process
 - Your Google account type (personal vs. workspace)
 - Any recent database schema changes
+
