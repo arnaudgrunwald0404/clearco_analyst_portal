@@ -1,0 +1,59 @@
+# Page snapshot
+
+```yaml
+- img "ClearCompany Logo"
+- navigation:
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: /
+    - listitem:
+      - link "Analysts":
+        - /url: /analysts
+    - listitem:
+      - link "Briefings":
+        - /url: /briefings
+    - listitem:
+      - link "Follow Ups":
+        - /url: /briefings/follow-ups
+    - listitem:
+      - link "Briefings Due":
+        - /url: /briefings/due
+    - listitem:
+      - link "Newsletters":
+        - /url: /newsletters
+    - listitem:
+      - link "Testimonials":
+        - /url: /testimonials
+    - listitem:
+      - link "X Activity":
+        - /url: /twitter-activity
+    - listitem:
+      - link "Publications":
+        - /url: /publications
+    - listitem:
+      - link "Awards":
+        - /url: /awards
+    - listitem:
+      - link "Events":
+        - /url: /events
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+- banner "Main header":
+  - button "U Guest"
+  - heading "HR Technology Industry Relationship Management" [level=1]
+  - paragraph: Manage relationships • Get noticed • Drive growth
+- main:
+  - heading "Testimonials Management" [level=1]
+  - paragraph: Manage and display analyst testimonials
+  - button "Add Testimonial"
+  - textbox "Search testimonials..."
+  - combobox:
+    - option "All Status" [selected]
+    - option "Published"
+    - option "Draft"
+  - img "Loading..."
+  - text: Loading testimonials...
+- alert
+```

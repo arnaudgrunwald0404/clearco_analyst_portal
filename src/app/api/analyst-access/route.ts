@@ -10,15 +10,15 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient()
 
-    let query = supabase
-      .from('analyst_access')
+  let query = supabase
+      .from('AnalystAccess')
       .select(`
         id,
-        analyst_id,
-        is_active,
-        last_login,
-        created_at,
-        updated_at,
+        analystId,
+        isActive,
+        lastLogin,
+        createdAt,
+        updatedAt,
         analysts!inner(
           id,
           firstName,
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       `)
 
     if (analystId) {
-      query = query.eq('analyst_id', analystId)
+      query = query.eq('analystId', analystId)
     }
 
     const { data, error } = await query
@@ -96,21 +96,21 @@ export async function POST(request: NextRequest) {
 
     // Check if access already exists
     const { data: existingAccess } = await supabase
-      .from('analyst_access')
+      .from('AnalystAccess')
       .select('id')
-      .eq('analyst_id', analystId)
+      .eq('analystId', analystId)
       .single()
 
     if (existingAccess) {
       // Update existing access
       const { data, error } = await supabase
-        .from('analyst_access')
+        .from('AnalystAccess')
         .update({
-          password_hash: passwordHash,
-          is_active: isActive,
-          updated_at: new Date().toISOString()
+          password: passwordHash,
+          isActive: isActive,
+          updatedAt: new Date().toISOString()
         })
-        .eq('analyst_id', analystId)
+        .eq('analystId', analystId)
         .select()
         .single()
 
@@ -130,11 +130,14 @@ export async function POST(request: NextRequest) {
     } else {
       // Create new access
       const { data, error } = await supabase
-        .from('analyst_access')
+        .from('AnalystAccess')
         .insert({
-          analyst_id: analystId,
-          password_hash: passwordHash,
-          is_active: isActive
+          id: `aa${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`,
+          analystId: analystId,
+          password: passwordHash,
+          isActive: isActive,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         })
         .select()
         .single()
@@ -176,10 +179,10 @@ export async function DELETE(request: NextRequest) {
 
     const supabase = await createClient()
 
-    const { error } = await supabase
-      .from('analyst_access')
+  const { error } = await supabase
+      .from('AnalystAccess')
       .delete()
-      .eq('analyst_id', analystId)
+      .eq('analystId', analystId)
 
     if (error) {
       console.error('Error deleting analyst access:', error)

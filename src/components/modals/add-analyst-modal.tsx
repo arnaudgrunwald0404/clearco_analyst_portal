@@ -281,9 +281,29 @@ function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: AddAnalystModalPro
         onAnalystAdded()
         handleClose()
       } else {
-        const errorData = await response.json()
-        alert(`Failed to create analyst: ${errorData.error || 'Unknown error'}`)
+        let errorData: any = null
+        let errorText = ''
+        try {
+          errorData = await response.json()
+        } catch {
+          try {
+            errorText = await response.text()
+          } catch {}
+        }
+
+        console.error('[AddAnalystModal] Create analyst failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          requestBody: apiData,
+          responseJson: errorData,
+          responseText: errorText
+        })
+
+        const msg = errorData?.details || errorData?.error || errorText || 'Unknown error'
+        alert(`Failed to create analyst: ${msg}`)
       }
+
     } catch (error) {
       console.error('Error creating analyst:', error)
       alert('Error creating analyst')

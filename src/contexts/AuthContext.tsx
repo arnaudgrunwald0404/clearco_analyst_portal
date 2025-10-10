@@ -188,14 +188,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           errorText = `HTTP ${response.status} ${response.statusText}`
         }
         
-        console.error('[AuthContext] Profile API failed:', { 
+        const failDetails = { 
           status: response.status,
           statusText: response.statusText,
           url: response.url,
           headers: Object.fromEntries(response.headers.entries()),
           errorText: errorText || 'No error message',
           responseBody: errorText
-        })
+        }
+        console.error('[AuthContext] Profile API failed:', failDetails)
+        try {
+          console.log('[AuthContext] Profile API fail JSON:', JSON.stringify(failDetails, null, 2))
+        } catch {}
         
         throw new Error(errorText || `HTTP ${response.status}: Failed to fetch profile`)
       }
@@ -333,35 +337,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signInAnalyst = async (email: string, password: string) => {
+  const signInAnalyst = async (email: string, _password: string) => {
     try {
-      const response = await fetch('/api/auth/analyst', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}/auth/callback`
+        }
       })
 
-      const result = await response.json()
-
-      if (result.success && result.user) {
-        // Store user data in localStorage for persistence
-        localStorage.setItem('user', JSON.stringify(result.user))
-        setUser(result.user)
-        return { success: true }
-      } else {
-        return { 
-          success: false, 
-          error: result.error || 'Analyst login failed' 
-        }
+      if (error) {
+        return { success: false, error: error.message }
       }
+
+      return { success: true }
     } catch (error) {
       console.error('Analyst sign in error:', error)
-      return { 
-        success: false, 
-        error: 'An unexpected error occurred' 
-      }
+      return { success: false, error: 'An unexpected error occurred' }
     }
   }
 

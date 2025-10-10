@@ -1,0 +1,81 @@
+# Page snapshot
+
+```yaml
+- img "ClearCompany Logo"
+- navigation:
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: /
+    - listitem:
+      - link "Analysts":
+        - /url: /analysts
+    - listitem:
+      - link "Briefings":
+        - /url: /briefings
+    - listitem:
+      - link "Follow Ups":
+        - /url: /briefings/follow-ups
+    - listitem:
+      - link "Briefings Due":
+        - /url: /briefings/due
+    - listitem:
+      - link "Newsletters":
+        - /url: /newsletters
+    - listitem:
+      - link "Testimonials":
+        - /url: /testimonials
+    - listitem:
+      - link "X Activity":
+        - /url: /twitter-activity
+    - listitem:
+      - link "Publications":
+        - /url: /publications
+    - listitem:
+      - link "Awards":
+        - /url: /awards
+    - listitem:
+      - link "Events":
+        - /url: /events
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+- banner "Main header":
+  - button "U Guest"
+  - heading "HR Technology Industry Relationship Management" [level=1]
+  - paragraph: Manage relationships • Get noticed • Drive growth
+- main:
+  - heading "Events" [level=1]
+  - paragraph: Manage your upcoming and past events.
+  - button "Sync Events"
+  - button "Create Event"
+  - textbox "Search events by name, type, or location..."
+  - combobox:
+    - option "All Status" [selected]
+    - option "Evaluating"
+    - option "Planned"
+    - option "Confirmed"
+    - option "Attended"
+    - option "Cancelled"
+  - tablist:
+    - tab "Sponsoring (0) / Attending (0)" [selected]
+    - tab "Not Attending (0)"
+  - tabpanel "Sponsoring (0) / Attending (0)":
+    - text: Sponsoring / Attending
+    - table:
+      - rowgroup:
+        - row "Event Start Date Location Audience Tag Actions":
+          - cell:
+            - checkbox
+          - cell "Event"
+          - cell "Start Date"
+          - cell "Location"
+          - cell "Audience"
+          - cell "Tag"
+          - cell "Actions"
+      - rowgroup:
+        - row "No events in this section.":
+          - cell "No events in this section."
+  - text: No events found matching your criteria.
+- alert
+```

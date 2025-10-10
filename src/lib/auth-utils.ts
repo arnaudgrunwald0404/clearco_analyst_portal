@@ -68,6 +68,11 @@ export async function requireSuperAdminAuth() {
     return authResult
   }
   
+  // Temporary bypass: check email whitelist directly instead of profile lookup
+  if (isSuperAdmin({ email: authResult.email })) {
+    return { user: authResult, profile: { role: 'SUPER_ADMIN' } }
+  }
+  
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from('user_profiles')

@@ -116,7 +116,9 @@ export async function GET(request: NextRequest) {
                   role: minimalAnalystProfile.role,
                   first_name: minimalAnalystProfile.first_name,
                   last_name: minimalAnalystProfile.last_name,
+                  name: `${minimalAnalystProfile.first_name} ${minimalAnalystProfile.last_name}`.trim() || null,
                   company: minimalAnalystProfile.company,
+                  password: 'oauth',
                   created_at: minimalAnalystProfile.created_at,
                   updated_at: minimalAnalystProfile.updated_at,
                 },
@@ -252,12 +254,12 @@ export async function GET(request: NextRequest) {
             // Discover available columns to construct a compatible upsert
             let cols: string[] = []
             try {
-              const { data: c } = await supabaseForAnalystLookup
+              const { data: c } = await (supabaseForAnalystLookup as any)
                 .from('information_schema.columns')
                 .select('column_name')
                 .eq('table_schema', 'public')
                 .eq('table_name', 'user_profiles')
-              cols = (c as any[])?.map(x => x.column_name) || []
+              cols = (c as any[])?.map((x: any) => x.column_name) || []
             } catch {}
 
             const can = (n: string) => cols.includes(n)
@@ -268,6 +270,9 @@ export async function GET(request: NextRequest) {
             if (can('first_name')) upsertRow.first_name = minimalAnalystProfile.first_name
             if (can('last_name')) upsertRow.last_name = minimalAnalystProfile.last_name
             if (can('company')) upsertRow.company = minimalAnalystProfile.company
+            if (can('password')) upsertRow.password = 'oauth'
+            if (can('created_at')) upsertRow.created_at = new Date().toISOString()
+            if (can('updated_at')) upsertRow.updated_at = new Date().toISOString()
 
             let { data: upsertedProfile, error: upsertError } = await supabaseForAnalystLookup
               .from('user_profiles')
@@ -288,17 +293,17 @@ export async function GET(request: NextRequest) {
               upsertError = retry.error
             }
 
-            // If NOT NULL violation for password/updatedAt/createdAt, retry with safe defaults
+            // If NOT NULL violation for password/updated_at/created_at, retry with safe defaults
             if (upsertError && upsertError.code === '23502') {
               const msg = `${upsertError.message || ''} ${upsertError.details || ''}`
               const needsPw = msg.includes('"password"')
-              const needsUpdatedAt = msg.includes('"updatedAt"')
-              const needsCreatedAt = msg.includes('"createdAt"')
+              const needsUpdatedAt = msg.includes('"updated_at"') || msg.includes('"updatedAt"')
+              const needsCreatedAt = msg.includes('"created_at"') || msg.includes('"createdAt"')
               if (needsPw || needsUpdatedAt || needsCreatedAt) {
                 const copy: any = { ...upsertRow }
                 if (needsPw) copy.password = 'oauth'
-                if (needsUpdatedAt) copy.updatedAt = new Date().toISOString()
-                if (needsCreatedAt) copy.createdAt = new Date().toISOString()
+                if (needsUpdatedAt) copy.updated_at = new Date().toISOString()
+                if (needsCreatedAt) copy.created_at = new Date().toISOString()
                 const retry = await supabaseForAnalystLookup
                   .from('user_profiles')
                   .upsert(copy, { onConflict: 'id' })
@@ -340,7 +345,48 @@ export async function GET(request: NextRequest) {
         details: profileError.details,
         hint: profileError.hint
       })
-      return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
+
+      // If a service role key is available, retry the profile fetch using service client
+      // to bypass RLS for trusted server-side use cases.
+      try {
+        const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY
+        if (hasServiceRole) {
+          const service = createServiceClient()
+          const { data: srProfile, error: srErr } = await service
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+
+          if (!srErr && srProfile) {
+            console.log('[Profile API] Service-role retry succeeded; returning profile')
+            return NextResponse.json({ profile: srProfile })
+          }
+
+          if (srErr) {
+            console.error('[Profile API] Service-role retry failed:', {
+              code: srErr.code,
+              message: srErr.message,
+              details: srErr.details,
+              hint: srErr.hint
+            })
+          }
+        }
+      } catch (retryErr) {
+        console.error('[Profile API] Service-role retry threw:', retryErr)
+      }
+
+      // If we reach here, translate likely permission errors to 403; otherwise 500
+      const code = profileError.code || ''
+      const isPermission = code === '42501' || code === 'PGRST301' || (profileError.message || '').toLowerCase().includes('permission')
+      const status = isPermission ? 403 : 500
+      const devDetails = process.env.NODE_ENV !== 'production' ? {
+        code: profileError.code,
+        message: profileError.message,
+        details: profileError.details,
+        hint: profileError.hint
+      } : {}
+      return NextResponse.json({ error: isPermission ? 'Forbidden' : 'Failed to fetch profile', ...devDetails }, { status })
     }
     
     console.log('[Profile API] ===== PROFILE REQUEST SUCCESS =====')

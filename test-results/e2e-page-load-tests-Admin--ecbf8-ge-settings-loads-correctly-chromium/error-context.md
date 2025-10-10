@@ -1,0 +1,78 @@
+# Page snapshot
+
+```yaml
+- img "ClearCompany Logo"
+- navigation:
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: /
+    - listitem:
+      - link "Analysts":
+        - /url: /analysts
+    - listitem:
+      - link "Briefings":
+        - /url: /briefings
+    - listitem:
+      - link "Follow Ups":
+        - /url: /briefings/follow-ups
+    - listitem:
+      - link "Briefings Due":
+        - /url: /briefings/due
+    - listitem:
+      - link "Newsletters":
+        - /url: /newsletters
+    - listitem:
+      - link "Testimonials":
+        - /url: /testimonials
+    - listitem:
+      - link "X Activity":
+        - /url: /twitter-activity
+    - listitem:
+      - link "Publications":
+        - /url: /publications
+    - listitem:
+      - link "Awards":
+        - /url: /awards
+    - listitem:
+      - link "Events":
+        - /url: /events
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+- banner "Main header":
+  - button "U Guest"
+  - heading "HR Technology Industry Relationship Management" [level=1]
+  - paragraph: Manage relationships • Get noticed • Drive growth
+- main:
+  - heading "Settings" [level=1]
+  - paragraph: Manage your account settings and integrations
+  - navigation:
+    - button "Company"
+    - button "Users"
+    - button "Calendar Sync"
+    - button "Event Sources"
+    - button "Analyst Tiers"
+    - button "Analyst Topics"
+  - heading "Company" [level=2]
+  - paragraph: Set your company profile and the analyst-facing information.
+  - tablist:
+    - tab "Overview" [selected]
+    - tab "Profile"
+    - tab "Contact"
+    - tab "Content"
+  - tabpanel "Overview":
+    - heading "Overview" [level=3]
+    - paragraph: Name, protected domain, logo, and industry.
+    - text: Company Name *
+    - textbox "Company Name *": ClearCompany
+    - text: Protected Domain *
+    - textbox "Protected Domain *": clearcompany.com
+    - text: Company Logo
+    - img "Logo preview"
+    - button "Remove"
+    - text: Industry Name *
+    - textbox "Industry Name *": HR Technology
+    - button "Save Settings"
+- alert
+```

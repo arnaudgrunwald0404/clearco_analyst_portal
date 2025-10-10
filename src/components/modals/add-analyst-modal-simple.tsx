@@ -68,7 +68,34 @@ export default function AddAnalystModal({ isOpen, onClose, onAnalystAdded }: Add
         onAnalystAdded()
         handleClose()
       } else {
-        alert('Failed to create analyst')
+        let errorData: any = null
+        let errorText = ''
+        try {
+          errorData = await response.json()
+        } catch {
+          try {
+            errorText = await response.text()
+          } catch {}
+        }
+
+        console.error('[AddAnalystModalSimple] Create analyst failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          requestBody: {
+            ...formData,
+            type: 'Analyst',
+            coveredTopics: [],
+            influence: 'MEDIUM',
+            status: 'ACTIVE',
+            eligibleNewsletters: null
+          },
+          responseJson: errorData,
+          responseText: errorText
+        })
+
+        const msg = errorData?.details || errorData?.error || errorText || 'Unknown error'
+        alert(`Failed to create analyst: ${msg}`)
       }
     } catch (error) {
       console.error('Error creating analyst:', error)

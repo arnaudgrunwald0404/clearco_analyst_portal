@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       if (!error) deletedAuthUsers++
     }
 
-    // Legacy cleanup: analyst_access rows
-    await supabase.from('analyst_access').delete().in('analyst_id', analystIds)
+    // Legacy cleanup: AnalystAccess rows
+    await supabase.from('AnalystAccess').delete().in('analystId', analystIds)
 
     return NextResponse.json({
       success: true,

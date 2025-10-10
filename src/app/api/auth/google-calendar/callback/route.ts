@@ -205,12 +205,18 @@ export async function GET(request: NextRequest) {
         console.log('👤 [CALENDAR OAUTH] Creating new user profile...')
         
         // Create user profile data with fallback values
+        const now = new Date().toISOString()
         const userProfileData = {
           id: user_id,
-          first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
-          last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
-          company: userInfo.data.hd || null, // Google hosted domain (company)
-          role: userRole as 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST' // Explicit type casting
+          email: userInfo.data.email!.toLowerCase(),
+          first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || null,
+          last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || null,
+          name: userInfo.data.name || [userInfo.data.given_name, userInfo.data.family_name].filter(Boolean).join(' ') || null,
+          company: (userInfo.data.hd as string) || null, // Google hosted domain (company)
+          role: userRole as 'SUPER_ADMIN' | 'VENDOR_ADMIN' | 'VENDOR_USER' | 'ANALYST',
+          password: 'oauth',
+          created_at: now,
+          updated_at: now,
         }
         
         console.log('👤 [CALENDAR OAUTH] User profile data:', userProfileData)
@@ -228,12 +234,18 @@ export async function GET(request: NextRequest) {
           console.error('❌ [CALENDAR OAUTH] Attempting fallback without explicit role...')
           
           // Try fallback without role (let database default handle it)
+          const now2 = new Date().toISOString()
           const fallbackData = {
             id: user_id,
-            first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || 'User',
-            last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || '',
-            company: userInfo.data.hd || null
-            // role omitted - let database default handle it
+            email: userInfo.data.email!.toLowerCase(),
+            first_name: userInfo.data.given_name || userInfo.data.name?.split(' ')[0] || null,
+            last_name: userInfo.data.family_name || userInfo.data.name?.split(' ').slice(1).join(' ') || null,
+            name: userInfo.data.name || [userInfo.data.given_name, userInfo.data.family_name].filter(Boolean).join(' ') || null,
+            company: (userInfo.data.hd as string) || null,
+            role: 'VENDOR_USER' as const,
+            password: 'oauth',
+            created_at: now2,
+            updated_at: now2,
           }
           
           console.log('👤 [CALENDAR OAUTH] Fallback data:', fallbackData)
@@ -379,7 +391,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Determine the correct settings URL based on user role
-    const settingsUrl = getSettingsUrl(user?.role)
+    const settingsUrl = getSettingsUrl((existingConnection as any)?.role || undefined)
     
     // If this is the new connect-first flow, redirect with connection details for naming
     if (connectionData.connectFirst) {

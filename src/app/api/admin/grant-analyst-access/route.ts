@@ -90,16 +90,20 @@ export async function POST(request: NextRequest) {
     console.log('✅ [Grant Analyst Access API] Auth user created:', authUser.user.id)
 
     // Create user profile entry
+    const now = new Date().toISOString()
     const { error: profileError } = await supabase
       .from('user_profiles')
       .insert({
         id: authUser.user.id,
-        email: analyst.email,
-        first_name: analyst.firstName,
-        last_name: analyst.lastName,
+        email: analyst.email.toLowerCase(),
+        first_name: analyst.firstName || null,
+        last_name: analyst.lastName || null,
         role: 'ANALYST',
-        name: `${analyst.firstName} ${analyst.lastName}`.trim(),
-        company: analyst.company
+        name: `${analyst.firstName ?? ''} ${analyst.lastName ?? ''}`.trim() || null,
+        company: analyst.company || null,
+        password: 'oauth',
+        created_at: now,
+        updated_at: now
       })
 
     if (profileError) {

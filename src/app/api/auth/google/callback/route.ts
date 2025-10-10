@@ -104,14 +104,18 @@ export async function GET(request: NextRequest) {
         const { data: connection, error: connectionError } = await supabase
           .from('calendar_connections')
           .insert({
+            id: `cl${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`,
             user_id: (state as any).userId,
-            provider: 'google',
-            email: userInfo.data.email,
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            expires_at: new Date(tokens.expiry_date || 0).toISOString(),
-            status: 'PENDING_NAME',
-            is_active: true
+            title: userInfo.data.name || userInfo.data.email || 'Google Calendar',
+            email: userInfo.data.email!,
+            google_account_id: userInfo.data.id!,
+            access_token: tokens.access_token!,
+            refresh_token: tokens.refresh_token || null,
+            expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+            token_expiry: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           })
           .select()
           .single()
@@ -165,6 +169,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(
         new URL('/auth?error=auth_failed', request.url)
       )
+    }
+
+    // Ensure user profile exists and has required fields
+    if (user?.id && user?.email) {
+      try {
+        const now = new Date().toISOString()
+        await supabase
+          .from('user_profiles')
+          .upsert(
+            {
+              id: user.id,
+              email: user.email.toLowerCase(),
+              // default role inference can be improved later; for now, keep existing or default to VENDOR_USER
+              role: 'VENDOR_USER',
+              first_name: (user.user_metadata as any)?.first_name || (user.user_metadata as any)?.given_name || null,
+              last_name: (user.user_metadata as any)?.last_name || (user.user_metadata as any)?.family_name || null,
+              name: [
+                (user.user_metadata as any)?.first_name || (user.user_metadata as any)?.given_name,
+                (user.user_metadata as any)?.last_name || (user.user_metadata as any)?.family_name,
+              ]
+                .filter(Boolean)
+                .join(' ') || null,
+              company: null,
+              password: 'oauth',
+              created_at: now,
+              updated_at: now,
+            },
+            { onConflict: 'id' }
+          )
+      } catch (e) {
+        console.warn('⚠️ [GOOGLE OAUTH] Failed to upsert user profile (non-fatal):', e)
+      }
     }
 
     // Get user role and redirect accordingly

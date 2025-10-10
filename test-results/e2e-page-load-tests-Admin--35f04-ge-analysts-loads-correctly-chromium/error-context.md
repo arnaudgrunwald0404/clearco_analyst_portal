@@ -1,0 +1,75 @@
+# Page snapshot
+
+```yaml
+- img "ClearCompany Logo"
+- navigation:
+  - list:
+    - listitem:
+      - link "Overview":
+        - /url: /
+    - listitem:
+      - link "Analysts":
+        - /url: /analysts
+    - listitem:
+      - link "Briefings":
+        - /url: /briefings
+    - listitem:
+      - link "Follow Ups":
+        - /url: /briefings/follow-ups
+    - listitem:
+      - link "Briefings Due":
+        - /url: /briefings/due
+    - listitem:
+      - link "Newsletters":
+        - /url: /newsletters
+    - listitem:
+      - link "Testimonials":
+        - /url: /testimonials
+    - listitem:
+      - link "X Activity":
+        - /url: /twitter-activity
+    - listitem:
+      - link "Publications":
+        - /url: /publications
+    - listitem:
+      - link "Awards":
+        - /url: /awards
+    - listitem:
+      - link "Events":
+        - /url: /events
+    - listitem:
+      - link "Settings":
+        - /url: /settings
+- banner "Main header":
+  - button "U Guest"
+  - heading "HR Technology Industry Relationship Management" [level=1]
+  - paragraph: Manage relationships • Get noticed • Drive growth
+- main:
+  - heading "Analysts" [level=1]
+  - paragraph: Manage your industry analyst relationships
+  - button "Add Analyst"
+  - textbox "Search analysts by name, company, or email..."
+  - combobox:
+    - option "All Types" [selected]
+    - option "Analyst"
+    - option "Press"
+    - option "Investor"
+    - option "Practitioner"
+    - option "Influencer"
+  - combobox:
+    - option "All Status"
+    - option "Active" [selected]
+    - option "Inactive"
+    - option "Archived"
+  - combobox:
+    - option "All Influence" [selected]
+    - option "Very High"
+    - option "High"
+    - option "Medium"
+    - option "Low"
+  - button "Topics (0)"
+  - text: Showing 0 of 0 analysts
+  - img "Loading..."
+  - text: Loading analysts...
+- alert
+```
